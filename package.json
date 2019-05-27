@@ -11,7 +11,11 @@
     "url": "git+https://github.com/nzapponi/homebridge-simplisafe3.git"
   },
   "keywords": [
-    "homebridge-plugin"
+    "homebridge-plugin",
+    "homebridge",
+    "homekit",
+    "simplisafe",
+    "security"
   ],
   "author": "Niccolò Zapponi",
   "license": "MIT",
