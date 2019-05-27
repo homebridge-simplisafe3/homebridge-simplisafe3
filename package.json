@@ -1,0 +1,22 @@
+{
+  "name": "homebridge-simplisafe3",
+  "version": "0.1.0",
+  "description": "A complete Homebridge plugin for the SimpliSafe 3 security system",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nzapponi/homebridge-simplisafe3.git"
+  },
+  "keywords": [
+    "homebridge-plugin"
+  ],
+  "author": "Niccolò Zapponi",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nzapponi/homebridge-simplisafe3/issues"
+  },
+  "homepage": "https://github.com/nzapponi/homebridge-simplisafe3#readme"
+}
