@@ -3,7 +3,7 @@ Created by [Niccolò Zapponi](https://twitter.com/nzapponi)
 
 A complete (unofficial) plugin to integrate the SimpliSafe 3 home security system with HomeKit.
 
-Inspired by the work by chowielin/homebridge-simplisafe-security-system.
+Inspired by the work by [chowielin/homebridge-simplisafe-security-system](https://github.com/chowielin/homebridge-simplisafe-security-system).
 
 ## Features
 
