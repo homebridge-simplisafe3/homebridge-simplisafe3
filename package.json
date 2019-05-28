@@ -4,6 +4,8 @@
   "description": "A complete Homebridge plugin for the SimpliSafe 3 security system",
   "main": "index.js",
   "scripts": {
+    "start": "nodemon --exec babel-node src/index.js",
+    "build": "babel src -d lib",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -22,5 +24,15 @@
   "bugs": {
     "url": "https://github.com/nzapponi/homebridge-simplisafe3/issues"
   },
-  "homepage": "https://github.com/nzapponi/homebridge-simplisafe3#readme"
+  "homepage": "https://github.com/nzapponi/homebridge-simplisafe3#readme",
+  "devDependencies": {
+    "@babel/cli": "^7.4.4",
+    "@babel/core": "^7.4.5",
+    "@babel/node": "^7.4.5",
+    "@babel/plugin-proposal-class-properties": "^7.4.4",
+    "@babel/preset-env": "^7.4.5"
+  },
+  "dependencies": {
+    "axios": "^0.18.0"
+  }
 }
