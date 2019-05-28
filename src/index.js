@@ -28,8 +28,8 @@ const tryLogIn = async () => {
         // let userId = await simplisafe.getUserId();
         // console.log(userId);
 
-        let userInfo = await simplisafe.getUserInfo();
-        console.log(userInfo);
+        let events = await simplisafe.getEvents();
+        console.log(events);
     } catch (err) {
         console.error('An error occurred', err);
     }
