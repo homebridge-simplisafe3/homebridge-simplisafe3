@@ -1,6 +1,6 @@
-import SimpliSafe from './simpilsafe';
+import SimpliSafe3 from './simpilsafe';
 
-const simplisafe = new SimpliSafe();
+const simplisafe = new SimpliSafe3();
 
 const tryLogIn = async () => {
     try {
@@ -28,8 +28,12 @@ const tryLogIn = async () => {
         // let userId = await simplisafe.getUserId();
         // console.log(userId);
 
-        let events = await simplisafe.getEvents();
-        console.log(events);
+        // let events = await simplisafe.getEvents();
+        // console.log(events);
+
+        let sensors = await simplisafe.getSensors();
+        console.log(sensors);
+        
     } catch (err) {
         console.error('An error occurred', err);
     }
