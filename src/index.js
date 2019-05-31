@@ -34,8 +34,12 @@ const tryLogIn = async () => {
         // let events = await simplisafe.getEvents();
         // console.log(events);
 
-        let sensors = await simplisafe.getSensors();
-        console.log(sensors);
+        // let sensors = await simplisafe.getSensors();
+        // console.log(sensors);
+
+        await simplisafe.setAlarmState('off');
+        let newState = await simplisafe.getAlarmState();
+        console.log(newState);
         
     } catch (err) {
         console.error('An error occurred', err);

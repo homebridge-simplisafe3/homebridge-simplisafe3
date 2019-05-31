@@ -260,6 +260,10 @@ class SimpliSafe3 {
         }
 
         try {
+            if (!this.subId) {
+                await this.getSubscription();
+            }
+
             let data = await this.request({
                 method: 'POST',
                 url: `/ss3/subscriptions/${this.subId}/state/${state}`
