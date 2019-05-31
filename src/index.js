@@ -1,3 +1,6 @@
+// © 2019 Niccolò Zapponi
+// SimpliSafe 3 HomeBridge Plugin
+
 import SimpliSafe3 from './simpilsafe';
 
 const simplisafe = new SimpliSafe3();
