@@ -41,11 +41,11 @@ class SimpliSafe3 {
                 password: password,
                 grant_type: 'password'
             }, {
-                    auth: {
-                        username: clientUsername,
-                        password: clientPassword
-                    }
-                });
+                auth: {
+                    username: clientUsername,
+                    password: clientPassword
+                }
+            });
 
             let data = response.data;
             this._storeLogin(data);
@@ -76,7 +76,7 @@ class SimpliSafe3 {
     }
 
     isLoggedIn() {
-        return this.refreshToken !== null || (this.token !== null && Date.now() < expiry);
+        return this.refreshToken !== null || (this.token !== null && Date.now() < this.expiry);
     }
 
     async refreshToken() {
@@ -89,11 +89,11 @@ class SimpliSafe3 {
                 refresh_token: this.rToken,
                 grant_type: 'refresh_token'
             }, {
-                    auth: {
-                        username: clientUsername,
-                        password: clientPassword
-                    }
-                });
+                auth: {
+                    username: clientUsername,
+                    password: clientPassword
+                }
+            });
 
             let data = response.data;
             this._storeLogin(data);
@@ -203,10 +203,10 @@ class SimpliSafe3 {
         try {
 
             let subscriptionId = subId;
-            
+
             if (!subscriptionId) {
                 subscriptionId = this.subId;
-                
+
                 if (!subscriptionId) {
                     let subs = await this.getSubscriptions();
                     if (subs.length == 1) {
@@ -216,7 +216,7 @@ class SimpliSafe3 {
                     }
                 }
             }
-            
+
             let data = await this.request({
                 method: 'GET',
                 url: `/subscriptions/${subscriptionId}/`
@@ -288,7 +288,7 @@ class SimpliSafe3 {
 
             let events = data.events;
             return events;
-            
+
         } catch (err) {
             throw err;
         }
