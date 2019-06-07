@@ -1,4 +1,4 @@
-# Homebridge Plugin for SimpliSafe 3
+# Homebridge Plugin for SimpliSafe 3 (WIP)
 Created by [Niccolò Zapponi](https://twitter.com/nzapponi)
 
 A complete (unofficial) plugin to integrate the SimpliSafe 3 home security system with HomeKit.
