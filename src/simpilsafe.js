@@ -241,8 +241,8 @@ class SimpliSafe3 {
             let subscription = await this.getSubscription();
 
             if (subscription.location && subscription.location.system) {
-                // OFF, HOME, AWAY, AWAY_COUNT, HOME_COUNT, SOUNDING
-                return subscription.location.system.isAlarming ? 'SOUNDING' : subscription.location.system.alarmState;
+                // OFF, HOME, AWAY, AWAY_COUNT, HOME_COUNT, ALARM_COUNT, ALARM
+                return subscription.location.system.isAlarming ? 'ALARM' : subscription.location.system.alarmState;
             } else {
                 throw new Error('Subscription format not understood');
             }

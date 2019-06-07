@@ -2,144 +2,114 @@
 // SimpliSafe 3 HomeBridge Plugin
 
 import SimpliSafe3 from './simpilsafe';
+import Alarm from './accessories/alarm';
 
-let Service, Characteristic;
-// OFF, HOME, AWAY, AWAY_COUNT, HOME_COUNT, SOUNDING
+const PLUGIN_NAME = 'homebridge-simplisafe3';
+const PLATFORM_NAME = 'SimpliSafe 3';
 
-class SS3Accessory {
+let Accessory, Service, Characteristic, UUIDGen;
 
-    CURRENT_SS3_TO_HOMEKIT = {
-        'OFF': Characteristic.SecuritySystemCurrentState.DISARM,
-        'HOME': Characteristic.SecuritySystemCurrentState.STAY_ARM,
-        'AWAY': Characteristic.SecuritySystemCurrentState.AWAY_ARM,
-        'HOME_COUNT': Characteristic.SecuritySystemCurrentState.DISARM,
-        'AWAY_COUNT': Characteristic.SecuritySystemCurrentState.DISARM,
-        // 'SOUNDING': Characteristic.SecuritySystemCurrentState
-    };
+class SS3Platform {
 
-    TARGET_SS3_TO_HOMEKIT = {
-        'OFF': Characteristic.SecuritySystemTargetState.DISARM,
-        'HOME': Characteristic.SecuritySystemTargetState.STAY_ARM,
-        'AWAY': Characteristic.SecuritySystemTargetState.AWAY_ARM
-    };
-
-    TARGET_HOMEKIT_TO_SS3 = {
-        [Characteristic.SecuritySystemTargetState.DISARM]: 'OFF',
-        [Characteristic.SecuritySystemTargetState.STAY_ARM]: 'HOME',
-        [Characteristic.SecuritySystemTargetState.AWAY_ARM]: 'AWAY'
-    };
-
-    constructor(log, config) {
+    constructor(log, config, api) {
         this.log = log;
         this.name = config.name;
-        this.services = {};
+        this.accessories = [];
 
         this.simplisafe = new SimpliSafe3();
 
-        this.simplisafe.login(config.auth.username, config.auth.password, true)
-            .then(() => {
-                this.log('Logged in!');
+        if (api) {
+            this.api = api;
+            this.api.on('didFinishLaunching', () => {
 
-                if (config.subscriptionId) {
-                    return this.simplisafe.getSubscription(config.subscriptionId);
-                } else {
-                    return this.simplisafe.getSubscription();
+                this.log('DidFinishLaunching');
+
+                this.simplisafe.login(config.auth.username, config.auth.password, true)
+                    .then(() => {
+                        this.log('Logged in!');
+
+                        if (config.subscriptionId) {
+                            this.simplisafe.setDefaultSubscription(config.subscriptionId);
+                        }
+
+                        return this.refreshAccessories();
+                    })
+                    .catch(err => {
+                        this.log('SS3 init failed');
+                        this.log(err);
+                    });
+            });
+        }
+    }
+
+    addAccessory(accessory) {
+        this.log('Add accessory');
+        this.accessories.push(accessory);
+        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory.accessory]);
+    }
+
+    configureAccessory(accessory) {
+        this.log('Configure accessory');
+        this.log(accessory);
+    }
+
+    async refreshAccessories() {
+        this.log('Refreshing accessories');
+        try {
+            let subscription = await this.simplisafe.getSubscription();
+
+            let uuid = UUIDGen.generate(subscription.location.system.serial);
+            let alarm = this.accessories.find(acc => acc.uuid === uuid);
+
+            if (!alarm) {
+                this.log('Alarm not found, adding...');
+                const alarmAccessory = new Alarm(
+                    'SimpliSafe3 Alarm',
+                    subscription.location.system.serial,
+                    this.log,
+                    this.simplisafe,
+                    Service,
+                    Characteristic,
+                    Accessory,
+                    UUIDGen
+                );
+
+                this.addAccessory(alarmAccessory);
+            }
+
+            let sensors = await this.simplisafe.getSensors();
+            for (let sensor of sensors) {
+                switch (sensor.type) {
+                    case 5:
+                        // Entry sensor
+                        
+                        break;
+                    default:
+                        this.log(`Sensor not (yet) supported: ${sensor.name}`);
                 }
-            })
-            .then(subscription => {
-                this.log(`Subscription found: ${subscription.sid}`);
+            }
+        } catch (err) {
+            this.log('An error occurred while refreshing accessories');
+            this.log(err);
+        }
 
-                this.services.alarm = new Service.SecuritySystem(this.name);
-                this.services.alarm
-                    .getCharacteristic(Characteristic.SecuritySystemCurrentState)
-                    .on('get', callback => this.getCurrentAlarmState(callback));
-                this.services.alarm
-                    .getCharacteristic(Characteristic.SecuritySystemTargetState)
-                    .on('get', callback => this.getTargetAlarmState(callback))
-                    .on('set', (state, callback) => this.setTargetAlarmState(state, callback));
-
-                // @TODO Load sensors
-            })
-            .catch(err => {
-                this.log('Login failed');
-                this.log(err);
-            });
     }
 
-    getCurrentAlarmState(callback) {
-        this.simplisafe.getAlarmState()
-            .then(state => {
-                this.log(`Received new alarm state from SimpliSafe: ${state}`);
-                // @TODO Convert to HomeKit state
-                let homekitState = state;
-                callback(null, homekitState);
-            })
-            .catch(err => {
-                callback(new Error(`An error occurred while getting the alarm state: ${err}`));
-            });
-    }
-
-    getTargetAlarmState(callback) {
-        this.simplisafe.getAlarmState()
-            .then(state => {
-                this.log(`Received new alarm state from SimpliSafe: ${state}`);
-                // @TODO Convert to HomeKit state
-                // @TODO Probably need to adjust this so that we update the characteristic
-                let homekitState = state;
-                callback(null, homekitState);
-            })
-            .catch(err => {
-                callback(new Error(`An error occurred while getting the alarm state: ${err}`));
-            });
-    }
-
-    setTargetAlarmState(homekitState, callback) {
-        // @TODO Convert to SS3 state
-        let state = homekitState;
-
-        this.simplisafe.setAlarmState(state)
-            .then(data => {
-                this.log(`Updated alarm state: ${JSON.stringify(data)}`);
-
-                // @TODO Probably need to adjust this so that we set the target state and not the current state
-                this.services.alarm.setCharacteristic(Characteristic.SecuritySystemCurrentState, state);
-                callback(null);
-            })
-            .catch(err => {
-                callback(new Error(`An error occurred while setting the alarm state: ${err}`));
-            });
-    }
-
-    // getCurrentSensorState(sensor, callback) {
-
-    // }
-
-    // getTargetSensorState(sensor, callback) {
-
-    // }
-
-    // setTargetSensorState(sensor, state, callback) {
-
-    // }
-
-    identify(callback) {
-        this.log('Identify!');
-        callback();
-    }
-
-    getServices() {
-        return Object.values(this.services);
+    updateAccessoriesReachability() {
+        for (let accessory of this.accessories) {
+            accessory.updateReachability();
+        }
     }
 
 }
 
 const homebridge = homebridge => {
+    Accessory = homebridge.platformAccessory;
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
+    UUIDGen = homebridge.hap.uuid;
 
-    let accessory = new SS3Accessory();
-
-    homebridge.registerAccessory('homebridge-simplisafe3', 'SimpliSafe 3', accessory);
+    homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, SS3Platform, true);
 };
 
-module.exports = homebridge;
+export default homebridge;
