@@ -75,7 +75,7 @@ class SS3Alarm {
 
             let homekitState = CURRENT_SS3_TO_HOMEKIT[state];
             if (stateType == 'target') {
-                homekitState = TARGET_HOMEKIT_TO_SS3[state];
+                homekitState = TARGET_SS3_TO_HOMEKIT[state];
             }
 
             if (!this.currentState || this.currentState !== homekitState) {
@@ -126,7 +126,7 @@ class SS3Alarm {
 
     startRefreshState(interval = 10000) {
         this.stopRefreshState();
-        
+
         this.refreshInterval = setInterval(async () => {
             await this.refreshState();
         }, interval);
