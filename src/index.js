@@ -64,7 +64,7 @@ class SS3Platform {
             if (!alarm) {
                 this.log('Alarm not found, adding...');
                 const alarmAccessory = new Alarm(
-                    'SimpliSafe3 Alarm',
+                    'SimpliSafe 3',
                     subscription.location.system.serial,
                     this.log,
                     this.simplisafe,

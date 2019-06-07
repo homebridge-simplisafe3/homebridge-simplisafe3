@@ -44,6 +44,8 @@ class SS3Alarm {
             .on('get', callback => this.getTargetState(callback))
             .on('set', (state, callback) => this.setTargetState(state, callback));
 
+        this.accessory.addService(Service.SecuritySystem, 'Alarm');
+
         this.startRefreshState();
     }
 
@@ -141,7 +143,7 @@ class SS3Alarm {
 
     async refreshState() {
         try {
-            let state = this.simplisafe.getAlarmState();
+            let state = await this.simplisafe.getAlarmState();
             let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
             if (homekitState !== this.currentState) {
                 this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, homekitState);
