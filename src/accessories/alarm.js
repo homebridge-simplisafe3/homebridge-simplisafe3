@@ -1,27 +1,3 @@
-const CURRENT_SS3_TO_HOMEKIT = {
-    'OFF': this.Characteristic.SecuritySystemCurrentState.DISARM,
-    'HOME': this.Characteristic.SecuritySystemCurrentState.STAY_ARM,
-    'AWAY': this.Characteristic.SecuritySystemCurrentState.AWAY_ARM,
-    'HOME_COUNT': this.Characteristic.SecuritySystemCurrentState.DISARM,
-    'AWAY_COUNT': this.Characteristic.SecuritySystemCurrentState.DISARM,
-    'ALARM_COUNT': this.Characteristic.SecuritySystemCurrentState.AWAY_ARM,
-    'ALARM': this.Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
-};
-
-const TARGET_SS3_TO_HOMEKIT = {
-    'OFF': this.Characteristic.SecuritySystemTargetState.DISARM,
-    'HOME': this.Characteristic.SecuritySystemTargetState.STAY_ARM,
-    'AWAY': this.Characteristic.SecuritySystemTargetState.AWAY_ARM,
-    'HOME_COUNT': this.Characteristic.SecuritySystemTargetState.STAY_ARM,
-    'AWAY_COUNT': this.Characteristic.SecuritySystemTargetState.AWAY_ARM
-};
-
-const TARGET_HOMEKIT_TO_SS3 = {
-    [this.Characteristic.SecuritySystemTargetState.DISARM]: 'OFF',
-    [this.Characteristic.SecuritySystemTargetState.STAY_ARM]: 'HOME',
-    [this.Characteristic.SecuritySystemTargetState.AWAY_ARM]: 'AWAY'
-};
-
 class SS3Alarm {
 
     constructor(name, id, log, simplisafe, Service, Characteristic, Accessory, UUIDGen) {
@@ -33,6 +9,30 @@ class SS3Alarm {
         this.uuid = UUIDGen.generate(id);
         
         this.currentState = null;
+
+        this.CURRENT_SS3_TO_HOMEKIT = {
+            'OFF': Characteristic.SecuritySystemCurrentState.DISARM,
+            'HOME': Characteristic.SecuritySystemCurrentState.STAY_ARM,
+            'AWAY': Characteristic.SecuritySystemCurrentState.AWAY_ARM,
+            'HOME_COUNT': Characteristic.SecuritySystemCurrentState.DISARM,
+            'AWAY_COUNT': Characteristic.SecuritySystemCurrentState.DISARM,
+            'ALARM_COUNT': Characteristic.SecuritySystemCurrentState.AWAY_ARM,
+            'ALARM': Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
+        };
+        
+        this.TARGET_SS3_TO_HOMEKIT = {
+            'OFF': Characteristic.SecuritySystemTargetState.DISARM,
+            'HOME': Characteristic.SecuritySystemTargetState.STAY_ARM,
+            'AWAY': Characteristic.SecuritySystemTargetState.AWAY_ARM,
+            'HOME_COUNT': Characteristic.SecuritySystemTargetState.STAY_ARM,
+            'AWAY_COUNT': Characteristic.SecuritySystemTargetState.AWAY_ARM
+        };
+        
+        this.TARGET_HOMEKIT_TO_SS3 = {
+            [Characteristic.SecuritySystemTargetState.DISARM]: 'OFF',
+            [Characteristic.SecuritySystemTargetState.STAY_ARM]: 'HOME',
+            [Characteristic.SecuritySystemTargetState.AWAY_ARM]: 'AWAY'
+        };
 
         this.accessory = new Accessory(name, this.uuid);
         this.accessory.on('identify', (paired, callback) => this.identify(paired, callback));
@@ -73,9 +73,9 @@ class SS3Alarm {
             let state = await this.simplisafe.getAlarmState();
             this.log(`Received new alarm state from SimpliSafe: ${state}`);
 
-            let homekitState = CURRENT_SS3_TO_HOMEKIT[state];
+            let homekitState = this.this.CURRENT_SS3_TO_HOMEKIT[state];
             if (stateType == 'target') {
-                homekitState = TARGET_SS3_TO_HOMEKIT[state];
+                homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
             }
 
             if (!this.currentState || this.currentState !== homekitState) {
@@ -109,7 +109,7 @@ class SS3Alarm {
     }
 
     setTargetState(homekitState, callback) {
-        let state = TARGET_HOMEKIT_TO_SS3[homekitState];
+        let state = this.TARGET_HOMEKIT_TO_SS3[homekitState];
 
         this.simplisafe.setAlarmState(state)
             .then(data => {
@@ -142,7 +142,7 @@ class SS3Alarm {
     async refreshState() {
         try {
             let state = this.simplisafe.getAlarmState();
-            let homekitState = CURRENT_SS3_TO_HOMEKIT[state];
+            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
             if (homekitState !== this.currentState) {
                 this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, homekitState);
                 this.currentState = homekitState;
