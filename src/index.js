@@ -45,6 +45,7 @@ class SS3Platform {
     addAccessory(accessory) {
         this.log('Add accessory');
         this.accessories.push(accessory);
+        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory.accessory]);
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory.accessory]);
     }
 
