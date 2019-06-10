@@ -276,16 +276,22 @@ class SimpliSafe3 {
         }
     }
 
-    async getEvents(number = 10) {
+    async getEvents(params) {
 
         try {
             if (!this.subId) {
                 await this.getSubscription();
             }
 
+            let url = `/subscriptions/${this.subId}/events`;
+            if (Object.keys(params).length > 0) {
+                let query = Object.keys(params).map(key => `${key}=${params[key]}`);
+                url = `${url}?${query.join('&')}`;
+            }
+
             let data = await this.request({
                 method: 'GET',
-                url: `/subscriptions/${this.subId}/events?numEvents=${number}`
+                url: url
             });
 
             let events = data.events;
@@ -315,8 +321,51 @@ class SimpliSafe3 {
     }
 
     async subscribe(callback) {
+
+        let _socketCallback = data => {
+            switch (data.eventCid) {
+                case 1400:
+                case 1407:
+                    // OFF (1400 is for Master PIN, 1407 is for Remote)
+                    callback('OFF');
+                    break;
+                case 9441:
+                    // HOME_COUNT
+                    callback('HOME_COUNT');
+                    break;
+                case 3441:
+                    // HOME
+                    callback('HOME');
+                    break;
+                case 9401:
+                case 9407:
+                    // AWAY_COUNT (9401 is for Keypad, 9407 is for Remote)
+                    callback('AWAY_COUNT');
+                    break;
+                case 3401:
+                case 3407:
+                    // AWAY (3401 is for Keypad, 3407 is for Remote)
+                    callback('AWAY');
+                    break;
+                case 1429:
+                    // ENTRY DETECTED
+                    callback('ENTRY', data);
+                    break;
+                case 1170:
+                    // CAMERA DETECTED MOTION
+                    callback('CAMERA', data);
+                    break;
+                case 1602:
+                    // Automatic test
+                    break;
+                default:
+                    callback(null, data);
+                    break;
+            }
+        };
+
         if (this.socket) {
-            this.socket.on('event', callback);
+            this.socket.on('event', _socketCallback);
         } else {
             try {
                 let userId = await this.getUserId();
@@ -324,58 +373,42 @@ class SimpliSafe3 {
                 this.socket = io(`https://api.simplisafe.com/v1/user/${userId}`, {
                     path: '/socket.io',
                     query: {
+                        ns: `/v1/user/${userId}`,
                         accessToken: this.token
                     },
                     transports: ['websocket', 'polling']
                 });
 
-                this.socket.on('connect', () => {
-                    console.log('Socket connected');
+                this.socket.on('connect_error', () => {
+                    this.socket = null;
                 });
 
-                this.socket.on('connect_error', err => {
-                    console.log('Error while connecting socket', err);
+                this.socket.on('connect_timeout', () => {
+                    this.socket = null;
                 });
 
-                this.socket.on('connect_timeout', err => {
-                    console.log('Timeout while connecting socket', err);
+                this.socket.on('error', () => {
+                    this.socket = null;
                 });
 
-                this.socket.on('error', err => {
-                    console.log('An error occurred with the socket', err);
-                });
-
-                this.socket.on('disconnect', reason => {
-                    console.log('Socket disconnected', reason);
-                });
-
-                this.socket.on('reconnect', attempt => {
-                    console.log('Socket reconnected on attempt', attempt);
-                });
-
-                this.socket.on('reconnect_attempt', attempt => {
-                    console.log('Socket attempting to reconnect', attempt);
-                });
-
-                this.socket.on('reconnecting', attempt => {
-                    console.log('Socket reconnecting', attempt);
-                });
-
-                this.socket.on('reconnect_error', err => {
-                    console.log('Error while attempting to reconnect', err);
-                });
-
-                this.socket.on('reconnect_failed', () => {
-                    console.log('Reconnection failed');
-                });
-
-                this.socket.on('event', callback);
+                this.socket.on('event', _socketCallback);
     
             } catch (err) {
                 throw err;
             }
         } 
 
+    }
+
+    isSocketConnected() {
+        return this.socket && this.socket.connected;
+    }
+
+    unsubscribe() {
+        if (this.socket) {
+            this.socket.close();
+            this.socket = null;
+        }
     }
 
 }

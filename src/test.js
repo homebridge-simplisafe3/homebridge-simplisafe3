@@ -4,7 +4,8 @@ async function test() {
     try {
         let ss = new SimpliSafe();
         await ss.login('nzapponi@gmail.com', 'riqhy1-tirbob-fewsaN');
-        ss.subscribe(event => {
+        await ss.subscribe(event => {
+            console.log('New event!');
             console.log(event);
         });
     
