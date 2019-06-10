@@ -327,33 +327,33 @@ class SimpliSafe3 {
                 case 1400:
                 case 1407:
                     // OFF (1400 is for Master PIN, 1407 is for Remote)
-                    callback('OFF');
+                    callback('OFF', data);
                     break;
                 case 9441:
                     // HOME_COUNT
-                    callback('HOME_COUNT');
+                    callback('HOME_COUNT', data);
                     break;
                 case 3441:
                     // HOME
-                    callback('HOME');
+                    callback('HOME', data);
                     break;
                 case 9401:
                 case 9407:
                     // AWAY_COUNT (9401 is for Keypad, 9407 is for Remote)
-                    callback('AWAY_COUNT');
+                    callback('AWAY_COUNT', data);
                     break;
                 case 3401:
                 case 3407:
                     // AWAY (3401 is for Keypad, 3407 is for Remote)
-                    callback('AWAY');
+                    callback('AWAY', data);
                     break;
                 case 1429:
                     // ENTRY DETECTED
-                    callback('ENTRY');
+                    callback('ENTRY', data);
                     break;
                 case 1170:
                     // CAMERA DETECTED MOTION
-                    callback('MOTION');
+                    callback('MOTION', data);
                     break;
                 case 1602:
                     // Automatic test
