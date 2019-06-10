@@ -1,7 +1,7 @@
 // © 2019 Niccolò Zapponi
 // SimpliSafe 3 HomeBridge Plugin
 
-import SimpliSafe3 from './simpilsafe';
+import SimpliSafe3 from './simplisafe';
 import Alarm from './accessories/alarm';
 
 const PLUGIN_NAME = 'homebridge-simplisafe3';

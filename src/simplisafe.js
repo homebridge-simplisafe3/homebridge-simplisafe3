@@ -2,6 +2,7 @@
 // SimpliSafe 3 API Wrapper
 
 import axios from 'axios';
+import io from 'socket.io-client';
 
 // Do not touch these - they allow the client to make requests to the SimpliSafe API
 const clientUsername = '4df55627-46b2-4e2c-866b-1521b395ded2.1-28-0.WebApp.simplisafe.com';
@@ -27,6 +28,7 @@ class SimpliSafe3 {
     password;
     userId;
     subId;
+    socket;
 
     async login(username, password, storeCredentials = false) {
 
@@ -310,6 +312,70 @@ class SimpliSafe3 {
         } catch (err) {
             throw err;
         }
+    }
+
+    async subscribe(callback) {
+        if (this.socket) {
+            this.socket.on('event', callback);
+        } else {
+            try {
+                let userId = await this.getUserId();
+    
+                this.socket = io(`https://api.simplisafe.com/v1/user/${userId}`, {
+                    path: '/socket.io',
+                    query: {
+                        accessToken: this.token
+                    },
+                    transports: ['websocket', 'polling']
+                });
+
+                this.socket.on('connect', () => {
+                    console.log('Socket connected');
+                });
+
+                this.socket.on('connect_error', err => {
+                    console.log('Error while connecting socket', err);
+                });
+
+                this.socket.on('connect_timeout', err => {
+                    console.log('Timeout while connecting socket', err);
+                });
+
+                this.socket.on('error', err => {
+                    console.log('An error occurred with the socket', err);
+                });
+
+                this.socket.on('disconnect', reason => {
+                    console.log('Socket disconnected', reason);
+                });
+
+                this.socket.on('reconnect', attempt => {
+                    console.log('Socket reconnected on attempt', attempt);
+                });
+
+                this.socket.on('reconnect_attempt', attempt => {
+                    console.log('Socket attempting to reconnect', attempt);
+                });
+
+                this.socket.on('reconnecting', attempt => {
+                    console.log('Socket reconnecting', attempt);
+                });
+
+                this.socket.on('reconnect_error', err => {
+                    console.log('Error while attempting to reconnect', err);
+                });
+
+                this.socket.on('reconnect_failed', () => {
+                    console.log('Reconnection failed');
+                });
+
+                this.socket.on('event', callback);
+    
+            } catch (err) {
+                throw err;
+            }
+        } 
+
     }
 
 }
