@@ -349,11 +349,11 @@ class SimpliSafe3 {
                     break;
                 case 1429:
                     // ENTRY DETECTED
-                    callback('ENTRY', data);
+                    callback('ENTRY');
                     break;
                 case 1170:
                     // CAMERA DETECTED MOTION
-                    callback('CAMERA', data);
+                    callback('MOTION');
                     break;
                 case 1602:
                     // Automatic test
