@@ -7,12 +7,15 @@ Inspired by the work by [chowielin/homebridge-simplisafe-security-system](https:
 
 ## Features
 
+
 ## Usage
+
 
 ## Supported Devices
 - [x] Alarm arm/disarm (home, away, off)
+- [ ] SimpliCam
 - [x] Entry sensors
-- [ ] Motion sensors
-- [ ] Smoke detector
+- [ ] Motion sensors -- state not provided by SimpliSafe
+- [ ] Smoke detector -- log an issue and provide data!
 
 ## Help & Support

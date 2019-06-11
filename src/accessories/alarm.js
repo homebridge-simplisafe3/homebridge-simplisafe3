@@ -65,6 +65,7 @@ class SS3Alarm {
             .on('set', async (state, callback) => this.setTargetState(state, callback));
 
         this.startListening();
+        this.refreshState();
     }
 
     identify(paired, callback) {
@@ -130,9 +131,11 @@ class SS3Alarm {
         try {
             let data = await this.simplisafe.setAlarmState(state);
             this.log(`Updated alarm state: ${JSON.stringify(data)}`);
-            if (data.exitDelay && data.exitDelay > 0) {
+            if (data.state == 'OFF') {
+                this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+            } else if (data.exitDelay && data.exitDelay > 0) {
                 setTimeout(async () => {
-                    await this.getCurrentState(() => {});
+                    await this.refreshState();
                 }, data.exitDelay * 1000);
             }
             callback(null);
@@ -161,11 +164,9 @@ class SS3Alarm {
                     this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                     break;
                 case 'HOME_EXIT_DELAY':
-                    this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.homekitState);
                     this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
                     break;
                 case 'AWAY_EXIT_DELAY':
-                    this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.homekitState);
                     this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                     break;
                 default:
@@ -174,37 +175,20 @@ class SS3Alarm {
         });
     }
 
-    // startRefreshState(interval = 10000) {
-    //     if (this.refreshInterval) {
-    //         this.stopRefreshState();
-    //     }
-
-    //     this.refreshInterval = setInterval(() => {
-    //         this.refreshState();
-    //     }, interval);
-    // }
-
-    // stopRefreshState() {
-    //     if (this.refreshInterval) {
-    //         clearInterval(this.refreshInterval);
-    //         this.refreshInterval = null;
-    //     }
-    // }
-
-    // async refreshState() {
-    //     try {
-    //         let state = await this.simplisafe.getAlarmState();
-    //         let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-    //         if (homekitState !== this.currentState) {
-    //             this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, homekitState);
-    //             this.currentState = homekitState;
-    //             this.log(`Updated current state for ${this.name}: ${state}`);
-    //         }
-    //     } catch (err) {
-    //         this.log('An error occurred while refreshing state');
-    //         this.log(err);
-    //     }
-    // }
+    async refreshState() {
+        try {
+            let state = await this.simplisafe.getAlarmState();
+            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
+            if (homekitState !== this.currentState) {
+                this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, homekitState);
+                this.currentState = homekitState;
+                this.log(`Updated current state for ${this.name}: ${state}`);
+            }
+        } catch (err) {
+            this.log('An error occurred while refreshing state');
+            this.log(err);
+        }
+    }
 
 }
 
