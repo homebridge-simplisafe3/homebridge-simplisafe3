@@ -320,46 +320,62 @@ class SimpliSafe3 {
         }
     }
 
-    async subscribe(callback) {
+    async subscribeToEvents(callback) {
 
         let _socketCallback = data => {
-            switch (data.eventCid) {
-                case 1400:
-                case 1407:
-                    // OFF (1400 is for Master PIN, 1407 is for Remote)
+            switch (data.eventType) {
+                case 'alarm':
+                    callback('ALARM', data);
+                    break;
+                case 'alarmCancel':
                     callback('OFF', data);
                     break;
-                case 9441:
-                    // HOME_COUNT
-                    callback('HOME_COUNT', data);
-                    break;
-                case 3441:
-                    // HOME
-                    callback('HOME', data);
-                    break;
-                case 9401:
-                case 9407:
-                    // AWAY_COUNT (9401 is for Keypad, 9407 is for Remote)
-                    callback('AWAY_COUNT', data);
-                    break;
-                case 3401:
-                case 3407:
-                    // AWAY (3401 is for Keypad, 3407 is for Remote)
-                    callback('AWAY', data);
-                    break;
-                case 1429:
-                    // ENTRY DETECTED
-                    callback('ENTRY', data);
-                    break;
-                case 1170:
-                    // CAMERA DETECTED MOTION
-                    callback('MOTION', data);
-                    break;
-                case 1602:
-                    // Automatic test
-                    break;
+                case 'activity':
+                case 'activityQuiet':
                 default:
-                    callback(null, data);
+                    // if it's not an alarm event, check by eventCid
+                    switch (data.eventCid) {
+                        case 1400:
+                        case 1407:
+                            // 1400 is disarmed with Master PIN, 1407 is disarmed with Remote
+                            callback('DISARM', data);
+                            break;
+                        case 1406:
+                            callback('CANCEL', data);
+                            break;
+                        case 9441:
+                            callback('HOME_EXIT_DELAY', data);
+                            break;
+                        case 3441:
+                            callback('HOME_ARM', data);
+                            break;
+                        case 9401:
+                        case 9407:
+                            // 9401 is for Keypad, 9407 is for Remote
+                            callback('AWAY_EXIT_DELAY', data);
+                            break;
+                        case 3401:
+                        case 3407:
+                            // 3401 is for Keypad, 3407 is for Remote
+                            callback('AWAY_ARM', data);
+                            break;
+                        case 1429:
+                            callback('ENTRY', data);
+                            break;
+                        case 1132:
+                        case 1134:
+                            callback('ALARM', data);
+                            break;
+                        case 1170:
+                            callback('CAMERA_MOTION', data);
+                            break;
+                        case 1602:
+                            // Automatic test
+                            break;
+                        default:
+                            callback(null, data);
+                            break;
+                    }
                     break;
             }
         };
@@ -369,7 +385,7 @@ class SimpliSafe3 {
         } else {
             try {
                 let userId = await this.getUserId();
-    
+
                 this.socket = io(`https://api.simplisafe.com/v1/user/${userId}`, {
                     path: '/socket.io',
                     query: {
@@ -392,11 +408,11 @@ class SimpliSafe3 {
                 });
 
                 this.socket.on('event', _socketCallback);
-    
+
             } catch (err) {
                 throw err;
             }
-        } 
+        }
 
     }
 
@@ -404,7 +420,7 @@ class SimpliSafe3 {
         return this.socket && this.socket.connected;
     }
 
-    unsubscribe() {
+    unsubscribeFromEvents() {
         if (this.socket) {
             this.socket.close();
             this.socket = null;

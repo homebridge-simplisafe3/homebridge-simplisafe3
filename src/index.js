@@ -45,8 +45,11 @@ class SS3Platform {
     addAccessory(accessory) {
         this.log('Add accessory');
         this.accessories.push(accessory);
-        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory.accessory]);
-        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory.accessory]);
+        try {
+            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory.accessory]);
+        } catch (err) {
+            this.log(`An error occurred while adding accessory: ${err}`);
+        }
     }
 
     configureAccessory(accessory) {
@@ -97,6 +100,7 @@ class SS3Platform {
     }
 
     updateAccessoriesReachability() {
+        this.log('Updating reacahability');
         for (let accessory of this.accessories) {
             accessory.updateReachability();
         }
