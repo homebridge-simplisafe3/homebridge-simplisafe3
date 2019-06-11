@@ -14,56 +14,104 @@ class SS3Platform {
     constructor(log, config, api) {
         this.log = log;
         this.name = config.name;
+        this.devices = [];
         this.accessories = [];
 
+        this.cachedAccessoryConfig = [];
+
         this.simplisafe = new SimpliSafe3();
+
+        this.initialLoad = this.simplisafe.login(config.auth.username, config.auth.password, true)
+            .then(() => {
+                this.log('Logged in!');
+
+                if (config.subscriptionId) {
+                    this.simplisafe.setDefaultSubscription(config.subscriptionId);
+                }
+
+                return this.refreshAccessories(false);
+            })
+            .catch(err => {
+                this.log('SS3 init failed');
+                this.log(err);
+            });
 
         if (api) {
             this.api = api;
             this.api.on('didFinishLaunching', () => {
 
                 this.log('DidFinishLaunching');
+                this.log(`Found ${this.cachedAccessoryConfig.length} cached accessories being configured`);
 
-                this.simplisafe.login(config.auth.username, config.auth.password, true)
+                this.initialLoad
                     .then(() => {
-                        this.log('Logged in!');
-
-                        if (config.subscriptionId) {
-                            this.simplisafe.setDefaultSubscription(config.subscriptionId);
-                        }
-
+                        return Promise.all(this.cachedAccessoryConfig);
+                    })
+                    .then(() => {
                         return this.refreshAccessories();
                     })
                     .catch(err => {
-                        this.log('SS3 init failed');
+                        this.log('SS3 refresh failed');
                         this.log(err);
                     });
             });
         }
     }
 
-    addAccessory(accessory) {
+    addAccessory(device) {
         this.log('Add accessory');
-        this.accessories.push(accessory);
         try {
-            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory.accessory]);
+            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [device.accessory]);
+            this.accessories.push(device.accessory);
         } catch (err) {
             this.log(`An error occurred while adding accessory: ${err}`);
         }
     }
 
     configureAccessory(accessory) {
-        this.log('Configure accessory');
-        this.log(accessory);
+        this.log('Configure existing accessory');
+
+        let config = new Promise((resolve, reject) => {
+            this.initialLoad
+                .then(() => {
+                    let device = this.devices.find(device => device.uuid === accessory.UUID);
+
+                    if (device) {
+                        this.log('Found device!');
+                        device.setAccessory(accessory);
+                        this.accessories.push(accessory);
+                    } else {
+                        this.log('Device not found!');
+                        this.removeAccessory(accessory);
+                    }
+
+                    resolve();
+                })
+                .catch(err => {
+                    reject(err);
+                });
+        });
+
+        this.cachedAccessoryConfig.push(config);
     }
 
-    async refreshAccessories() {
+    removeAccessory(accessory) {
+        this.log('Remove accessory');
+        if (accessory) {
+            this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            if (this.accessories.indexOf(accessory) > -1) {
+                this.accessories.splice(this.accessories.indexOf(accessory), 1);
+            }
+        }
+    }
+
+    async refreshAccessories(addAndRemove = true) {
         this.log('Refreshing accessories');
         try {
             let subscription = await this.simplisafe.getSubscription();
 
             let uuid = UUIDGen.generate(subscription.location.system.serial);
-            let alarm = this.accessories.find(acc => acc.uuid === uuid);
+            let alarm = this.accessories.find(acc => acc.UUID === uuid);
 
             if (!alarm) {
                 this.log('Alarm not found, adding...');
@@ -78,18 +126,26 @@ class SS3Platform {
                     UUIDGen
                 );
 
-                this.addAccessory(alarmAccessory);
+                this.devices.push(alarmAccessory);
+                if (addAndRemove) {
+                    this.addAccessory(alarmAccessory);
+                }
             }
 
             let sensors = await this.simplisafe.getSensors();
             for (let sensor of sensors) {
                 switch (sensor.type) {
+                    case 1: // Keypad
+                    case 4: // Motion sensor
+                        // Ignore as no data is provided by SimpliSafe
+                        break;
                     case 5:
                         // Entry sensor
-                        
+
                         break;
                     default:
                         this.log(`Sensor not (yet) supported: ${sensor.name}`);
+                        this.log(sensor);
                 }
             }
         } catch (err) {

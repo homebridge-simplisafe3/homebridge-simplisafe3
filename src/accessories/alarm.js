@@ -3,6 +3,8 @@ class SS3Alarm {
     constructor(name, id, log, simplisafe, Service, Characteristic, Accessory, UUIDGen) {
 
         this.Characteristic = Characteristic;
+        this.Service = Service;
+        this.id = id;
         this.log = log;
         this.name = name;
         this.simplisafe = simplisafe;
@@ -45,24 +47,9 @@ class SS3Alarm {
             Characteristic.SecuritySystemTargetState.DISARM
         ];
 
-        this.accessory = new Accessory(name, this.uuid);
-        this.accessory.on('identify', (paired, callback) => this.identify(paired, callback));
-
-        this.accessory.addService(Service.SecuritySystem, 'Alarm');
-        this.accessory.getService(Service.AccessoryInformation)
-            .setCharacteristic(Characteristic.Manufacturer, 'SimpliSafe')
-            .setCharacteristic(Characteristic.Model, 'SimpliSafe 3')
-            .setCharacteristic(Characteristic.SerialNumber, id);
-
-        this.service = this.accessory.getService('Alarm');
-
-        this.service.getCharacteristic(Characteristic.SecuritySystemCurrentState)
-            .setProps({ validValues: this.VALID_CURRENT_STATE_VALUES })
-            .on('get', async callback => this.getCurrentState(callback));
-        this.service.getCharacteristic(Characteristic.SecuritySystemTargetState)
-            .setProps({ validValues: this.VALID_TARGET_STATE_VALUES })
-            .on('get', async callback => this.getTargetState(callback))
-            .on('set', async (state, callback) => this.setTargetState(state, callback));
+        let newAccessory = new Accessory(name, this.uuid);
+        newAccessory.addService(this.Service.SecuritySystem, 'Alarm');
+        this.setAccessory(newAccessory);
 
         this.startListening();
         this.refreshState();
@@ -71,6 +58,26 @@ class SS3Alarm {
     identify(paired, callback) {
         this.log(`Identify request for ${this.name}, paired: ${paired}`);
         callback();
+    }
+
+    setAccessory(accessory) {
+        this.accessory = accessory;
+        this.accessory.on('identify', (paired, callback) => this.identify(paired, callback));
+
+        this.accessory.getService(this.Service.AccessoryInformation)
+            .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
+            .setCharacteristic(this.Characteristic.Model, 'SimpliSafe 3')
+            .setCharacteristic(this.Characteristic.SerialNumber, this.id);
+
+        this.service = this.accessory.getService('Alarm');
+
+        this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState)
+            .setProps({ validValues: this.VALID_CURRENT_STATE_VALUES })
+            .on('get', async callback => this.getCurrentState(callback));
+        this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState)
+            .setProps({ validValues: this.VALID_TARGET_STATE_VALUES })
+            .on('get', async callback => this.getTargetState(callback))
+            .on('set', async (state, callback) => this.setTargetState(state, callback));
     }
 
     async updateReachability() {
