@@ -127,7 +127,11 @@ class SS3Platform {
                 );
 
                 this.devices.push(alarmAccessory);
+                
                 if (addAndRemove) {
+                    let newAccessory = new Accessory('SimpliSafe 3', UUIDGen.generate(subscription.location.system.serial));
+                    newAccessory.addService(Service.SecuritySystem, 'Alarm');
+                    alarmAccessory.setAccessory(newAccessory);
                     this.addAccessory(alarmAccessory);
                 }
             }

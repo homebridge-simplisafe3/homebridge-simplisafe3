@@ -47,12 +47,7 @@ class SS3Alarm {
             Characteristic.SecuritySystemTargetState.DISARM
         ];
 
-        let newAccessory = new Accessory(name, this.uuid);
-        newAccessory.addService(this.Service.SecuritySystem, 'Alarm');
-        this.setAccessory(newAccessory);
-
         this.startListening();
-        this.refreshState();
     }
 
     identify(paired, callback) {
@@ -78,6 +73,8 @@ class SS3Alarm {
             .setProps({ validValues: this.VALID_TARGET_STATE_VALUES })
             .on('get', async callback => this.getTargetState(callback))
             .on('set', async (state, callback) => this.setTargetState(state, callback));
+
+        this.refreshState();
     }
 
     async updateReachability() {
@@ -120,6 +117,11 @@ class SS3Alarm {
         let state = this.TARGET_HOMEKIT_TO_SS3[homekitState];
         this.log(`Setting target state to ${state}, ${homekitState}`);
 
+        if (!this.service) {
+            callback(new Error('Alarm not linked to Homebridge service'));
+            return;
+        }
+
         try {
             let data = await this.simplisafe.setAlarmState(state);
             this.log(`Updated alarm state: ${JSON.stringify(data)}`);
@@ -140,29 +142,31 @@ class SS3Alarm {
         this.log('Listening to alarm events...');
         this.simplisafe.subscribeToEvents(event => {
             this.log(`Received new event from alarm: ${event}`);
-            switch (event) {
-                case 'DISARM':
-                case 'CANCEL':
-                case 'OFF':
-                    this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
-                    this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
-                    break;
-                case 'HOME_ARM':
-                    this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
-                    this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
-                    break;
-                case 'AWAY_ARM':
-                    this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
-                    this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
-                    break;
-                case 'HOME_EXIT_DELAY':
-                    this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
-                    break;
-                case 'AWAY_EXIT_DELAY':
-                    this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
-                    break;
-                default:
-                    break;
+            if (this.service) {
+                switch (event) {
+                    case 'DISARM':
+                    case 'CANCEL':
+                    case 'OFF':
+                        this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+                        this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
+                        break;
+                    case 'HOME_ARM':
+                        this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
+                        this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
+                        break;
+                    case 'AWAY_ARM':
+                        this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
+                        this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
+                        break;
+                    case 'HOME_EXIT_DELAY':
+                        this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
+                        break;
+                    case 'AWAY_EXIT_DELAY':
+                        this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
+                        break;
+                    default:
+                        break;
+                }
             }
         });
     }
@@ -172,11 +176,8 @@ class SS3Alarm {
         try {
             let state = await this.simplisafe.getAlarmState();
             let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            if (homekitState !== this.currentState) {
-                this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, homekitState);
-                this.currentState = homekitState;
-                this.log(`Updated current state for ${this.name}: ${state}`);
-            }
+            this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, homekitState);
+            this.log(`Updated current state for ${this.name}: ${state}`);
         } catch (err) {
             this.log('An error occurred while refreshing state');
             this.log(err);
