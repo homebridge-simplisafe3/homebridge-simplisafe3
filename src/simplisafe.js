@@ -240,7 +240,7 @@ class SimpliSafe3 {
         this.subId = subId;
     }
 
-    async getAlarmState(forceRefresh = false) {
+    async getAlarmState(forceRefresh = false, retry = false) {
         try {
             if (forceRefresh || !this.lastStateRequest) {
                 this.lastStateRequest = this.getSubscription()
@@ -254,8 +254,22 @@ class SimpliSafe3 {
             let subscription = await this.lastStateRequest;            
 
             if (subscription.location && subscription.location.system) {
-                // OFF, HOME, AWAY, AWAY_COUNT, HOME_COUNT, ALARM_COUNT, ALARM
-                return subscription.location.system.isAlarming ? 'ALARM' : subscription.location.system.alarmState;
+                if (subscription.location.system.isAlarming) {
+                    return 'ALARM';
+                }
+
+                const validStates = ['OFF', 'HOME', 'AWAY', 'AWAY_COUNT', 'HOME_COUNT', 'ALARM_COUNT', 'ALARM'];
+                let alarmState = subscription.location.system.alarmState;
+                if (!validStates.includes(alarmState)) {
+                    if (!retry) {
+                        let retriedState = await this.getAlarmState(true, true);
+                        return retriedState;
+                    } else {
+                        throw new Error('Alarm state not understood');
+                    }
+                }
+
+                return alarmState;
             } else {
                 throw new Error('Subscription format not understood');
             }
