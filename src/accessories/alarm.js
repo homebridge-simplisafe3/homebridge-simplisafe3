@@ -92,27 +92,11 @@ class SS3Alarm {
         }
     }
 
-    async getState(stateType = 'current') {
-        try {
-            let state = await this.simplisafe.getAlarmState();
-
-            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            if (stateType == 'target') {
-                homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            }
-
-            this.log(`Received new alarm state from SimpliSafe: ${state}, ${homekitState}`);
-
-            return homekitState;
-        } catch (err) {
-            throw err;
-        }
-    }
-
     async getCurrentState(callback) {
         this.log('Getting current state...');
         try {
-            let homekitState = await this.getState('current');
+            let state = await this.simplisafe.getAlarmState();
+            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
             this.log(`Current state is: ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
@@ -123,7 +107,8 @@ class SS3Alarm {
     async getTargetState(callback) {
         this.log('Getting target state...');
         try {
-            let homekitState = await this.getState('target');
+            let state = await this.simplisafe.getAlarmState();
+            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
             this.log(`Target state is: ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
@@ -183,6 +168,7 @@ class SS3Alarm {
     }
 
     async refreshState() {
+        this.log('Refreshing alarm state');
         try {
             let state = await this.simplisafe.getAlarmState();
             let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];

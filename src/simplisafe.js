@@ -7,6 +7,7 @@ import io from 'socket.io-client';
 // Do not touch these - they allow the client to make requests to the SimpliSafe API
 const clientUsername = '4df55627-46b2-4e2c-866b-1521b395ded2.1-28-0.WebApp.simplisafe.com';
 const clientPassword = '';
+const stateCacheTime = 3000; // ms
 
 const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
@@ -29,6 +30,7 @@ class SimpliSafe3 {
     userId;
     subId;
     socket;
+    lastStateRequest;
 
     async login(username, password, storeCredentials = false) {
 
@@ -238,9 +240,18 @@ class SimpliSafe3 {
         this.subId = subId;
     }
 
-    async getAlarmState() {
+    async getAlarmState(forceRefresh = false) {
         try {
-            let subscription = await this.getSubscription();
+            if (forceRefresh || !this.lastStateRequest) {
+                this.lastStateRequest = this.getSubscription()
+                    .then(sub => {
+                        setTimeout(() => {
+                            this.lastStateRequest = null;
+                        }, stateCacheTime);
+                        return sub;
+                    });
+            }
+            let subscription = await this.lastStateRequest;            
 
             if (subscription.location && subscription.location.system) {
                 // OFF, HOME, AWAY, AWAY_COUNT, HOME_COUNT, ALARM_COUNT, ALARM
