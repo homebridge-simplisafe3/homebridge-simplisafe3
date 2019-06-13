@@ -483,7 +483,7 @@ class SimpliSafe3 {
                             .map(sub => sub.callback(sensor));
                     }
                 } catch (err) {
-                    throw err;
+                    console.log(err);
                 }
 
             }, sensorRefreshTime);

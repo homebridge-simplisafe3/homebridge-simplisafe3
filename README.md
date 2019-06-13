@@ -19,3 +19,5 @@ Inspired by the work by [chowielin/homebridge-simplisafe-security-system](https:
 - [ ] Smoke detector -- log an issue and provide data!
 
 ## Help & Support
+
+## Donations
