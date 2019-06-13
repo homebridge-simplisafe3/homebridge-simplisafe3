@@ -110,19 +110,21 @@ class SS3EntrySensor {
 
     startListening() {
         this.simplisafe.subscribeToSensor(this.id, sensor => {
-            if (sensor.status) {
-                if (sensor.status.triggered) {
-                    this.service.setCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_DETECTED);
-                } else {
-                    this.service.setCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
+            if (this.service) {
+                if (sensor.status) {
+                    if (sensor.status.triggered) {
+                        this.service.setCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_DETECTED);
+                    } else {
+                        this.service.setCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
+                    }
                 }
-            }
-
-            if (sensor.flags) {
-                if (sensor.flags.lowBattery) {
-                    this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
-                } else {
-                    this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+    
+                if (sensor.flags) {
+                    if (sensor.flags.lowBattery) {
+                        this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                    } else {
+                        this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                    }
                 }
             }
         });
