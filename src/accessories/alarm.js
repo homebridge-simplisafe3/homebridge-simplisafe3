@@ -94,7 +94,7 @@ class SS3Alarm {
         try {
             let state = await this.simplisafe.getAlarmState();
             let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            this.log(`Current state is: ${homekitState}`);
+            this.log(`Current alarm state is: ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the current alarm state: ${err}`));
@@ -106,7 +106,7 @@ class SS3Alarm {
         try {
             let state = await this.simplisafe.getAlarmState();
             let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            this.log(`Target state is: ${homekitState}`);
+            this.log(`Target alarm state is: ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the target alarm state: ${err}`));

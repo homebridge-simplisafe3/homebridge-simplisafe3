@@ -61,7 +61,7 @@ class SS3EntrySensor {
 
     async getSensorInformation() {
         try {
-            let sensors = await this.simplisafe.getSensors();
+            let sensors = await this.simplisafe.getSensors(true);
             let sensor = sensors.find(sen => sen.serial === this.id);
 
             if (!sensor) {
@@ -83,7 +83,7 @@ class SS3EntrySensor {
             }
 
             let open = sensor.status.triggered;
-            let homekitState = open ? this.Characteristic.ContactSensorState.CONTACT_DETECTED : this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED;
+            let homekitState = open ? this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED : this.Characteristic.ContactSensorState.CONTACT_DETECTED;
             callback(null, homekitState);
 
         } catch (err) {
@@ -113,9 +113,9 @@ class SS3EntrySensor {
             if (this.service) {
                 if (sensor.status) {
                     if (sensor.status.triggered) {
-                        this.service.setCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_DETECTED);
-                    } else {
                         this.service.setCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
+                    } else {
+                        this.service.setCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_DETECTED);
                     }
                 }
     
@@ -139,7 +139,7 @@ class SS3EntrySensor {
             }
 
             let open = sensor.status.triggered;
-            let homekitSensorState = open ? this.Characteristic.ContactSensorState.CONTACT_DETECTED : this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED;
+            let homekitSensorState = open ? this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED : this.Characteristic.ContactSensorState.CONTACT_DETECTED;
 
             let batteryLow = sensor.flags.lowBattery;
             let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;

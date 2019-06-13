@@ -476,7 +476,7 @@ class SimpliSafe3 {
                 }
 
                 try {
-                    let sensors = await this.getSensors();
+                    let sensors = await this.getSensors(true);
                     for (let sensor of sensors) {
                         this.sensorSubscriptions
                             .filter(sub => sub.id === sensor.serial)
@@ -487,7 +487,7 @@ class SimpliSafe3 {
                 }
 
             }, sensorRefreshTime);
-            
+
         }
         
         this.sensorSubscriptions.push({
