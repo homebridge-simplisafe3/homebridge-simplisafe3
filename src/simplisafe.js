@@ -8,6 +8,8 @@ import io from 'socket.io-client';
 const clientUsername = '4df55627-46b2-4e2c-866b-1521b395ded2.1-28-0.WebApp.simplisafe.com';
 const clientPassword = '';
 const stateCacheTime = 3000; // ms
+const sensorCacheTime = 3000; // ms
+const sensorRefreshTime = 15000; // ms
 
 const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
@@ -31,6 +33,9 @@ class SimpliSafe3 {
     subId;
     socket;
     lastStateRequest;
+    lastSensorRequest;
+    sensorRefreshInterval;
+    sensorSubscriptions = [];
 
     async login(username, password, storeCredentials = false) {
 
@@ -327,19 +332,29 @@ class SimpliSafe3 {
         }
     }
 
-    async getSensors(forceUpdate = false) {
+    async getSensors(forceUpdate = false, forceRefresh = false) {
 
         try {
             if (!this.subId) {
                 await this.getSubscription();
             }
 
-            let data = await this.request({
-                method: 'GET',
-                url: `/ss3/subscriptions/${this.subId}/sensors?forceUpdate=${forceUpdate ? 'true' : 'false'}`
-            });
+            if (forceRefresh || !this.lastSensorRequest) {
+                this.lastSensorRequest = this.request({
+                    method: 'GET',
+                    url: `/ss3/subscriptions/${this.subId}/sensors?forceUpdate=${forceUpdate ? 'true' : 'false'}`
+                })
+                    .then(data => {
+                        setTimeout(() => {
+                            this.lastSensorRequest = null;
+                        }, sensorCacheTime);
+                        return data;
+                    });
+            }
 
+            let data = await this.lastSensorRequest;
             return data.sensors;
+
         } catch (err) {
             throw err;
         }
@@ -449,6 +464,42 @@ class SimpliSafe3 {
         if (this.socket) {
             this.socket.close();
             this.socket = null;
+        }
+    }
+
+    subscribeToSensor(id, callback) {
+        if (!this.sensorRefreshInterval) {
+
+            this.sensorRefreshInterval = setInterval(async () => {
+                if (this.sensorSubscriptions.length == 0) {
+                    return;
+                }
+
+                try {
+                    let sensors = await this.getSensors();
+                    for (let sensor of sensors) {
+                        this.sensorSubscriptions
+                            .filter(sub => sub.id === sensor.serial)
+                            .map(sub => sub.callback(sensor));
+                    }
+                } catch (err) {
+                    throw err;
+                }
+
+            }, sensorRefreshTime);
+            
+        }
+        
+        this.sensorSubscriptions.push({
+            id: id,
+            callback: callback
+        });
+    }
+
+    unsubscribeFromSensor(id) {
+        this.sensorSubscriptions = this.sensorSubscriptions.filter(sub => sub.id !== id);
+        if (this.sensorSubscriptions.length == 0) {
+            clearInterval(this.sensorRefreshInterval);
         }
     }
 

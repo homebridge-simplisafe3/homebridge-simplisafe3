@@ -3,6 +3,7 @@
 
 import SimpliSafe3 from './simplisafe';
 import Alarm from './accessories/alarm';
+import EntrySensor from './accessories/entrySensor';
 
 const PLUGIN_NAME = 'homebridge-simplisafe3';
 const PLATFORM_NAME = 'SimpliSafe 3';
@@ -122,12 +123,11 @@ class SS3Platform {
                     this.simplisafe,
                     Service,
                     Characteristic,
-                    Accessory,
                     UUIDGen
                 );
 
                 this.devices.push(alarmAccessory);
-                
+
                 if (addAndRemove) {
                     let newAccessory = new Accessory('SimpliSafe 3', UUIDGen.generate(subscription.location.system.serial));
                     newAccessory.addService(Service.SecuritySystem, 'Alarm');
@@ -138,18 +138,37 @@ class SS3Platform {
 
             let sensors = await this.simplisafe.getSensors();
             for (let sensor of sensors) {
-                switch (sensor.type) {
-                    case 1: // Keypad
-                    case 4: // Motion sensor
-                        // Ignore as no data is provided by SimpliSafe
-                        break;
-                    case 5:
-                        // Entry sensor
+                if (sensor.type == 1 || sensor.type == 4) {
+                    // Ignore as no data is provided by SimpliSafe
+                } else if (sensor.type == 5) {
+                    // Entry sensor
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
-                        break;
-                    default:
-                        this.log(`Sensor not (yet) supported: ${sensor.name}`);
-                        this.log(sensor);
+                    if (!accessory) {
+                        this.log('Sensor not found, adding...');
+                        const sensorAccessory = new EntrySensor(
+                            sensor.name,
+                            sensor.serial,
+                            this.log,
+                            this.simplisafe,
+                            Service,
+                            Characteristic,
+                            UUIDGen
+                        );
+
+                        this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensor.name, UUIDGen.generate(sensor.serial));
+                            newAccessory.addService(Service.ContactSensor, sensor.name);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
+                    }
+                } else {
+                    this.log(`Sensor not (yet) supported: ${sensor.name}`);
+                    this.log(sensor);
                 }
             }
         } catch (err) {

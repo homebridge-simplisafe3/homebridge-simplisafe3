@@ -1,6 +1,6 @@
 class SS3Alarm {
 
-    constructor(name, id, log, simplisafe, Service, Characteristic, Accessory, UUIDGen) {
+    constructor(name, id, log, simplisafe, Service, Characteristic, UUIDGen) {
 
         this.Characteristic = Characteristic;
         this.Service = Service;
