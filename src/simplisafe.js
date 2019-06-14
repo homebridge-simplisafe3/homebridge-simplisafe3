@@ -255,7 +255,7 @@ class SimpliSafe3 {
                     .catch(err => {
                         throw err;
                     })
-                    .then(() => {
+                    .finally(() => {
                         setTimeout(() => {
                             this.lastStateRequest = null;
                         }, stateCacheTime);
@@ -355,7 +355,7 @@ class SimpliSafe3 {
                     .catch(err => {
                         throw err;
                     })
-                    .then(() => {
+                    .finally(() => {
                         setTimeout(() => {
                             this.lastSensorRequest = null;
                         }, sensorCacheTime);
