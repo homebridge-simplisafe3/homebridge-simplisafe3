@@ -250,10 +250,15 @@ class SimpliSafe3 {
             if (forceRefresh || !this.lastStateRequest) {
                 this.lastStateRequest = this.getSubscription()
                     .then(sub => {
+                        return sub;
+                    })
+                    .catch(err => {
+                        throw err;
+                    })
+                    .then(() => {
                         setTimeout(() => {
                             this.lastStateRequest = null;
                         }, stateCacheTime);
-                        return sub;
                     });
             }
             let subscription = await this.lastStateRequest;            
@@ -345,10 +350,15 @@ class SimpliSafe3 {
                     url: `/ss3/subscriptions/${this.subId}/sensors?forceUpdate=${forceUpdate ? 'true' : 'false'}`
                 })
                     .then(data => {
+                        return data;
+                    })
+                    .catch(err => {
+                        throw err;
+                    })
+                    .then(() => {
                         setTimeout(() => {
                             this.lastSensorRequest = null;
                         }, sensorCacheTime);
-                        return data;
                     });
             }
 
