@@ -4,17 +4,19 @@
 import SimpliSafe3 from './simplisafe';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
+import Camera from './accessories/simplicam';
 
 const PLUGIN_NAME = 'homebridge-simplisafe3';
 const PLATFORM_NAME = 'SimpliSafe 3';
 
-let Accessory, Service, Characteristic, UUIDGen;
+let Accessory, Service, Characteristic, UUIDGen, StreamController;
 
 class SS3Platform {
 
     constructor(log, config, api) {
         this.log = log;
         this.name = config.name;
+        this.enableCameras = config.cameras || false;
         this.devices = [];
         this.accessories = [];
 
@@ -130,7 +132,7 @@ class SS3Platform {
 
                 if (addAndRemove) {
                     let newAccessory = new Accessory('SimpliSafe 3', UUIDGen.generate(subscription.location.system.serial));
-                    newAccessory.addService(Service.SecuritySystem, 'Alarm');
+                    newAccessory.addService(Service.SecuritySystem);
                     alarmAccessory.setAccessory(newAccessory);
                     this.addAccessory(alarmAccessory);
                 }
@@ -161,7 +163,7 @@ class SS3Platform {
 
                         if (addAndRemove) {
                             let newAccessory = new Accessory(sensor.name, UUIDGen.generate(sensor.serial));
-                            newAccessory.addService(Service.ContactSensor, sensor.name);
+                            newAccessory.addService(Service.ContactSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
                         }
@@ -169,6 +171,40 @@ class SS3Platform {
                 } else {
                     this.log(`Sensor not (yet) supported: ${sensor.name}`);
                     this.log(sensor);
+                }
+            }
+
+            if (this.enableCameras) {
+                let cameras = await this.simplisafe.getCameras();
+
+                for (let camera of cameras) {
+                    let uuid = UUIDGen.generate(camera.uuid);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+
+                    if (!accessory) {
+                        this.log('Camera not found, adding...');
+                        const cameraAccessory = new Camera(
+                            camera.cameraSettings.cameraName,
+                            camera.uuid,
+                            camera,
+                            this.log,
+                            this.simplisafe,
+                            Service,
+                            Characteristic,
+                            UUIDGen,
+                            StreamController
+                        );
+
+                        this.devices.push(cameraAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(camera.cameraSettings.cameraName, UUIDGen.generate(camera.uuid));
+                            newAccessory.addService(Service.CameraControl);
+                            newAccessory.addService(Service.Microphone);
+                            cameraAccessory.setAccessory(newAccessory);
+                            this.addAccessory(cameraAccessory);
+                        }
+                    }
                 }
             }
         } catch (err) {
@@ -192,6 +228,7 @@ const homebridge = homebridge => {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
     UUIDGen = homebridge.hap.uuid;
+    StreamController = homebridge.hap.StreamController;
 
     homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, SS3Platform, true);
 };

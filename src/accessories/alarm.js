@@ -64,7 +64,7 @@ class SS3Alarm {
             .setCharacteristic(this.Characteristic.Model, 'SimpliSafe 3')
             .setCharacteristic(this.Characteristic.SerialNumber, this.id);
 
-        this.service = this.accessory.getService('Alarm');
+        this.service = this.accessory.getService(this.Service.SecuritySystem);
 
         this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState)
             .setProps({ validValues: this.VALID_CURRENT_STATE_VALUES })

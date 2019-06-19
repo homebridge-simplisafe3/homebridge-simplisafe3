@@ -1,4 +1,4 @@
-# Homebridge Plugin for SimpliSafe 3 (WIP)
+# Homebridge Plugin for SimpliSafe 3
 Created by [Niccolò Zapponi](https://twitter.com/nzapponi)
 
 A complete (unofficial) plugin to integrate the SimpliSafe 3 home security system with HomeKit.
@@ -20,7 +20,7 @@ camera set up
 
 ## Supported Devices
 - [x] Alarm arm/disarm (home, away, off)
-- [ ] SimpliCam
+- [x] SimpliCam (audio & video, no microphone)
 - [x] Entry sensors
 - [ ] Motion sensors -- state not provided by SimpliSafe
 - [ ] Smoke detector -- log an issue and provide sample data!

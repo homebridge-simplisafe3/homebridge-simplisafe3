@@ -28,7 +28,7 @@ class SS3EntrySensor {
             .setCharacteristic(this.Characteristic.Model, 'Entry Sensor')
             .setCharacteristic(this.Characteristic.SerialNumber, this.id);
 
-        this.service = this.accessory.getService(this.name);
+        this.service = this.accessory.getService(this.Service.ContactSensor);
         this.service.getCharacteristic(this.Characteristic.ContactSensorState)
             .on('get', async callback => this.getState(callback));
 

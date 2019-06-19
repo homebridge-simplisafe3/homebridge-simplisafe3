@@ -7,7 +7,7 @@ import io from 'socket.io-client';
 // Do not touch these - they allow the client to make requests to the SimpliSafe API
 const clientUsername = '4df55627-46b2-4e2c-866b-1521b395ded2.1-28-0.WebApp.simplisafe.com';
 const clientPassword = '';
-const stateCacheTime = 3000; // ms
+const subscriptionCacheTime = 3000; // ms
 const sensorCacheTime = 3000; // ms
 const sensorRefreshTime = 15000; // ms
 
@@ -32,7 +32,7 @@ class SimpliSafe3 {
     userId;
     subId;
     socket;
-    lastStateRequest;
+    lastSubscriptionRequest;
     lastSensorRequest;
     sensorRefreshInterval;
     sensorSubscriptions = [];
@@ -247,8 +247,8 @@ class SimpliSafe3 {
 
     async getAlarmState(forceRefresh = false, retry = false) {
         try {
-            if (forceRefresh || !this.lastStateRequest) {
-                this.lastStateRequest = this.getSubscription()
+            if (forceRefresh || !this.lastSubscriptionRequest) {
+                this.lastSubscriptionRequest = this.getSubscription()
                     .then(sub => {
                         return sub;
                     })
@@ -257,11 +257,11 @@ class SimpliSafe3 {
                     })
                     .finally(() => {
                         setTimeout(() => {
-                            this.lastStateRequest = null;
-                        }, stateCacheTime);
+                            this.lastSubscriptionRequest = null;
+                        }, subscriptionCacheTime);
                     });
             }
-            let subscription = await this.lastStateRequest;            
+            let subscription = await this.lastSubscriptionRequest;            
 
             if (subscription.location && subscription.location.system) {
                 if (subscription.location.system.isAlarming) {
@@ -364,6 +364,35 @@ class SimpliSafe3 {
 
             let data = await this.lastSensorRequest;
             return data.sensors;
+
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    async getCameras(forceRefresh = false) {
+        try {
+            if (forceRefresh || !this.lastSubscriptionRequest) {
+                this.lastSubscriptionRequest = this.getSubscription()
+                    .then(sub => {
+                        return sub;
+                    })
+                    .catch(err => {
+                        throw err;
+                    })
+                    .finally(() => {
+                        setTimeout(() => {
+                            this.lastSubscriptionRequest = null;
+                        }, subscriptionCacheTime);
+                    });
+            }
+            let subscription = await this.lastSubscriptionRequest;            
+
+            if (subscription.location && subscription.location.system && subscription.location.system.cameras) {
+                return subscription.location.system.cameras;
+            } else {
+                throw new Error('Subscription format not understood');
+            }
 
         } catch (err) {
             throw err;
