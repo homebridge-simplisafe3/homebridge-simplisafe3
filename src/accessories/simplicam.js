@@ -32,23 +32,31 @@ class SS3SimpliCam {
     }
 
     setAccessory(accessory) {
+        this.log('setAccessory');
+
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(paired, callback));
 
         this.accessory.getService(this.Service.AccessoryInformation)
             .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
             .setCharacteristic(this.Characteristic.Model, this.cameraDetails.model)
-            .setCharacteristic(this.Characteristic.SerialNumber, this.id);
+            .setCharacteristic(this.Characteristic.SerialNumber, this.id)
+            .setCharacteristic(this.Characteristic.FirmwareRevision, this.cameraDetails.cameraSettings.admin.firmwareVersion);
 
-        this.services = [
-            this.accessory.getService(this.Service.CameraControl),
-            this.accessory.getService(this.Service.Microphone)
-        ];
+
+        this.services.push(this.accessory.getService(this.Service.CameraControl));
+        this.services.push(this.accessory.getService(this.Service.Microphone));
+
+        // Clear cached stream controllers
+        this.accessory.services
+            .filter(service => service.UUID === this.Service.CameraRTPStreamManagement.UUID)
+            .map(service => {
+                this.log('Found cached stream');
+                this.accessory.removeService(service);
+            });
 
         this.cameraSource = new CameraSource(
             this.cameraDetails,
-            this.accessory.getService(this.Service.CameraControl),
-            this.accessory.getService(this.Service.Microphone),
             this.Service,
             this.Characteristic,
             this.UUIDGen,
@@ -56,7 +64,9 @@ class SS3SimpliCam {
             this.simplisafe,
             this.log
         );
+
         this.accessory.configureCameraSource(this.cameraSource);
+        this.cameraSource.services = this.services;
     }
 
     async updateReachability() {
@@ -80,7 +90,7 @@ class SS3SimpliCam {
 
 class CameraSource {
 
-    constructor(cameraConfig, controlService, microphoneService, Service, Characteristic, UUIDGen, StreamController, simplisafe, log) {
+    constructor(cameraConfig, Service, Characteristic, UUIDGen, StreamController, simplisafe, log) {
         this.cameraConfig = cameraConfig;
         this.serverIpAddress = null;
         this.Service = Service;
@@ -90,10 +100,7 @@ class CameraSource {
         this.simplisafe = simplisafe;
         this.log = log;
 
-        this.services = [
-            controlService,
-            microphoneService
-        ];
+        this.services = [];
         this.streamControllers = [];
         this.pendingSessions = {};
         this.ongoingSessions = {};
@@ -123,10 +130,6 @@ class CameraSource {
                 codecs: [
                     {
                         type: 'OPUS',
-                        samplerate: 24
-                    },
-                    {
-                        type: 'AAC-eld',
                         samplerate: 16
                     }
                 ]
@@ -211,7 +214,7 @@ class CameraSource {
 
         if (sessionId) {
             let sessionIdentifier = this.UUIDGen.unparse(sessionId);
-            
+
             if (request.type == 'start') {
                 let sessionInfo = this.pendingSessions[sessionIdentifier];
                 if (sessionInfo) {
@@ -220,7 +223,7 @@ class CameraSource {
                     let fps = this.cameraConfig.cameraSettings.admin.fps;
                     let videoBitrate = this.cameraConfig.cameraSettings.admin.bitRate;
                     let audioBitrate = 32;
-                    let audioSamplerate = 16;
+                    let audioSamplerate = 24;
 
                     if (request.video) {
                         width = request.video.width;
@@ -239,7 +242,8 @@ class CameraSource {
                     }
 
                     try {
-                        this.serverIpAddress = await dnsLookup('media.simplisafe.com');
+                        let newIpAddress = await dnsLookup('media.simplisafe.com');
+                        this.serverIpAddress = newIpAddress.address;
                     } catch (err) {
                         if (!this.serverIpAddress) {
                             throw new Error('Could not resolve hostname for media.simplisafe.com');
@@ -272,8 +276,7 @@ class CameraSource {
 
                     let audioArgs = [
                         '-map', '0:1',
-                        '-acodec', 'libfdk_aac',
-                        '-profile:a', 'aac_eld',
+                        '-acodec', 'libopus',
                         '-flags', '+global_header',
                         '-f', 'null',
                         '-ar', `${audioSamplerate}k`,
@@ -291,13 +294,12 @@ class CameraSource {
                     let cmd = spawn(ffmpeg.path, [
                         ...sourceArgs,
                         ...videoArgs,
-                        ...audioArgs,
-                        '-loglevel', 'debug'
+                        ...audioArgs
                     ], {
                         env: process.env
                     });
 
-                    this.log(`Start streaming video from ${this.cameraConfig.cameraSettings.camraName}`);
+                    this.log(`Start streaming video from ${this.cameraConfig.cameraSettings.cameraName}`);
                     this.log([
                         ffmpeg.path,
                         ...sourceArgs,
