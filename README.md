@@ -10,6 +10,7 @@ Inspired by the work by [chowielin/homebridge-simplisafe-security-system](https:
 real time event streaming
 sensor status
 battery level
+screenshots
 
 ## Requirements
 
