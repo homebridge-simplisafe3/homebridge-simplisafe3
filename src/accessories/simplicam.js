@@ -32,8 +32,6 @@ class SS3SimpliCam {
     }
 
     setAccessory(accessory) {
-        this.log('setAccessory');
-
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(paired, callback));
 
@@ -259,10 +257,12 @@ class CameraSource {
                     let videoArgs = [
                         '-map', '0:0',
                         '-vcodec', 'libx264',
+                        '-tune', 'zerolatency',
+                        '-preset', 'superfast',
                         '-pix_fmt', 'yuv420p',
                         '-r', fps,
                         '-f', 'rawvideo',
-                        '-vf', ` scale=${width}:${height}`,
+                        '-vf', `scale=${width}:${height}`,
                         '-b:v', `${videoBitrate}k`,
                         '-bufsize', `${videoBitrate}k`,
                         '-maxrate', `${videoBitrate}k`,
@@ -282,7 +282,6 @@ class CameraSource {
                         '-ar', `${audioSamplerate}k`,
                         '-b:a', `${audioBitrate}k`,
                         '-bufsize', `${audioBitrate}k`,
-                        '-ac', 1,
                         '-payload_type', 110,
                         '-ssrc', sessionInfo.audio_ssrc,
                         '-f', 'rtp',

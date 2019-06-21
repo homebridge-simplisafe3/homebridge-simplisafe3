@@ -98,11 +98,11 @@ class SimpliSafe3 {
                 refresh_token: this.rToken,
                 grant_type: 'refresh_token'
             }, {
-                auth: {
-                    username: clientUsername,
-                    password: clientPassword
-                }
-            });
+                    auth: {
+                        username: clientUsername,
+                        password: clientPassword
+                    }
+                });
 
             let data = response.data;
             this._storeLogin(data);
@@ -261,7 +261,7 @@ class SimpliSafe3 {
                         }, subscriptionCacheTime);
                     });
             }
-            let subscription = await this.lastSubscriptionRequest;            
+            let subscription = await this.lastSubscriptionRequest;
 
             if (subscription.location && subscription.location.system) {
                 if (subscription.location.system.isAlarming) {
@@ -386,7 +386,7 @@ class SimpliSafe3 {
                         }, subscriptionCacheTime);
                     });
             }
-            let subscription = await this.lastSubscriptionRequest;            
+            let subscription = await this.lastSubscriptionRequest;
 
             if (subscription.location && subscription.location.system && subscription.location.system.cameras) {
                 return subscription.location.system.cameras;
@@ -474,6 +474,10 @@ class SimpliSafe3 {
                     transports: ['websocket', 'polling']
                 });
 
+                this.socket.on('connect', () => {
+                    console.log('Connect');
+                });
+
                 this.socket.on('connect_error', err => {
                     console.log('Connect_error', err);
                     this.socket = null;
@@ -541,7 +545,7 @@ class SimpliSafe3 {
             }, sensorRefreshTime);
 
         }
-        
+
         this.sensorSubscriptions.push({
             id: id,
             callback: callback

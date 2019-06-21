@@ -5,14 +5,15 @@ A complete (unofficial) plugin to integrate the SimpliSafe 3 home security syste
 
 Inspired by the work by [chowielin/homebridge-simplisafe-security-system](https://github.com/chowielin/homebridge-simplisafe-security-system).
 
+## Requirements
+
+
 ## Features
 
 real time event streaming
 sensor status
 battery level
 screenshots
-
-## Requirements
 
 ## Usage
 
@@ -28,6 +29,8 @@ camera set up
 - [ ] Water sensor -- log an issue and provide sample data!
 - [ ] Glassbreak sensor -- log an issue and provide sample data!
 - [ ] Freeze sensor -- log an issue and provide sample data!
+
+## Video Support
 
 ## Help & Support
 
