@@ -30,7 +30,7 @@ Install the plugin by running:
 npm install -g homebridge-simplisafe3
 ```
 
-Then, add the following configuration to the     `platforms` array in your Homebridge `config.json`. 
+Then, add the following configuration to the `platforms` array in your Homebridge `config.json`. 
 
 
 ```
@@ -44,6 +44,31 @@ Then, add the following configuration to the     `platforms` array in your Homeb
     "cameras": false
 }
 ```
+
+Here is an example:
+```
+{
+    "bridge": {
+        "name": "Homebridge",
+        "username": "CC:22:3D:E3:CE:30",
+        "port": 51826,
+        "pin": "031-45-154"
+    },
+    "accessories": [],
+    "platforms": [
+        {
+            "platform": "homebridge-simplisafe3.SimpliSafe 3",
+            "name": "Home Alarm",
+            "auth": {
+                "username": "YOUR_USERNAME",
+                "password": "YOUR_PASSWORD"
+            },
+            "cameras": false
+        }
+    ]
+}
+```
+
 That's it! The plugin will automatically load all your sensors into Homebridge.
 
 ### Camera Support
