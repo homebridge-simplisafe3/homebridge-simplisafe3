@@ -98,11 +98,11 @@ class SimpliSafe3 {
                 refresh_token: this.rToken,
                 grant_type: 'refresh_token'
             }, {
-                    auth: {
-                        username: clientUsername,
-                        password: clientPassword
-                    }
-                });
+                auth: {
+                    username: clientUsername,
+                    password: clientPassword
+                }
+            });
 
             let data = response.data;
             this._storeLogin(data);
