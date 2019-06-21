@@ -18,6 +18,31 @@ screenshots
 ## Usage
 
 typical config file
+
+```
+{
+    "bridge": {
+        "name": "Homebridge",
+        "username": "CC:22:3D:E3:CE:31",
+        "port": 51826,
+        "pin": "031-45-154"
+    },
+    "description": "This is an example configuration file. You can use this as a template for creating your own configuration file containing devices you actually own.",
+    "accessories": [],
+    "platforms": [
+        {
+            "platform": "homebridge-simplisafe3.SimpliSafe 3",
+            "name": "Home Alarm",
+            "auth": {
+                "username": "nzapponi@gmail.com",
+                "password": "riqhy1-tirbob-fewsaN"
+            },
+            "cameras": true
+        }
+    ]
+}
+```
+
 camera set up
 
 ## Supported Devices
