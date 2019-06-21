@@ -92,7 +92,7 @@ This has been tested on Homebridge running on a Raspberry Pi 3, using both nativ
 ## Donations
 Want to show your support? Consider making a donation!
 - [Donate Now with PayPal](https://paypal.me/nzapponi?locale.x=en_GB)
-- [Donate with Bitcoin](bitcoin:3GYS4ybqjjVUEyohFXaEk5HsG8onrsQKDi)
+- Donate with Bitcoin: 3GYS4ybqjjVUEyohFXaEk5HsG8onrsQKDi
 
 ![Bitcoin](/docs/bitcoin.png)
 
