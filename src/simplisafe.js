@@ -475,31 +475,31 @@ class SimpliSafe3 {
                 });
 
                 this.socket.on('connect', () => {
-                    // console.log('Connect');
+                    console.log('Connect');
                 });
 
                 this.socket.on('connect_error', err => {
-                    // console.log('Connect_error', err);
+                    console.log('Connect_error', err);
                     this.socket = null;
                 });
 
                 this.socket.on('connect_timeout', () => {
-                    // console.log('Connect_timeout');
+                    console.log('Connect_timeout');
                     this.socket = null;
                 });
 
                 this.socket.on('error', err => {
-                    // console.log('Error', err);
+                    console.log('Error', err);
                     this.socket = null;
                 });
 
                 this.socket.on('disconnect', reason => {
-                    // console.log('Disconnect', reason);
+                    console.log('Disconnect', reason);
                     this.socket = null;
                 });
 
                 this.socket.on('reconnect_failed', () => {
-                    // console.log('Reconnect_failed');
+                    console.log('Reconnect_failed');
                     this.socket = null;
                 });
 
@@ -539,7 +539,7 @@ class SimpliSafe3 {
                             .map(sub => sub.callback(sensor));
                     }
                 } catch (err) {
-                    // console.log(err);
+                    console.log(err);
                 }
 
             }, sensorRefreshTime);
