@@ -97,8 +97,3 @@ Want to show your support? Consider making a donation!
 ![Bitcoin](/docs/bitcoin.png)
 
 Thank you very much!
-
-## Release History
-### v1.0.0
-- First public release of the plugin
-- Supports alarm, entry sensors, cameras (experimental)
