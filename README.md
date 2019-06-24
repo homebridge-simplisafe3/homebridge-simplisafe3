@@ -81,9 +81,9 @@ Any feedback is appreciated.
 - [x] SimpliCam (audio & video, no microphone)
 - [x] Entry sensors
 - [ ] Motion sensors -- state not provided by SimpliSafe
+- [ ] Glassbreak sensor -- state not provided by SimpliSafe
 - [ ] Smoke detector -- log an issue and provide sample data!
 - [ ] Water sensor -- log an issue and provide sample data!
-- [ ] Glassbreak sensor -- log an issue and provide sample data!
 - [ ] Freeze sensor -- log an issue and provide sample data!
 
 ## Help & Support

@@ -140,7 +140,7 @@ class SS3Platform {
 
             let sensors = await this.simplisafe.getSensors();
             for (let sensor of sensors) {
-                if (sensor.type == 1 || sensor.type == 4) {
+                if (sensor.type == 1 || sensor.type == 4 || sensor.type == 6) {
                     // Ignore as no data is provided by SimpliSafe
                 } else if (sensor.type == 5) {
                     // Entry sensor
