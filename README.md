@@ -74,6 +74,29 @@ That's it! The plugin will automatically load all your sensors into Homebridge.
 ### Camera Support
 Camera support is experimental and may not work perfectly. To enable it, simply switch `"cameras": true` in your `config.json`.
 
+For advanced scenarios, you can add the `"cameraOptions"` dictionary to the platform configuration object in `config.json`:
+
+```
+"cameraOptions": {
+    "ffmpegPath": "/path/to/custom/ffmpeg",
+    "sourceOptions": {
+        "-format": "flv",
+        ... (any other ffmpeg argument)
+    },
+    "videoOptions": {
+        "-vcodec": "h264_omx",
+        ... (any other ffmpeg argument)
+    },
+    "audioOptions": {
+        "-ar": "256k",
+        ... (any other ffmpeg argument)
+    }  
+}
+```
+Here, `ffmpegPath` allows to specify a specific ffmpeg binary to be used, a useful feature to allow for the use of hardware acceleration on the Raspberry Pi, for example.
+
+Any arguments provided in `sourceOptions`, `videoOptions` and `audioOptions` will be added to the list of arguments passed to ffmpeg, or will replace the default ones.
+
 Any feedback is appreciated.
 
 ## Supported Devices

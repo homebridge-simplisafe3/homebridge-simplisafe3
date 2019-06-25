@@ -249,61 +249,115 @@ class CameraSource {
                     }
 
                     let sourceArgs = [
-                        '-re',
-                        '-headers', `Authorization: Bearer ${this.simplisafe.token}`,
-                        '-i', `https://${this.serverIpAddress}/v1/${this.cameraConfig.uuid}/flv?x=${width}`
+                        ['-re'],
+                        ['-headers', `Authorization: Bearer ${this.simplisafe.token}`],
+                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraConfig.uuid}/flv?x=${width}`]
                     ];
 
                     let videoArgs = [
-                        '-map', '0:0',
-                        '-vcodec', 'libx264',
-                        '-tune', 'zerolatency',
-                        '-preset', 'superfast',
-                        '-pix_fmt', 'yuv420p',
-                        '-r', fps,
-                        '-f', 'rawvideo',
-                        '-vf', `scale=${width}:${height}`,
-                        '-b:v', `${videoBitrate}k`,
-                        '-bufsize', `${videoBitrate}k`,
-                        '-maxrate', `${videoBitrate}k`,
-                        '-payload_type', 99,
-                        '-ssrc', sessionInfo.video_ssrc,
-                        '-f', 'rtp',
-                        '-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80',
-                        '-srtp_out_params', sessionInfo.video_srtp.toString('base64'),
-                        `srtp://${sessionInfo.address}:${sessionInfo.video_port}?rtcpport=${sessionInfo.video_port}&localrtcpport=${sessionInfo.video_port}&pkt_size=1316`
+                        ['-map', '0:0'],
+                        ['-vcodec', 'libx264'],
+                        ['-tune', 'zerolatency'],
+                        ['-preset', 'superfast'],
+                        ['-pix_fmt', 'yuv420p'],
+                        ['-r', fps],
+                        ['-f', 'rawvideo'],
+                        ['-vf', `scale=${width}:${height}`],
+                        ['-b:v', `${videoBitrate}k`],
+                        ['-bufsize', `${videoBitrate}k`],
+                        ['-maxrate', `${videoBitrate}k`],
+                        ['-payload_type', 99],
+                        ['-ssrc', sessionInfo.video_ssrc],
+                        ['-f', 'rtp'],
+                        ['-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80'],
+                        ['-srtp_out_params', sessionInfo.video_srtp.toString('base64')],
+                        [`srtp://${sessionInfo.address}:${sessionInfo.video_port}?rtcpport=${sessionInfo.video_port}&localrtcpport=${sessionInfo.video_port}&pkt_size=1316`]
                     ];
 
                     let audioArgs = [
-                        '-map', '0:1',
-                        '-acodec', 'libopus',
-                        '-flags', '+global_header',
-                        '-f', 'null',
-                        '-ar', `${audioSamplerate}k`,
-                        '-b:a', `${audioBitrate}k`,
-                        '-bufsize', `${audioBitrate}k`,
-                        '-payload_type', 110,
-                        '-ssrc', sessionInfo.audio_ssrc,
-                        '-f', 'rtp',
-                        '-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80',
-                        '-srtp_out_params', sessionInfo.audio_srtp.toString('base64'),
-                        `srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=1316`
+                        ['-map', '0:1'],
+                        ['-acodec', 'libopus'],
+                        ['-flags', '+global_header'],
+                        ['-f', 'null'],
+                        ['-ar', `${audioSamplerate}k`],
+                        ['-b:a', `${audioBitrate}k`],
+                        ['-bufsize', `${audioBitrate}k`],
+                        ['-payload_type', 110],
+                        ['-ssrc', sessionInfo.audio_ssrc],
+                        ['-f', 'rtp'],
+                        ['-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80'],
+                        ['-srtp_out_params', sessionInfo.audio_srtp.toString('base64')],
+                        [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=1316`]
                     ];
 
-                    let cmd = spawn(ffmpeg.path, [
-                        ...sourceArgs,
-                        ...videoArgs,
-                        ...audioArgs
+                    // Choose the correct ffmpeg path (default or custom provided)
+                    let ffmpegPath = ffmpeg.path;
+
+                    if (this.cameraConfig.cameraOptions) {
+                        if (this.cameraConfig.cameraOptions.ffmpegPath) {
+                            ffmpegPath = this.cameraConfig.cameraOptions.ffmpegPath;
+                        }
+
+                        if (this.cameraConfig.cameraOptions.sourceOptions) {
+                            for (let key in this.cameraConfig.cameraOptions.sourceOptions) {
+                                let existingArg = sourceArgs.find(arg => arg[0] === key);
+                                if (existingArg) {
+                                    existingArg[1] = this.cameraConfig.cameraOptions.sourceOptions[key];
+                                } else {
+                                    sourceArgs.push([key, this.cameraConfig.cameraOptions.sourceOptions[key]]);
+                                }
+                            }
+                        }
+
+                        if (this.cameraConfig.cameraOptions.videoOptions) {
+                            for (let key in this.cameraConfig.cameraOptions.videoOptions) {
+                                let existingArg = videoArgs.find(arg => arg[0] === key);
+                                if (existingArg) {
+                                    existingArg[1] = this.cameraConfig.cameraOptions.videoOptions[key];
+                                } else {
+                                    videoArgs.splice(videoArgs.length - 1, 0, [key, this.cameraConfig.cameraOptions.videoOptions[key]]);
+                                }
+                            }
+                        }
+
+                        if (this.cameraConfig.cameraOptions.audioOptions) {
+                            for (let key in this.cameraConfig.cameraOptions.audioOptions) {
+                                let existingArg = audioArgs.find(arg => arg[0] === key);
+                                if (existingArg) {
+                                    existingArg[1] = this.cameraConfig.cameraOptions.audioOptions[key];
+                                } else {
+                                    audioArgs.splice(audioArgs.length - 1, 0, [key, this.cameraConfig.cameraOptions.audioOptions[key]]);
+                                }
+                            }
+                        }
+                    }
+
+                    let source = sourceArgs
+                        .map(arg => arg.join(' ').trim())
+                        .join(' ');
+
+                    let video = videoArgs
+                        .map(arg => arg.join(' ').trim())
+                        .join(' ');
+
+                    let audio = audioArgs
+                        .map(arg => arg.join(' ').trim())
+                        .join(' ');
+
+                    let cmd = spawn(ffmpegPath, [
+                        ...source,
+                        ...video,
+                        ...audio
                     ], {
                         env: process.env
                     });
 
                     this.log(`Start streaming video from ${this.cameraConfig.cameraSettings.cameraName}`);
                     this.log([
-                        ffmpeg.path,
-                        ...sourceArgs,
-                        ...videoArgs,
-                        ...audioArgs
+                        ffmpegPath,
+                        ...source,
+                        ...video,
+                        ...audio
                     ].join(' '));
 
                     cmd.stderr.on('data', data => {
