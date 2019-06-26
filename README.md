@@ -96,6 +96,8 @@ For advanced scenarios, you can add the `"cameraOptions"` dictionary to the plat
 Here, `ffmpegPath` allows to specify a specific ffmpeg binary to be used, a useful feature to allow for the use of hardware acceleration on the Raspberry Pi, for example.
 
 Any arguments provided in `sourceOptions`, `videoOptions` and `audioOptions` will be added to the list of arguments passed to ffmpeg, or will replace the default ones if these already exist.
+To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re": ""`.
+To remove a default argument, define it with `false` as its value, e.g. `"-re": false`.
 
 Any feedback is appreciated.
 

@@ -299,34 +299,52 @@ class CameraSource {
                         }
 
                         if (this.cameraConfig.cameraOptions.sourceOptions) {
-                            for (let key in this.cameraConfig.cameraOptions.sourceOptions) {
+                            let options = this.cameraConfig.cameraOptions.sourceOptions;
+                            for (let key in options) {
+                                let value = options[key];
                                 let existingArg = sourceArgs.find(arg => arg[0] === key);
                                 if (existingArg) {
-                                    existingArg[1] = this.cameraConfig.cameraOptions.sourceOptions[key];
+                                    if (value === false) {
+                                        sourceArgs = sourceArgs.filter(arg => arg[0] !== key);
+                                    } else {
+                                        existingArg[1] = options[key];
+                                    }
                                 } else {
-                                    sourceArgs.push([key, this.cameraConfig.cameraOptions.sourceOptions[key]]);
+                                    sourceArgs.push([key, options[key]]);
                                 }
                             }
                         }
 
                         if (this.cameraConfig.cameraOptions.videoOptions) {
-                            for (let key in this.cameraConfig.cameraOptions.videoOptions) {
+                            let options = this.cameraConfig.cameraOptions.videoOptions;
+                            for (let key in options) {
+                                let value = options[key];
                                 let existingArg = videoArgs.find(arg => arg[0] === key);
                                 if (existingArg) {
-                                    existingArg[1] = this.cameraConfig.cameraOptions.videoOptions[key];
+                                    if (value === false) {
+                                        videoArgs = videoArgs.filter(arg => arg[0] !== key);
+                                    } else {
+                                        existingArg[1] = options[key];
+                                    }
                                 } else {
-                                    videoArgs.splice(videoArgs.length - 1, 0, [key, this.cameraConfig.cameraOptions.videoOptions[key]]);
+                                    videoArgs.push([key, options[key]]);
                                 }
                             }
                         }
 
                         if (this.cameraConfig.cameraOptions.audioOptions) {
-                            for (let key in this.cameraConfig.cameraOptions.audioOptions) {
+                            let options = this.cameraConfig.cameraOptions.audioOptions;
+                            for (let key in options) {
+                                let value = options[key];
                                 let existingArg = audioArgs.find(arg => arg[0] === key);
                                 if (existingArg) {
-                                    existingArg[1] = this.cameraConfig.cameraOptions.audioOptions[key];
+                                    if (value === false) {
+                                        audioArgs = audioArgs.filter(arg => arg[0] !== key);
+                                    } else {
+                                        existingArg[1] = options[key];
+                                    }
                                 } else {
-                                    audioArgs.splice(audioArgs.length - 1, 0, [key, this.cameraConfig.cameraOptions.audioOptions[key]]);
+                                    audioArgs.push([key, options[key]]);
                                 }
                             }
                         }
