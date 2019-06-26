@@ -164,6 +164,10 @@ class SS3Alarm {
                     case 'AWAY_EXIT_DELAY':
                         this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                         break;
+                    case 'DISCONNECT':
+                        this.log('Real time events disconnected.');
+                        this.startListening();
+                        break;
                     default:
                         break;
                 }
