@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.0.5
+- Updated dependencies
+
 ## v1.0.4
 - Fixed a bug which caused loss of connection to real time event stream after a few days
 
