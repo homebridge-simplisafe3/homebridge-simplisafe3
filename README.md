@@ -24,6 +24,8 @@ Here are some examples of how the set up looks like:
 
 ## Usage
 
+Ensure you are running Node v10 or higher. You can check by using `node -v`.
+
 Install the plugin by running:
 
 ```
