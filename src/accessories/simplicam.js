@@ -9,13 +9,14 @@ const dnsLookup = promisify(dns.lookup);
 
 class SS3SimpliCam {
 
-    constructor(name, id, cameraDetails, log, simplisafe, Service, Characteristic, UUIDGen, StreamController) {
+    constructor(name, id, cameraDetails, cameraOptions, log, simplisafe, Service, Characteristic, UUIDGen, StreamController) {
         this.Characteristic = Characteristic;
         this.Service = Service;
         this.UUIDGen = UUIDGen;
         this.StreamController = StreamController;
         this.id = id;
         this.cameraDetails = cameraDetails;
+        this.cameraOptions = cameraOptions;
         this.log = log;
         this.name = name;
         this.simplisafe = simplisafe;
@@ -55,6 +56,7 @@ class SS3SimpliCam {
 
         this.cameraSource = new CameraSource(
             this.cameraDetails,
+            this.cameraOptions,
             this.Service,
             this.Characteristic,
             this.UUIDGen,
@@ -88,8 +90,9 @@ class SS3SimpliCam {
 
 class CameraSource {
 
-    constructor(cameraConfig, Service, Characteristic, UUIDGen, StreamController, simplisafe, log) {
+    constructor(cameraConfig, cameraOptions, Service, Characteristic, UUIDGen, StreamController, simplisafe, log) {
         this.cameraConfig = cameraConfig;
+        this.cameraOptions = cameraOptions;
         this.serverIpAddress = null;
         this.Service = Service;
         this.Characteristic = Characteristic;
@@ -293,13 +296,13 @@ class CameraSource {
                     // Choose the correct ffmpeg path (default or custom provided)
                     let ffmpegPath = ffmpeg.path;
 
-                    if (this.cameraConfig.cameraOptions) {
-                        if (this.cameraConfig.cameraOptions.ffmpegPath) {
-                            ffmpegPath = this.cameraConfig.cameraOptions.ffmpegPath;
+                    if (this.cameraOptions) {
+                        if (this.cameraOptions.ffmpegPath) {
+                            ffmpegPath = this.cameraOptions.ffmpegPath;
                         }
 
-                        if (this.cameraConfig.cameraOptions.sourceOptions) {
-                            let options = this.cameraConfig.cameraOptions.sourceOptions;
+                        if (this.cameraOptions.sourceOptions) {
+                            let options = this.cameraOptions.sourceOptions;
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = sourceArgs.find(arg => arg[0] === key);
@@ -315,8 +318,8 @@ class CameraSource {
                             }
                         }
 
-                        if (this.cameraConfig.cameraOptions.videoOptions) {
-                            let options = this.cameraConfig.cameraOptions.videoOptions;
+                        if (this.cameraOptions.videoOptions) {
+                            let options = this.cameraOptions.videoOptions;
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = videoArgs.find(arg => arg[0] === key);
@@ -332,8 +335,8 @@ class CameraSource {
                             }
                         }
 
-                        if (this.cameraConfig.cameraOptions.audioOptions) {
-                            let options = this.cameraConfig.cameraOptions.audioOptions;
+                        if (this.cameraOptions.audioOptions) {
+                            let options = this.cameraOptions.audioOptions;
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = audioArgs.find(arg => arg[0] === key);

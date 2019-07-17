@@ -17,6 +17,7 @@ class SS3Platform {
         this.log = log;
         this.name = config.name;
         this.enableCameras = config.cameras || false;
+        this.cameraOptions = config.cameraOptions || null;
         this.devices = [];
         this.accessories = [];
 
@@ -187,6 +188,7 @@ class SS3Platform {
                             camera.cameraSettings.cameraName,
                             camera.uuid,
                             camera,
+                            this.cameraOptions,
                             this.log,
                             this.simplisafe,
                             Service,
