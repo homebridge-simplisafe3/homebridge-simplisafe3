@@ -377,10 +377,6 @@ class CameraSource {
                         }
                     })));
 
-                    console.log(source);
-                    console.log(video);
-                    console.log(audio);
-
                     let cmd = spawn(ffmpegPath, [
                         ...source,
                         ...video,
