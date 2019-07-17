@@ -489,12 +489,16 @@ class SimpliSafe3 {
                 });
 
                 this.socket.on('error', err => {
-                    console.log('Error', err);
+                    if (err === 'Not authorized') {
+                        callback('DISCONNECT');
+                    }
                     this.socket = null;
                 });
 
                 this.socket.on('disconnect', reason => {
-                    console.log('Disconnect', reason);
+                    if (reason === 'transport close') {
+                        callback('DISCONNECT');
+                    }
                     this.socket = null;
                 });
 

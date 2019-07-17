@@ -1,6 +1,6 @@
 {
   "name": "homebridge-simplisafe3",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "A complete Homebridge plugin for the SimpliSafe 3 security system",
   "main": "index.js",
   "engines": {
@@ -30,17 +30,17 @@
   },
   "homepage": "https://github.com/nzapponi/homebridge-simplisafe3#readme",
   "devDependencies": {
-    "@babel/cli": "^7.4.4",
-    "@babel/core": "^7.4.5",
-    "@babel/node": "^7.4.5",
-    "@babel/plugin-proposal-class-properties": "^7.4.4",
-    "@babel/preset-env": "^7.4.5",
-    "babel-eslint": "^10.0.1",
+    "@babel/cli": "^7.5.0",
+    "@babel/core": "^7.5.4",
+    "@babel/node": "^7.5.0",
+    "@babel/plugin-proposal-class-properties": "^7.5.0",
+    "@babel/preset-env": "^7.5.4",
+    "babel-eslint": "^10.0.2",
     "eslint": "^5.16.0",
     "eslint-plugin-babel": "^5.3.0"
   },
   "dependencies": {
-    "@ffmpeg-installer/ffmpeg": "^1.0.18",
+    "@ffmpeg-installer/ffmpeg": "^1.0.19",
     "axios": "^0.19.0",
     "ip": "^1.1.5",
     "socket.io-client": "^2.2.0"
