@@ -353,17 +353,33 @@ class CameraSource {
                         }
                     }
 
-                    let source = sourceArgs
-                        .map(arg => arg.join(' ').trim())
-                        .join(' ');
+                    let source = [].concat(...sourceArgs.map(arg => arg.map(a => {
+                        if (typeof a == 'string') {
+                            return a.trim();
+                        } else {
+                            return a;
+                        }
+                    })));
 
-                    let video = videoArgs
-                        .map(arg => arg.join(' ').trim())
-                        .join(' ');
+                    let video = [].concat(...videoArgs.map(arg => arg.map(a => {
+                        if (typeof a == 'string') {
+                            return a.trim();
+                        } else {
+                            return a;
+                        }
+                    })));
 
-                    let audio = audioArgs
-                        .map(arg => arg.join(' ').trim())
-                        .join(' ');
+                    let audio = [].concat(...audioArgs.map(arg => arg.map(a => {
+                        if (typeof a == 'string') {
+                            return a.trim();
+                        } else {
+                            return a;
+                        }
+                    })));
+
+                    console.log(source);
+                    console.log(video);
+                    console.log(audio);
 
                     let cmd = spawn(ffmpegPath, [
                         ...source,
