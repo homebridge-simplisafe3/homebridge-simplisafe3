@@ -1,20 +1,27 @@
 # Raspberry Pi FFmpeg Hardware Acceleration
 
-Use these snippets to compile FFmpeg to support Raspberry Pi's H.264 hardware acceleration. This is recommended to greatly improve camera image quality and speed.
+Use these snippets to compile FFmpeg to support Raspberry Pi's H.264 OpenMAX hardware acceleration. This is recommended to greatly improve camera image quality and speed.
+
 This set up has only been tested on a Raspberry Pi 3 B+ running Raspbian Lite 4.19.57, please note this may not work with other conifgurations.
 
 ## Install dependencies and compile FFmpeg
 See complete instructions [here](https://retroresolution.com/2016/05/31/compiling-software-from-source-code-on-the-raspberry-pi-the-ffmpeg-suite/).
 
 ```
+# Install Kernel Headers (for MMAL hardware decoding)
 sudo apt-get update
 sudo apt-get install raspberrypi-kernel-headers
 sudo reboot
+
+# Install OpenMAX library
 sudo apt-get install libomxil-bellagio-dev
+
 cd ~
 mkdir ~/ffmpeg_sources
 mkdir ~/ffmpeg_build
 sudo apt-get install yasm
+
+# Install x264 library
 cd /home/pi/ffmpeg_sources
 git clone git://git.videolan.org/x264
 cd x264
@@ -23,6 +30,8 @@ sudo make -j2
 sudo make install
 sudo make clean
 sudo make distclean
+
+# Install fdkaac library
 cd ~/ffmpeg_sources
 wget -O fdk-aac.tar.gz https://github.com/mstorsjo/fdk-aac/tarball/master
 tar xzvf fdk-aac.tar.gz
@@ -33,9 +42,13 @@ sudo make -j2
 sudo make install
 sudo make clean
 sudo make distclean
+
+# Install additional libraries
 sudo apt-get install libmp3lame-dev
 sudo apt-get install libopus-dev
 sudo apt-get install libspeex-dev
+
+# Install ffmpeg
 cd ~/ffmpeg_sources
 wget http://ffmpeg.org/releases/ffmpeg-snapshot.tar.bz2
 tar xjvf ffmpeg-snapshot.tar.bz2
