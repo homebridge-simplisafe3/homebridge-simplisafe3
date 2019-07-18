@@ -74,7 +74,7 @@ Here is an example:
 That's it! The plugin will automatically load all your sensors into Homebridge.
 
 ### Camera Support
-Camera support is experimental and may not work perfectly. To enable it, simply switch `"cameras": true` in your `config.json`.
+Camera support is experimental and may not work. To enable it, simply switch `"cameras": true` in your `config.json`.
 
 For advanced scenarios, you can add the `"cameraOptions"` dictionary to the platform configuration object in `config.json` (all keys are optional):
 
@@ -95,11 +95,40 @@ For advanced scenarios, you can add the `"cameraOptions"` dictionary to the plat
     }  
 }
 ```
-Here, `ffmpegPath` allows to specify a specific ffmpeg binary to be used, a useful feature to allow for the use of hardware acceleration on the Raspberry Pi, for example.
+Here, `ffmpegPath` allows to specify a specific ffmpeg binary to be used, a useful feature for the use of hardware acceleration on the Raspberry Pi, for example.
 
 Any arguments provided in `sourceOptions`, `videoOptions` and `audioOptions` will be added to the list of arguments passed to ffmpeg, or will replace the default ones if these already exist.
 To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re": ""`.
 To remove a default argument, define it with `false` as its value, e.g. `"-re": false`.
+
+Here is a sample configuration to use the Raspberry Pi H.264 hardware acceleration:
+```
+{
+    "platform": "homebridge-simplisafe3.SimpliSafe 3",
+    "name": "Home Alarm",
+    "auth": {
+        "username": "YOUR_USERNAME",
+        "password": "YOUR_PASSWORD"
+    },
+    "cameras": true,
+    "cameraOptions": {
+        "ffmpegPath": "/usr/local/bin/ffmpeg",
+        "sourceOptions": {
+            "-vcodec": "h264_mmal"
+        },
+        "videoOptions": {
+            "-vcodec": "h264_omx",
+            "-tune": false,
+            "-preset": false
+        }
+    }
+}
+```
+See [Raspberry Pi FFmpeg Hardware Acceleration](/docs/raspberry-pi-ffmpeg.md) on how to compile ffmpeg to support hardware acceleration on Raspberry Pi 3 and 4.
+
+#### Camera Support Known Issues
+- If you are running Homebridge on Docker (for example using [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge)), a "No Response" error will appear when trying to view the camera on the local network. The cause is still unknown. Remote camera access appears to be working fine.
+- Camera support requires a considerable amount of computing power and may not work on very small machines, e.g. Raspberry Pi Zero and similar.
 
 Any feedback is appreciated.
 
