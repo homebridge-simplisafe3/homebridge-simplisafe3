@@ -313,7 +313,7 @@ class CameraSource {
                                         existingArg[1] = options[key];
                                     }
                                 } else {
-                                    sourceArgs.push([key, options[key]]);
+                                    sourceArgs.unshift([key, options[key]]);
                                 }
                             }
                         }
@@ -386,12 +386,6 @@ class CameraSource {
                     });
 
                     this.log(`Start streaming video from ${this.cameraConfig.cameraSettings.cameraName}`);
-                    this.log([
-                        ffmpegPath,
-                        ...source,
-                        ...video,
-                        ...audio
-                    ].join(' '));
 
                     cmd.stderr.on('data', data => {
                         this.log(data.toString());
