@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.1.1
+- Dependency updates, including security fixes
+
 ## v1.1.0
 - Added support for custom camera configurations
 
