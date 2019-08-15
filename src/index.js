@@ -151,7 +151,7 @@ class SS3Platform {
                     if (!accessory) {
                         this.log('Sensor not found, adding...');
                         const sensorAccessory = new EntrySensor(
-                            sensor.name,
+                            sensor.name || 'Entry Sensor',
                             sensor.serial,
                             this.log,
                             this.simplisafe,
@@ -163,7 +163,7 @@ class SS3Platform {
                         this.devices.push(sensorAccessory);
 
                         if (addAndRemove) {
-                            let newAccessory = new Accessory(sensor.name, UUIDGen.generate(sensor.serial));
+                            let newAccessory = new Accessory(sensor.name || 'Entry Sensor', UUIDGen.generate(sensor.serial));
                             newAccessory.addService(Service.ContactSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
@@ -185,7 +185,7 @@ class SS3Platform {
                     if (!accessory) {
                         this.log('Camera not found, adding...');
                         const cameraAccessory = new Camera(
-                            camera.cameraSettings.cameraName,
+                            camera.cameraSettings.cameraName || 'Camera',
                             camera.uuid,
                             camera,
                             this.cameraOptions,
@@ -200,7 +200,7 @@ class SS3Platform {
                         this.devices.push(cameraAccessory);
 
                         if (addAndRemove) {
-                            let newAccessory = new Accessory(camera.cameraSettings.cameraName, UUIDGen.generate(camera.uuid));
+                            let newAccessory = new Accessory(camera.cameraSettings.cameraName || 'Camera', UUIDGen.generate(camera.uuid));
                             newAccessory.addService(Service.CameraControl);
                             newAccessory.addService(Service.Microphone);
                             cameraAccessory.setAccessory(newAccessory);
