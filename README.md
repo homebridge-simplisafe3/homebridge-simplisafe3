@@ -24,12 +24,17 @@ Here are some examples of how the set up looks like:
 
 ## Usage
 
-Ensure you are running Node v10 or higher. You can check by using `node -v`.
+Ensure you are running Node v8 or higher. You can check by using `node -v`.
 
 Install the plugin by running:
 
 ```
 npm install -g homebridge-simplisafe3
+```
+
+if you run into issues when starting the plugin and Homebridge displays errors, then reinstall the plugin using the following command instead:
+```
+npm install -g --unsafe-perm homebridge-simplisafe3
 ```
 
 Then, add the following configuration to the `platforms` array in your Homebridge `config.json`. 
