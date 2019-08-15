@@ -102,7 +102,7 @@ class SS3Platform {
     removeAccessory(accessory) {
         this.log('Remove accessory');
         if (accessory) {
-            this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
             if (this.accessories.indexOf(accessory) > -1) {
                 this.accessories.splice(this.accessories.indexOf(accessory), 1);
             }
