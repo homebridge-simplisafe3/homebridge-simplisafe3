@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.1.2
+- Added support for Node v8
+- Fixed a bug that would cause the HomeKit accessory configuration to be lost on reset
+
 ## v1.1.1
 - Dependency updates, including security fixes
 
