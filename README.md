@@ -48,7 +48,8 @@ Then, add the following configuration to the `platforms` array in your Homebridg
         "username": "YOUR_USERNAME",
         "password": "YOUR_PASSWORD"
     },
-    "cameras": false
+    "cameras": false,
+    "sensorRefresh" : 15
 }
 ```
 
@@ -70,7 +71,8 @@ Here is an example:
                 "username": "YOUR_USERNAME",
                 "password": "YOUR_PASSWORD"
             },
-            "cameras": false
+            "cameras": false,
+            "sensorRefresh" : 15
         }
     ]
 }

@@ -9,7 +9,6 @@ const clientUsername = '4df55627-46b2-4e2c-866b-1521b395ded2.1-28-0.WebApp.simpl
 const clientPassword = '';
 const subscriptionCacheTime = 3000; // ms
 const sensorCacheTime = 3000; // ms
-const sensorRefreshTime = 15000; // ms
 
 const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
@@ -35,7 +34,12 @@ class SimpliSafe3 {
     lastSubscriptionRequest;
     lastSensorRequest;
     sensorRefreshInterval;
+    sensorRefreshTime;
     sensorSubscriptions = [];
+
+    constructor(sensorRefreshTime = 15000) {
+        this.this.sensorRefreshTime = this.sensorRefreshTime;
+    }
 
     async login(username, password, storeCredentials = false) {
 
@@ -546,7 +550,7 @@ class SimpliSafe3 {
                     // console.log(err);
                 }
 
-            }, sensorRefreshTime);
+            }, this.sensorRefreshTime);
 
         }
 
