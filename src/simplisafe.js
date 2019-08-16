@@ -38,7 +38,7 @@ class SimpliSafe3 {
     sensorSubscriptions = [];
 
     constructor(sensorRefreshTime = 15000) {
-        this.this.sensorRefreshTime = this.sensorRefreshTime;
+        this.sensorRefreshTime = sensorRefreshTime;
     }
 
     async login(username, password, storeCredentials = false) {
