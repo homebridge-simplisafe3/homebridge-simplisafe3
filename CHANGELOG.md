@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.1.5
+- Critical vulnerability fix
+
 ## v1.1.4
 - Bug fix
 
