@@ -5,6 +5,7 @@ import SimpliSafe3 from './simplisafe';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
 import Camera from './accessories/simplicam';
+import SmokeDetector from './accessories/smokeDetector';
 
 const PLUGIN_NAME = 'homebridge-simplisafe3';
 const PLATFORM_NAME = 'SimpliSafe 3';
@@ -146,8 +147,13 @@ class SS3Platform {
 
             let sensors = await this.simplisafe.getSensors();
             for (let sensor of sensors) {
-                if (sensor.type == 1 || sensor.type == 4 || sensor.type == 6) {
+                if (sensor.type == 1 || sensor.type == 3 || sensor.type == 4 || sensor.type == 6 || sensor.type == 13) {
                     // Ignore as no data is provided by SimpliSafe
+                    // 1:
+                    // 3: Panic button
+                    // 4: 
+                    // 6: 
+                    // 13: Keypad
                 } else if (sensor.type == 5) {
                     // Entry sensor
                     let uuid = UUIDGen.generate(sensor.serial);
@@ -170,6 +176,32 @@ class SS3Platform {
                         if (addAndRemove) {
                             let newAccessory = new Accessory(sensor.name || 'Entry Sensor', UUIDGen.generate(sensor.serial));
                             newAccessory.addService(Service.ContactSensor);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
+                    }
+                } else if (sensor.type == 8) {
+                    // Smoke detector
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+
+                    if (!accessory) {
+                        this.log('Sensor not found, adding...');
+                        const sensorAccessory = new SmokeDetector(
+                            sensor.name || 'Smoke Detector',
+                            sensor.serial,
+                            this.log,
+                            this.simplisafe,
+                            Service,
+                            Characteristic,
+                            UUIDGen
+                        );
+
+                        this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensor.name || 'Smoke Detector', UUIDGen.generate(sensor.serial));
+                            newAccessory.addService(Service.SmokeSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
                         }
