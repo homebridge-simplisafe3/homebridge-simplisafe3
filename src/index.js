@@ -6,6 +6,7 @@ import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
 import Camera from './accessories/simplicam';
 import SmokeDetector from './accessories/smokeDetector';
+import WaterSensor from './accessories/waterSensor';
 
 const PLUGIN_NAME = 'homebridge-simplisafe3';
 const PLATFORM_NAME = 'SimpliSafe 3';
@@ -149,10 +150,10 @@ class SS3Platform {
             for (let sensor of sensors) {
                 if (sensor.type == 1 || sensor.type == 3 || sensor.type == 4 || sensor.type == 6 || sensor.type == 13) {
                     // Ignore as no data is provided by SimpliSafe
-                    // 1:
+                    // 1: Keypad
                     // 3: Panic button
-                    // 4: 
-                    // 6: 
+                    // 4: Motion sensor
+                    // 6: Glassbreak sensor
                     // 13: Keypad
                 } else if (sensor.type == 5) {
                     // Entry sensor
@@ -202,6 +203,32 @@ class SS3Platform {
                         if (addAndRemove) {
                             let newAccessory = new Accessory(sensor.name || 'Smoke Detector', UUIDGen.generate(sensor.serial));
                             newAccessory.addService(Service.SmokeSensor);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
+                    }
+                } else if (sensor.type == 9) {
+                    // Water detector
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+
+                    if (!accessory) {
+                        this.log('Sensor not found, adding...');
+                        const sensorAccessory = new WaterSensor(
+                            sensor.name || 'Water Sensor',
+                            sensor.serial,
+                            this.log,
+                            this.simplisafe,
+                            Service,
+                            Characteristic,
+                            UUIDGen
+                        );
+
+                        this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensor.name || 'Water Sensor', UUIDGen.generate(sensor.serial));
+                            newAccessory.addService(Service.LeakSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
                         }
