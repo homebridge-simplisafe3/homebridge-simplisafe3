@@ -140,14 +140,21 @@ See [Raspberry Pi FFmpeg Hardware Acceleration](/docs/raspberry-pi-ffmpeg.md) on
 Any feedback is appreciated.
 
 ## Supported Devices
-- [x] Alarm arm/disarm (home, away, off)
-- [x] SimpliCam (audio & video, no microphone)
-- [x] Entry sensors
-- [ ] Motion sensors -- state not provided by SimpliSafe
-- [ ] Glassbreak sensor -- state not provided by SimpliSafe
-- [ ] Smoke detector -- log an issue and provide sample data!
-- [ ] Water sensor -- log an issue and provide sample data!
-- [ ] Freeze sensor -- log an issue and provide sample data!
+
+Device             | Supported | Notes
+------------------ | --------- | -------------------------------------------------
+Alarm arm/disarm   | [x]       | Home, away and off modes
+SimpliCam          | [x]       | Audio & video, no microphone
+Entry sensor       | [x]       | 
+Smoke detector     | [x]       | Includes support for tamper & fault
+Water sensor       | [x]       |
+Freeze sensor      | [x]       | Supports temperature readings, not sensor trigger
+Glassbreak sensor  | [ ]       | Please log an issue and provide sample data!
+Motion sensor      | [ ]       | State not provided by SimpliSafe
+Keypad             | [ ]       | State not provided by SimpliSafe
+Panic button       | [ ]       | State not provided by SimpliSafe
+
+All devices also support low battery warnings.
 
 ## Help & Support
 This has been tested on Homebridge running on a Raspberry Pi 3, using both native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge).

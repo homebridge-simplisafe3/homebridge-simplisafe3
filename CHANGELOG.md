@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.2.0
+- Added support for smoke detector, water sensor and freeze sensor
+- Updated developer dependencies
+
 ## v1.1.5
 - Critical vulnerability fix
 
