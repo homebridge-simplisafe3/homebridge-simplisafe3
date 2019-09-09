@@ -80,6 +80,23 @@ Here is an example:
 
 That's it! The plugin will automatically load all your sensors into Homebridge.
 
+## Supported Devices
+
+Device             | Supported          | Notes
+------------------ | ------------------ | -------------------------------------------------
+Alarm arm/disarm   | :white_check_mark: | Home, away and off modes
+SimpliCam          | :white_check_mark: | Audio & video, no microphone
+Entry sensor       | :white_check_mark: | 
+Smoke detector     | :white_check_mark: | Includes support for tamper & fault
+Water sensor       | :white_check_mark: |
+Freeze sensor      | :white_check_mark: | Supports temperature readings, not sensor trigger
+Glassbreak sensor  | :x:                | Please log an issue and provide sample data!
+Motion sensor      | :x:                | State not provided by SimpliSafe
+Keypad             | :x:                | State not provided by SimpliSafe
+Panic button       | :x:                | State not provided by SimpliSafe
+
+All devices also support low battery warnings.
+
 ### Camera Support
 Camera support is experimental and may not work. To enable it, simply switch `"cameras": true` in your `config.json`.
 
@@ -138,23 +155,6 @@ See [Raspberry Pi FFmpeg Hardware Acceleration](/docs/raspberry-pi-ffmpeg.md) on
 - Camera support requires a considerable amount of computing power and may not work on very small machines, e.g. Raspberry Pi Zero and similar.
 
 Any feedback is appreciated.
-
-## Supported Devices
-
-Device             | Supported | Notes
------------------- | --------- | -------------------------------------------------
-Alarm arm/disarm   | [x]       | Home, away and off modes
-SimpliCam          | [x]       | Audio & video, no microphone
-Entry sensor       | [x]       | 
-Smoke detector     | [x]       | Includes support for tamper & fault
-Water sensor       | [x]       |
-Freeze sensor      | [x]       | Supports temperature readings, not sensor trigger
-Glassbreak sensor  | [ ]       | Please log an issue and provide sample data!
-Motion sensor      | [ ]       | State not provided by SimpliSafe
-Keypad             | [ ]       | State not provided by SimpliSafe
-Panic button       | [ ]       | State not provided by SimpliSafe
-
-All devices also support low battery warnings.
 
 ## Help & Support
 This has been tested on Homebridge running on a Raspberry Pi 3, using both native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge).
