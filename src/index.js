@@ -154,7 +154,7 @@ class SS3Platform {
                     // 1: Keypad
                     // 3: Panic button
                     // 4: Motion sensor
-                    // 6: Glassbreak sensor
+                    // 6: Motion sensor
                     // 13: Keypad
                 } else if (sensor.type == 5) {
                     // Entry sensor
