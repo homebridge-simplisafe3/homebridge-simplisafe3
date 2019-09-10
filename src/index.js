@@ -21,6 +21,7 @@ class SS3Platform {
         this.name = config.name;
         this.enableCameras = config.cameras || false;
         this.cameraOptions = config.cameraOptions || null;
+        this.debug = config.debug || false;
         this.devices = [];
         this.accessories = [];
 
@@ -149,12 +150,27 @@ class SS3Platform {
 
             let sensors = await this.simplisafe.getSensors();
             for (let sensor of sensors) {
-                if (sensor.type == 1 || sensor.type == 3 || sensor.type == 4 || sensor.type == 6 || sensor.type == 13) {
+
+                if (this.debug) {
+                    this.log(`Discovered sensor: ${sensor.name}`);
+                    this.log(sensor);
+                }
+
+                if (sensor.type == 1 ||
+                    sensor.type == 2 ||
+                    sensor.type == 3 ||
+                    sensor.type == 4 ||
+                    sensor.type == 6 ||
+                    sensor.type == 11 ||
+                    sensor.type == 13) {
                     // Ignore as no data is provided by SimpliSafe
                     // 1: Keypad
+                    // 2: Keychain
                     // 3: Panic button
                     // 4: Motion sensor
-                    // 6: Motion sensor
+                    // 6: Glass break sensor
+                    // 7: CO sensor
+                    // 11: Siren
                     // 13: Keypad
                 } else if (sensor.type == 5) {
                     // Entry sensor

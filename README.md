@@ -97,6 +97,23 @@ Panic button       | :x:                | State not provided by SimpliSafe
 
 All devices also support low battery warnings.
 
+To provide sample data, add `"debug": true` to the platform configuration inside `config.json`, for example:
+```
+{
+    "platform": "homebridge-simplisafe3.SimpliSafe 3",
+    "name": "Home Alarm",
+    "auth": {
+        "username": "YOUR_USERNAME",
+        "password": "YOUR_PASSWORD"
+    },
+    "cameras": false,
+    "sensorRefresh" : 15,
+    "debug": true
+}
+```
+
+This will print the data about all the sensors found.
+
 ### Camera Support
 Camera support is experimental and may not work. To enable it, simply switch `"cameras": true` in your `config.json`.
 
