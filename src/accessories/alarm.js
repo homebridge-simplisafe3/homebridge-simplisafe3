@@ -169,6 +169,7 @@ class SS3Alarm {
                         this.startListening();
                         break;
                     default:
+                        this.log(`Unknown event received: ${event}`);
                         break;
                 }
             }

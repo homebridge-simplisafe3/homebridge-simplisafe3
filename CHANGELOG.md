@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.2.2
+- Added support for additional events
+
 ## v1.2.1
 - Added debug mode for accessory data
 

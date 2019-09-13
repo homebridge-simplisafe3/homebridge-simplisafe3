@@ -430,6 +430,7 @@ class SimpliSafe3 {
                             callback('HOME_EXIT_DELAY', data);
                             break;
                         case 3441:
+                        case 3491:
                             callback('HOME_ARM', data);
                             break;
                         case 9401:
@@ -439,14 +440,21 @@ class SimpliSafe3 {
                             break;
                         case 3401:
                         case 3407:
+                        case 3487:
+                        case 3481:
                             // 3401 is for Keypad, 3407 is for Remote
                             callback('AWAY_ARM', data);
                             break;
                         case 1429:
                             callback('ENTRY', data);
                             break;
+                        case 1110:
+                        case 1154:
+                        case 1159:
+                        case 1162:
                         case 1132:
                         case 1134:
+                        case 1120:
                             callback('ALARM', data);
                             break;
                         case 1170:
