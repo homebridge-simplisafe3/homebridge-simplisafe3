@@ -55,11 +55,11 @@ class SimpliSafe3 {
                 password: password,
                 grant_type: 'password'
             }, {
-                    auth: {
-                        username: clientUsername,
-                        password: clientPassword
-                    }
-                });
+                auth: {
+                    username: clientUsername,
+                    password: clientPassword
+                }
+            });
 
             let data = response.data;
             this._storeLogin(data);
@@ -103,11 +103,11 @@ class SimpliSafe3 {
                 refresh_token: this.rToken,
                 grant_type: 'refresh_token'
             }, {
-                    auth: {
-                        username: clientUsername,
-                        password: clientPassword
-                    }
-                });
+                auth: {
+                    username: clientUsername,
+                    password: clientPassword
+                }
+            });
 
             let data = response.data;
             this._storeLogin(data);
@@ -144,13 +144,8 @@ class SimpliSafe3 {
                     .catch(async err => {
                         let statusCode = err.status;
                         if ((statusCode == 401 || statusCode == 403) && this.username && this.password) {
-                            try {
-                                await this.login(this.username, this.password, true);
-                                return this.request(params, true);
-                            }
-                            catch (err) {
-                                throw err;
-                            }
+                            await this.login(this.username, this.password, true);
+                            return this.request(params, true);
                         } else {
                             throw err;
                         }
@@ -166,87 +161,70 @@ class SimpliSafe3 {
             return this.userId;
         }
 
-        try {
-            let data = await this.request({
-                method: 'GET',
-                url: '/api/authCheck'
-            });
-            this.userId = data.userId;
-            return this.userId;
-        } catch (err) {
-            throw err;
-        }
+        let data = await this.request({
+            method: 'GET',
+            url: '/api/authCheck'
+        });
+        this.userId = data.userId;
+        return this.userId;
     }
 
     async getUserInfo() {
-        try {
-            let userId = await this.getUserId();
+        let userId = await this.getUserId();
 
-            let data = await this.request({
-                method: 'GET',
-                url: `/users/${userId}/loginInfo`
-            });
+        let data = await this.request({
+            method: 'GET',
+            url: `/users/${userId}/loginInfo`
+        });
 
-            return data.loginInfo;
-        } catch (err) {
-            throw err;
-        }
+        return data.loginInfo;
     }
 
     async getSubscriptions() {
-        try {
-            let userId = await this.getUserId();
-            let data = await this.request({
-                method: 'GET',
-                url: `/users/${userId}/subscriptions?activeOnly=false`
-            });
+        let userId = await this.getUserId();
+        let data = await this.request({
+            method: 'GET',
+            url: `/users/${userId}/subscriptions?activeOnly=false`
+        });
 
-            let subscriptions = data.subscriptions;
+        let subscriptions = data.subscriptions;
 
-            if (this.accountNumber) {
-                subscriptions = subscriptions.filter(s => s.location.account === this.accountNumber);
-            }
-
-            if (subscriptions.length == 1) {
-                this.subId = subscriptions[0].sid;
-            }
-
-            return subscriptions;
-        } catch (err) {
-            throw err;
+        if (this.accountNumber) {
+            subscriptions = subscriptions.filter(s => s.location.account === this.accountNumber);
         }
+
+        if (subscriptions.length == 1) {
+            this.subId = subscriptions[0].sid;
+        }
+
+        return subscriptions;
     }
 
     async getSubscription(subId = null) {
-        try {
+        let subscriptionId = subId;
 
-            let subscriptionId = subId;
+        if (!subscriptionId) {
+            subscriptionId = this.subId;
 
             if (!subscriptionId) {
-                subscriptionId = this.subId;
-
-                if (!subscriptionId) {
-                    let subs = await this.getSubscriptions();
-                    if (subs.length == 1) {
-                        subscriptionId = subs[0].sid;
-                    } else if (subs.length == 0) {
-                        throw new Error('No matching subscriptions found. Check your account and ensure you have an active subscription.');
-                    } else {
-                        let accountNumbers = subs.map(s => s.location.account);
-                        throw new Error(`Multiple subscriptions found. Edit your config.json file and add a parameter called "subscriptionId": "YOUR ACCOUNT NUMBER". The account numbers found were: ${accountNumbers.join(', ')}.`);
-                    }
+                let subs = await this.getSubscriptions();
+                if (subs.length == 1) {
+                    subscriptionId = subs[0].sid;
+                } else if (subs.length == 0) {
+                    throw new Error('No matching subscriptions found. Check your account and ensure you have an active subscription.');
+                } else {
+                    let accountNumbers = subs.map(s => s.location.account);
+                    throw new Error(`Multiple subscriptions found. Edit your config.json file and add a parameter called "subscriptionId": "YOUR ACCOUNT NUMBER". The account numbers found were: ${accountNumbers.join(', ')}.`);
                 }
             }
-
-            let data = await this.request({
-                method: 'GET',
-                url: `/subscriptions/${subscriptionId}/`
-            });
-
-            return data.subscription;
-        } catch (err) {
-            throw err;
         }
+
+        let data = await this.request({
+            method: 'GET',
+            url: `/subscriptions/${subscriptionId}/`
+        });
+
+        return data.subscription;
     }
 
     setDefaultSubscription(accountNumber) {
@@ -258,46 +236,41 @@ class SimpliSafe3 {
     }
 
     async getAlarmState(forceRefresh = false, retry = false) {
-        try {
-            if (forceRefresh || !this.lastSubscriptionRequest) {
-                this.lastSubscriptionRequest = this.getSubscription()
-                    .then(sub => {
-                        return sub;
-                    })
-                    .catch(err => {
-                        throw err;
-                    })
-                    .finally(() => {
-                        setTimeout(() => {
-                            this.lastSubscriptionRequest = null;
-                        }, subscriptionCacheTime);
-                    });
-            }
-            let subscription = await this.lastSubscriptionRequest;
+        if (forceRefresh || !this.lastSubscriptionRequest) {
+            this.lastSubscriptionRequest = this.getSubscription()
+                .then(sub => {
+                    return sub;
+                })
+                .catch(err => {
+                    throw err;
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        this.lastSubscriptionRequest = null;
+                    }, subscriptionCacheTime);
+                });
+        }
+        let subscription = await this.lastSubscriptionRequest;
 
-            if (subscription.location && subscription.location.system) {
-                if (subscription.location.system.isAlarming) {
-                    return 'ALARM';
-                }
-
-                const validStates = ['OFF', 'HOME', 'AWAY', 'AWAY_COUNT', 'HOME_COUNT', 'ALARM_COUNT', 'ALARM'];
-                let alarmState = subscription.location.system.alarmState;
-                if (!validStates.includes(alarmState)) {
-                    if (!retry) {
-                        let retriedState = await this.getAlarmState(true, true);
-                        return retriedState;
-                    } else {
-                        throw new Error('Alarm state not understood');
-                    }
-                }
-
-                return alarmState;
-            } else {
-                throw new Error('Subscription format not understood');
+        if (subscription.location && subscription.location.system) {
+            if (subscription.location.system.isAlarming) {
+                return 'ALARM';
             }
 
-        } catch (err) {
-            throw err;
+            const validStates = ['OFF', 'HOME', 'AWAY', 'AWAY_COUNT', 'HOME_COUNT', 'ALARM_COUNT', 'ALARM'];
+            let alarmState = subscription.location.system.alarmState;
+            if (!validStates.includes(alarmState)) {
+                if (!retry) {
+                    let retriedState = await this.getAlarmState(true, true);
+                    return retriedState;
+                } else {
+                    throw new Error('Alarm state not understood');
+                }
+            }
+
+            return alarmState;
+        } else {
+            throw new Error('Subscription format not understood');
         }
     }
 
@@ -308,106 +281,87 @@ class SimpliSafe3 {
             throw new Error('Invalid target state');
         }
 
-        try {
-            if (!this.subId) {
-                await this.getSubscription();
-            }
-
-            let data = await this.request({
-                method: 'POST',
-                url: `/ss3/subscriptions/${this.subId}/state/${state}`
-            });
-            return data;
-        } catch (err) {
-            throw err;
+        if (!this.subId) {
+            await this.getSubscription();
         }
+
+        let data = await this.request({
+            method: 'POST',
+            url: `/ss3/subscriptions/${this.subId}/state/${state}`
+        });
+        return data;
     }
 
     async getEvents(params) {
 
-        try {
-            if (!this.subId) {
-                await this.getSubscription();
-            }
-
-            let url = `/subscriptions/${this.subId}/events`;
-            if (Object.keys(params).length > 0) {
-                let query = Object.keys(params).map(key => `${key}=${params[key]}`);
-                url = `${url}?${query.join('&')}`;
-            }
-
-            let data = await this.request({
-                method: 'GET',
-                url: url
-            });
-
-            let events = data.events;
-            return events;
-
-        } catch (err) {
-            throw err;
+        if (!this.subId) {
+            await this.getSubscription();
         }
+
+        let url = `/subscriptions/${this.subId}/events`;
+        if (Object.keys(params).length > 0) {
+            let query = Object.keys(params).map(key => `${key}=${params[key]}`);
+            url = `${url}?${query.join('&')}`;
+        }
+
+        let data = await this.request({
+            method: 'GET',
+            url: url
+        });
+
+        let events = data.events;
+        return events;
     }
 
     async getSensors(forceUpdate = false, forceRefresh = false) {
 
-        try {
-            if (!this.subId) {
-                await this.getSubscription();
-            }
-
-            if (forceRefresh || !this.lastSensorRequest) {
-                this.lastSensorRequest = this.request({
-                    method: 'GET',
-                    url: `/ss3/subscriptions/${this.subId}/sensors?forceUpdate=${forceUpdate ? 'true' : 'false'}`
-                })
-                    .then(data => {
-                        return data;
-                    })
-                    .catch(err => {
-                        throw err;
-                    })
-                    .finally(() => {
-                        setTimeout(() => {
-                            this.lastSensorRequest = null;
-                        }, sensorCacheTime);
-                    });
-            }
-
-            let data = await this.lastSensorRequest;
-            return data.sensors;
-
-        } catch (err) {
-            throw err;
+        if (!this.subId) {
+            await this.getSubscription();
         }
+
+        if (forceRefresh || !this.lastSensorRequest) {
+            this.lastSensorRequest = this.request({
+                method: 'GET',
+                url: `/ss3/subscriptions/${this.subId}/sensors?forceUpdate=${forceUpdate ? 'true' : 'false'}`
+            })
+                .then(data => {
+                    return data;
+                })
+                .catch(err => {
+                    throw err;
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        this.lastSensorRequest = null;
+                    }, sensorCacheTime);
+                });
+        }
+
+        let data = await this.lastSensorRequest;
+        return data.sensors;
     }
 
     async getCameras(forceRefresh = false) {
-        try {
-            if (forceRefresh || !this.lastSubscriptionRequest) {
-                this.lastSubscriptionRequest = this.getSubscription()
-                    .then(sub => {
-                        return sub;
-                    })
-                    .catch(err => {
-                        throw err;
-                    })
-                    .finally(() => {
-                        setTimeout(() => {
-                            this.lastSubscriptionRequest = null;
-                        }, subscriptionCacheTime);
-                    });
-            }
-            let subscription = await this.lastSubscriptionRequest;
+        if (forceRefresh || !this.lastSubscriptionRequest) {
+            this.lastSubscriptionRequest = this.getSubscription()
+                .then(sub => {
+                    return sub;
+                })
+                .catch(err => {
+                    throw err;
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        this.lastSubscriptionRequest = null;
+                    }, subscriptionCacheTime);
+                });
+        }
+        let subscription = await this.lastSubscriptionRequest;
 
-            if (subscription.location && subscription.location.system && subscription.location.system.cameras) {
-                return subscription.location.system.cameras;
-            } else {
-                throw new Error('Subscription format not understood');
-            }
-
-        } catch (err) {
-            throw err;
+        if (subscription.location && subscription.location.system && subscription.location.system.cameras) {
+            return subscription.location.system.cameras;
+        } else {
+            throw new Error('Subscription format not understood');
         }
     }
 
@@ -482,56 +436,51 @@ class SimpliSafe3 {
         if (this.socket) {
             this.socket.on('event', _socketCallback);
         } else {
-            try {
-                let userId = await this.getUserId();
+            let userId = await this.getUserId();
 
-                this.socket = io(`https://api.simplisafe.com/v1/user/${userId}`, {
-                    path: '/socket.io',
-                    query: {
-                        ns: `/v1/user/${userId}`,
-                        accessToken: this.token
-                    },
-                    transports: ['websocket', 'polling']
-                });
+            this.socket = io(`https://api.simplisafe.com/v1/user/${userId}`, {
+                path: '/socket.io',
+                query: {
+                    ns: `/v1/user/${userId}`,
+                    accessToken: this.token
+                },
+                transports: ['websocket', 'polling']
+            });
 
-                this.socket.on('connect', () => {
-                    // console.log('Connect');
-                });
+            this.socket.on('connect', () => {
+                // console.log('Connect');
+            });
 
-                this.socket.on('connect_error', () => {
-                    // console.log('Connect_error', err);
-                    this.socket = null;
-                });
+            this.socket.on('connect_error', () => {
+                // console.log('Connect_error', err);
+                this.socket = null;
+            });
 
-                this.socket.on('connect_timeout', () => {
-                    // console.log('Connect_timeout');
-                    this.socket = null;
-                });
+            this.socket.on('connect_timeout', () => {
+                // console.log('Connect_timeout');
+                this.socket = null;
+            });
 
-                this.socket.on('error', err => {
-                    if (err === 'Not authorized') {
-                        callback('DISCONNECT');
-                    }
-                    this.socket = null;
-                });
+            this.socket.on('error', err => {
+                if (err === 'Not authorized') {
+                    callback('DISCONNECT');
+                }
+                this.socket = null;
+            });
 
-                this.socket.on('disconnect', reason => {
-                    if (reason === 'transport close') {
-                        callback('DISCONNECT');
-                    }
-                    this.socket = null;
-                });
+            this.socket.on('disconnect', reason => {
+                if (reason === 'transport close') {
+                    callback('DISCONNECT');
+                }
+                this.socket = null;
+            });
 
-                this.socket.on('reconnect_failed', () => {
-                    // console.log('Reconnect_failed');
-                    this.socket = null;
-                });
+            this.socket.on('reconnect_failed', () => {
+                // console.log('Reconnect_failed');
+                this.socket = null;
+            });
 
-                this.socket.on('event', _socketCallback);
-
-            } catch (err) {
-                throw err;
-            }
+            this.socket.on('event', _socketCallback);
         }
 
     }
