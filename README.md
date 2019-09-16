@@ -48,8 +48,7 @@ Then, add the following configuration to the `platforms` array in your Homebridg
         "username": "YOUR_USERNAME",
         "password": "YOUR_PASSWORD"
     },
-    "cameras": false,
-    "sensorRefresh" : 15
+    "cameras": false
 }
 ```
 
@@ -71,14 +70,28 @@ Here is an example:
                 "username": "YOUR_USERNAME",
                 "password": "YOUR_PASSWORD"
             },
-            "cameras": false,
-            "sensorRefresh" : 15
+            "cameras": false
         }
     ]
 }
 ```
 
 That's it! The plugin will automatically load all your sensors into Homebridge.
+
+### Optional Parameters
+
+#### `cameras` and `cameraOptions`
+These enable camera support. See [Camera Support](#camera-support) for more details.
+
+#### `debug`
+Type: boolean (default `false`)
+
+Switch this on to get more details around your sensors in your Homebridge logs.
+
+#### `subscriptionId`
+Type: string
+
+Add this parameter in case you have multiple protected locations or accounts with SimpliSafe. To find out your `subscriptionId`, open your SimpliSafe control panel, click on View Account and enter the Account # you find in the list.
 
 ## Supported Devices
 

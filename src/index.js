@@ -39,6 +39,7 @@ class SS3Platform {
                 this.log('Logged in!');
 
                 if (config.subscriptionId) {
+                    this.log(`Specifying account number: ${config.subscriptionId}`);
                     this.simplisafe.setDefaultSubscription(config.subscriptionId);
                 }
 

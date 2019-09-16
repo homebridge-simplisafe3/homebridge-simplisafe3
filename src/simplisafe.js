@@ -30,6 +30,7 @@ class SimpliSafe3 {
     password;
     userId;
     subId;
+    accountNumber;
     socket;
     lastSubscriptionRequest;
     lastSensorRequest;
@@ -54,11 +55,11 @@ class SimpliSafe3 {
                 password: password,
                 grant_type: 'password'
             }, {
-                auth: {
-                    username: clientUsername,
-                    password: clientPassword
-                }
-            });
+                    auth: {
+                        username: clientUsername,
+                        password: clientPassword
+                    }
+                });
 
             let data = response.data;
             this._storeLogin(data);
@@ -102,11 +103,11 @@ class SimpliSafe3 {
                 refresh_token: this.rToken,
                 grant_type: 'refresh_token'
             }, {
-                auth: {
-                    username: clientUsername,
-                    password: clientPassword
-                }
-            });
+                    auth: {
+                        username: clientUsername,
+                        password: clientPassword
+                    }
+                });
 
             let data = response.data;
             this._storeLogin(data);
@@ -202,6 +203,10 @@ class SimpliSafe3 {
 
             let subscriptions = data.subscriptions;
 
+            if (this.accountNumber) {
+                subscriptions = subscriptions.filter(s => s.location.account === this.accountNumber);
+            }
+
             if (subscriptions.length == 1) {
                 this.subId = subscriptions[0].sid;
             }
@@ -224,8 +229,11 @@ class SimpliSafe3 {
                     let subs = await this.getSubscriptions();
                     if (subs.length == 1) {
                         subscriptionId = subs[0].sid;
+                    } else if (subs.length == 0) {
+                        throw new Error('No matching subscriptions found. Check your account and ensure you have an active subscription.');
                     } else {
-                        throw new Error('Subscription ID is ambiguous');
+                        let accountNumbers = subs.map(s => s.location.account);
+                        throw new Error(`Multiple subscriptions found. Edit your config.json file and add a parameter called "subscriptionId": "YOUR ACCOUNT NUMBER". The account numbers found were: ${accountNumbers.join(', ')}.`);
                     }
                 }
             }
@@ -241,12 +249,12 @@ class SimpliSafe3 {
         }
     }
 
-    setDefaultSubscription(subId) {
-        if (!subId) {
-            throw new Error('Subscription ID not defined');
+    setDefaultSubscription(accountNumber) {
+        if (!accountNumber) {
+            throw new Error('Account Number not defined');
         }
 
-        this.subId = subId;
+        this.accountNumber = accountNumber;
     }
 
     async getAlarmState(forceRefresh = false, retry = false) {
