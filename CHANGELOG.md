@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.2.3
+- Improved support for accounts with multiple locations
+
 ## v1.2.2
 - Added support for additional events
 
