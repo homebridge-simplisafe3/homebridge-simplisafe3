@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.2.4
+- Improved support for accounts with inactive subscriptions
+
 ## v1.2.3
 - Improved support for accounts with multiple locations
 

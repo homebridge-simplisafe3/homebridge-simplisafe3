@@ -190,7 +190,7 @@ class SimpliSafe3 {
         let subscriptions = data.subscriptions;
 
         if (this.accountNumber) {
-            subscriptions = subscriptions.filter(s => s.location.account === this.accountNumber);
+            subscriptions = subscriptions.filter(s => s.location.account === this.accountNumber && (s.sStatus === 10 || s.sStatus === 20));
         }
 
         if (subscriptions.length == 1) {
