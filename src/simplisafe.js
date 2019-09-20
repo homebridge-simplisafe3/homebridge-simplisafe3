@@ -187,10 +187,10 @@ class SimpliSafe3 {
             url: `/users/${userId}/subscriptions?activeOnly=false`
         });
 
-        let subscriptions = data.subscriptions;
+        let subscriptions = data.subscriptions.filter(s => s.sStatus === 10 || s.sStatus === 20);
 
         if (this.accountNumber) {
-            subscriptions = subscriptions.filter(s => s.location.account === this.accountNumber && (s.sStatus === 10 || s.sStatus === 20));
+            subscriptions = subscriptions.filter(s => s.location.account === this.accountNumber);
         }
 
         if (subscriptions.length == 1) {

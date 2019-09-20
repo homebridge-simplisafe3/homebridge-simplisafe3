@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.2.5
+- Bug fix
+
 ## v1.2.4
 - Improved support for accounts with inactive subscriptions
 
