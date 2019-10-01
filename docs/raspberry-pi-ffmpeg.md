@@ -47,6 +47,7 @@ sudo make distclean
 sudo apt-get install libmp3lame-dev
 sudo apt-get install libopus-dev
 sudo apt-get install libspeex-dev
+sudo apt-get install libssl-dev
 
 # Install ffmpeg
 cd ~/ffmpeg_sources
