@@ -155,7 +155,23 @@ Any arguments provided in `sourceOptions`, `videoOptions` and `audioOptions` wil
 To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re": ""`.
 To remove a default argument, define it with `false` as its value, e.g. `"-re": false`.
 
-Here is a sample configuration to use the Raspberry Pi H.264 hardware acceleration:
+Here is a sample configuration to use a locally installed ffmpeg binary:
+```
+{
+    "platform": "homebridge-simplisafe3.SimpliSafe 3",
+    "name": "Home Alarm",
+    "auth": {
+        "username": "YOUR_USERNAME",
+        "password": "YOUR_PASSWORD"
+    },
+    "cameras": true,
+    "cameraOptions": {
+        "ffmpegPath": "/usr/local/bin/ffmpeg"
+    }
+}
+```
+
+And here is a sample configuration to use the Raspberry Pi H.264 hardware acceleration:
 ```
 {
     "platform": "homebridge-simplisafe3.SimpliSafe 3",
