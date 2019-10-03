@@ -91,3 +91,5 @@ Add `cameraOptions` in your `config.json` configuration as follows:
     }
 }
 ```
+
+If this doesn't work, try removing the `sourceOptions` and `videoOptions`.
