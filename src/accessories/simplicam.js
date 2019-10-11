@@ -25,7 +25,7 @@ class SS3SimpliCam {
 
         this.services = [];
         this.cameraSource = null;
-        
+
         this.startListening();
     }
 
@@ -88,12 +88,12 @@ class SS3SimpliCam {
             this.log(err);
         }
     }
-    
+
     startListening() {
         this.log('Camera listening to alarm events...');
-        this.simplisafe.subscribeToEvents(event => {
+        this.simplisafe.subscribeToEvents((event, data) => {
             this.log(`Camera received new event from alarm: ${event}`);
-            if (this.Service) {
+            if (this.Service && data.sensorName == this.name) {
                 switch (event) {
                     case 'CAMERA_MOTION':
                     	this.accessory.getService(this.Service.MotionSensor).getCharacteristic(this.Characteristic.MotionDetected).updateValue(true);
