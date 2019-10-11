@@ -25,6 +25,8 @@ class SS3SimpliCam {
 
         this.services = [];
         this.cameraSource = null;
+        
+        this.startListening();
     }
 
     identify(paired, callback) {
@@ -45,6 +47,7 @@ class SS3SimpliCam {
 
         this.services.push(this.accessory.getService(this.Service.CameraControl));
         this.services.push(this.accessory.getService(this.Service.Microphone));
+        this.services.push(this.accessory.getService(this.Service.MotionSensor));
 
         // Clear cached stream controllers
         this.accessory.services
@@ -84,6 +87,30 @@ class SS3SimpliCam {
             this.log(`An error occurred while updating reachability for ${this.name}`);
             this.log(err);
         }
+    }
+    
+    startListening() {
+        this.log('Camera listening to alarm events...');
+        this.simplisafe.subscribeToEvents(event => {
+            this.log(`Camera received new event from alarm: ${event}`);
+            if (this.Service) {
+                switch (event) {
+                    case 'CAMERA_MOTION':
+                    	this.accessory.getService(this.Service.MotionSensor).getCharacteristic(this.Characteristic.MotionDetected).updateValue(true);
+                    	setTimeout(() => {
+                        	this.accessory.getService(this.Service.MotionSensor).getCharacteristic(this.Characteristic.MotionDetected).updateValue(false);
+                    	}, 300000); // motion sensor lockout is 5 minutes
+                    	break;
+                    case 'DISCONNECT':
+                    	this.log('Camera real time events disconnected.');
+                    	this.startListening();
+                    	break;
+                    default:
+                        this.log(`Camera event received: ${event}`);
+                        break;
+                }
+            }
+        });
     }
 
 }

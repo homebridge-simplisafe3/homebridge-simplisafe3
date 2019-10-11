@@ -311,6 +311,7 @@ class SS3Platform {
                             let newAccessory = new Accessory(camera.cameraSettings.cameraName || 'Camera', UUIDGen.generate(camera.uuid));
                             newAccessory.addService(Service.CameraControl);
                             newAccessory.addService(Service.Microphone);
+                            newAccessory.addService(Service.MotionSensor);
                             cameraAccessory.setAccessory(newAccessory);
                             this.addAccessory(cameraAccessory);
                         }
