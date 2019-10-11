@@ -312,6 +312,9 @@ class SS3Platform {
                             newAccessory.addService(Service.CameraControl);
                             newAccessory.addService(Service.Microphone);
                             newAccessory.addService(Service.MotionSensor);
+                            if (camera.model == 'SS002') { // SSO02 is doorbell cam
+                              newAccessory.addService(Service.Doorbell);
+                            }
                             cameraAccessory.setAccessory(newAccessory);
                             this.addAccessory(cameraAccessory);
                         }

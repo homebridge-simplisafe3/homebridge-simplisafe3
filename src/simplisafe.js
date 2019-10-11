@@ -422,6 +422,9 @@ class SimpliSafe3 {
                         case 1170:
                             callback('CAMERA_MOTION', data);
                             break;
+                        case 1458:
+                            callback('DOORBELL', data);
+                            break;
                         case 1602:
                             // Automatic test
                             break;

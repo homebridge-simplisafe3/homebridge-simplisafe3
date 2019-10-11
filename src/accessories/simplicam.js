@@ -48,6 +48,9 @@ class SS3SimpliCam {
         this.services.push(this.accessory.getService(this.Service.CameraControl));
         this.services.push(this.accessory.getService(this.Service.Microphone));
         this.services.push(this.accessory.getService(this.Service.MotionSensor));
+        if (this.accessory.getService(this.Service.Doorbell) !== undefined) {
+           this.services.push(this.accessory.getService(this.Service.Doorbell));
+        }
 
         // Clear cached stream controllers
         this.accessory.services
@@ -100,6 +103,9 @@ class SS3SimpliCam {
                     	setTimeout(() => {
                         	this.accessory.getService(this.Service.MotionSensor).getCharacteristic(this.Characteristic.MotionDetected).updateValue(false);
                     	}, 300000); // motion sensor lockout is 5 minutes
+                    	break;
+                    case 'DOORBELL':
+                    	this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
                     	break;
                     case 'DISCONNECT':
                     	this.log('Camera real time events disconnected.');
