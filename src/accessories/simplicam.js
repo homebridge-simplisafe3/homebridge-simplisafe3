@@ -99,10 +99,10 @@ class SS3SimpliCam {
             if (this.Service && data.sensorName == this.name) {
                 switch (event) {
                     case 'CAMERA_MOTION':
-                    	this.accessory.getService(this.Service.MotionSensor).getCharacteristic(this.Characteristic.MotionDetected).updateValue(true);
+                    	this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
                     	setTimeout(() => {
-                        	this.accessory.getService(this.Service.MotionSensor).getCharacteristic(this.Characteristic.MotionDetected).updateValue(false);
-                    	}, 300000); // motion sensor lockout is 5 minutes
+                        	this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, false);
+                    	}, 5000);
                     	break;
                     case 'DOORBELL':
                     	this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
