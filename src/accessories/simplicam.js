@@ -25,6 +25,8 @@ class SS3SimpliCam {
 
         this.services = [];
         this.cameraSource = null;
+
+        this.startListening();
     }
 
     identify(paired, callback) {
@@ -45,6 +47,10 @@ class SS3SimpliCam {
 
         this.services.push(this.accessory.getService(this.Service.CameraControl));
         this.services.push(this.accessory.getService(this.Service.Microphone));
+        this.services.push(this.accessory.getService(this.Service.MotionSensor));
+        if (this.accessory.getService(this.Service.Doorbell) !== undefined) {
+           this.services.push(this.accessory.getService(this.Service.Doorbell));
+        }
 
         // Clear cached stream controllers
         this.accessory.services
@@ -84,6 +90,33 @@ class SS3SimpliCam {
             this.log(`An error occurred while updating reachability for ${this.name}`);
             this.log(err);
         }
+    }
+
+    startListening() {
+        this.log('Camera listening to alarm events...');
+        this.simplisafe.subscribeToEvents((event, data) => {
+            this.log(`Camera received new event from alarm: ${event}`);
+            if (this.Service && data.sensorName == this.name) {
+                switch (event) {
+                    case 'CAMERA_MOTION':
+                    	this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
+                    	setTimeout(() => {
+                        	this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, false);
+                    	}, 5000);
+                    	break;
+                    case 'DOORBELL':
+                    	this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
+                    	break;
+                    case 'DISCONNECT':
+                    	this.log('Camera real time events disconnected.');
+                    	this.startListening();
+                    	break;
+                    default:
+                        this.log(`Camera event received: ${event}`);
+                        break;
+                }
+            }
+        });
     }
 
 }
