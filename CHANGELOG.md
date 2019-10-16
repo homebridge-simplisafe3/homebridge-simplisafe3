@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.2.6
+- Added support to camera and doorbell motion events
+
 ## v1.2.5
 - Bug fix
 
