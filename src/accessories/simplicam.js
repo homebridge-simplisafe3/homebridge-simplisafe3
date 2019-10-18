@@ -96,7 +96,8 @@ class SS3SimpliCam {
         this.log('Camera listening to alarm events...');
         this.simplisafe.subscribeToEvents((event, data) => {
             this.log(`Camera received new event from alarm: ${event}`);
-            if (data.sensorSerial && data.sensorSerial == this.id) {
+            var cameraID = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
+            if (cameraID == this.id) {
                 switch (event) {
                     case 'CAMERA_MOTION':
                         this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
