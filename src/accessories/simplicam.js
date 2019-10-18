@@ -93,30 +93,32 @@ class SS3SimpliCam {
     }
 
     startListening() {
-        this.log('Camera listening to alarm events...');
+        this.log(this.name + ' camera listening to alarm events...');
         this.simplisafe.subscribeToEvents((event, data) => {
-            this.log(`Camera received new event from alarm: ${event}`);
-            var cameraID = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
-            if (cameraID == this.id) {
-                switch (event) {
-                    case 'CAMERA_MOTION':
-                        this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
-                        setTimeout(() => {
-                            this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, false);
-                        }, 5000);
-                        break;
-                    case 'DOORBELL':
-                        this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
-                        break;
-                    case 'DISCONNECT':
-                        this.log('Camera real time events disconnected.');
-                        this.startListening();
-                        break;
-                    default:
-                        this.log(`Camera event received: ${event}`);
-                        break;
-                }
-            }
+            this.log(this.name + ` camera received new event from alarm: ${event}`);
+            var eventCameraID = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
+            switch (event) {
+               case 'CAMERA_MOTION':
+                  if (eventCameraID == this.id) {
+                     this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
+                     setTimeout(() => {
+                         this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, false);
+                     }, 5000);
+                  }
+                  break;
+               case 'DOORBELL':
+                  if (eventCameraID == this.id) {
+                     this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
+                  }
+                  break;
+               case 'DISCONNECT':
+                  this.log(this.name + ' camera real time events disconnected.');
+                  this.startListening();
+                  break;
+               default:
+                  this.log(this.name + ` camera event received: ${event}`);
+                  break;
+             }
         });
     }
 
