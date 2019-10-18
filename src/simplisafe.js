@@ -368,6 +368,11 @@ class SimpliSafe3 {
     async subscribeToEvents(callback) {
 
         let _socketCallback = data => {
+            if (data.sid != this.subId) {
+                // Ignore event as it doesn't relate to this account
+                return;
+            }
+
             switch (data.eventType) {
                 case 'alarm':
                     callback('ALARM', data);
