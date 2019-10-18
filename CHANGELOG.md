@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.2.7
+- Fixed an issue that would notify the wrong property of the alarm going off for users with multiple properties
+- Other minor bug fixes
+
 ## v1.2.6
 - Added support to camera and doorbell motion events
 
