@@ -97,7 +97,7 @@ class SS3SimpliCam {
         this.simplisafe.subscribeToEvents((event, data) => {
             this.log(this.name + ` camera received new event from alarm: ${event}`);
             var eventCameraID;
-            if (data.sensorSerial || data.internal) {
+            if (data && (data.sensorSerial || data.internal)) {
                eventCameraID = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
             }
             switch (event) {
