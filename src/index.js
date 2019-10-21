@@ -316,7 +316,12 @@ class SS3Platform {
                               newAccessory.addService(Service.Doorbell);
                             }
                             cameraAccessory.setAccessory(newAccessory);
-                            this.addAccessory(cameraAccessory);
+                            try {
+                               this.api.publishCameraAccessories(PLUGIN_NAME, [newAccessory]);
+                               this.accessories.push(newAccessory);
+                            } catch (err) {
+                               this.log(`An error occurred while adding camera: ${err}`);
+                            }
                         }
                     }
                 }

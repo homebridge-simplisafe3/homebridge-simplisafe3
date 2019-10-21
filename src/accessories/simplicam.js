@@ -95,6 +95,7 @@ class SS3SimpliCam {
     startListening() {
         this.log(this.name + ' camera listening to alarm events...');
         this.simplisafe.subscribeToEvents((event, data) => {
+            if (this.accessory == undefined) return;
             this.log(this.name + ` camera received new event from alarm: ${event}`);
             let eventCameraId;
             if (data && (data.sensorSerial || data.internal)) {
@@ -186,9 +187,90 @@ class CameraSource {
         });
     }
 
-    handleSnapshotRequest(request, callback) {
-        this.log('Snapshot request. Not yet supported');
-        callback(new Error('Snapshots not yet supported'));
+    handleSnapshotRequest = async (request, callback) => {
+       let ffmpegPath = this.cameraOptions.ffmpegPath;
+       let resolution = request.width + 'x' + request.height;
+       this.log("Handling snapshot for " + this.cameraConfig.cameraSettings.cameraName + " at " + resolution);
+
+       if (this.cameraConfig.model == 'SS001') { // Model(s) with privacy shutter
+          // Because if privacy shutter is closed we dont want snapshots triggering it to open
+          let alarmState = await this.simplisafe.getAlarmState();
+          switch (alarmState) {
+             case 'OFF':
+                if (this.cameraConfig.cameraSettings.shutterOff !== 'open') {
+                   this.log('SnapshotRequest ignored, privacy shutter closed');
+                   callback(new Error('Privacy shutter closed'));
+                   return;
+                }
+                break;
+
+             case 'HOME':
+                if (this.cameraConfig.cameraSettings.shutterHome !== 'open') {
+                   this.log('SnapshotRequest ignored, privacy shutter closed');
+                   callback(new Error('Privacy shutter closed'));
+                   return;
+                }
+                break;
+
+             case 'AWAY':
+                if (this.cameraConfig.cameraSettings.shutterAway !== 'open') {
+                   this.log('SnapshotRequest ignored, privacy shutter closed');
+                   callback(new Error('Privacy shutter closed'));
+                   return;
+                }
+                break;
+          }
+       }
+
+       try {
+          let newIpAddress = await dnsLookup('media.simplisafe.com');
+          this.serverIpAddress = newIpAddress.address;
+       } catch (err) {
+          if (!this.serverIpAddress) {
+             callback(new Error('Could not resolve hostname for media.simplisafe.com'));
+             return;
+          }
+       }
+
+       let sourceArgs = [
+          ['-re'],
+          ['-headers', `Authorization: Bearer ${this.simplisafe.token}`],
+          ['-i', `https://${this.serverIpAddress}/v1/${this.cameraConfig.uuid}/flv?x=${request.width}`],
+          ['-t', 1],
+          ['-s', resolution],
+          ['-f', 'image2'],
+          ['-vframes', 1],
+          ['-']
+       ];
+
+       let source = [].concat(...sourceArgs.map(arg => arg.map(a => {
+          if (typeof a == 'string') {
+             return a.trim();
+          } else {
+             return a;
+          }
+       })));
+
+       let ffmpeg = (0, _child_process.spawn)(ffmpegPath, [
+          ...source,
+       ], {
+          env: process.env
+       });
+       this.log(ffmpegPath + source);
+
+       var imageBuffer = Buffer.alloc(0);
+
+       ffmpeg.stdout.on('data', data => {
+          imageBuffer = Buffer.concat([imageBuffer, data]);
+       });
+       ffmpeg.on('error', error => {
+          this.log("An error occurred while making snapshot request:", error);
+          callback(error);
+       });
+       ffmpeg.on('close', code => {
+          this.log('Close stream with image of length:', imageBuffer.length);
+          callback(undefined, imageBuffer);
+       });
     }
 
     prepareStream(request, callback) {
