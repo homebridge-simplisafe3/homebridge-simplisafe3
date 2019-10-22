@@ -441,9 +441,7 @@ class SimpliSafe3 {
             }
         };
 
-        if (this.socket) {
-            this.socket.on('event', _socketCallback);
-        } else {
+        if (!this.socket) {
             let userId = await this.getUserId();
 
             this.socket = io(`https://api.simplisafe.com/v1/user/${userId}`, {
@@ -470,16 +468,10 @@ class SimpliSafe3 {
             });
 
             this.socket.on('error', err => {
-                if (err === 'Not authorized') {
-                    callback('DISCONNECT');
-                }
                 this.socket = null;
             });
 
             this.socket.on('disconnect', reason => {
-                if (reason === 'transport close') {
-                    callback('DISCONNECT');
-                }
                 this.socket = null;
             });
 
@@ -487,9 +479,21 @@ class SimpliSafe3 {
                 // console.log('Reconnect_failed');
                 this.socket = null;
             });
+         }
 
-            this.socket.on('event', _socketCallback);
-        }
+         this.socket.on('error', err => {
+             if (err === 'Not authorized') {
+                 callback('DISCONNECT');
+             }
+         });
+
+         this.socket.on('disconnect', reason => {
+             if (reason === 'transport close') {
+                 callback('DISCONNECT');
+             }
+         });
+
+         this.socket.on('event', _socketCallback);
 
     }
 
