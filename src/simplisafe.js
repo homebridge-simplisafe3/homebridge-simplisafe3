@@ -479,21 +479,21 @@ class SimpliSafe3 {
                 // console.log('Reconnect_failed');
                 this.socket = null;
             });
-         }
+        }
 
-         this.socket.on('error', err => {
-             if (err === 'Not authorized') {
-                 callback('DISCONNECT');
-             }
-         });
+        this.socket.on('error', err => {
+            if (err === 'Not authorized') {
+                callback('DISCONNECT');
+            }
+        });
 
-         this.socket.on('disconnect', reason => {
-             if (reason === 'transport close') {
-                 callback('DISCONNECT');
-             }
-         });
+        this.socket.on('disconnect', reason => {
+            if (reason === 'transport close') {
+                callback('DISCONNECT');
+            }
+        });
 
-         this.socket.on('event', _socketCallback);
+        this.socket.on('event', _socketCallback);
 
     }
 
