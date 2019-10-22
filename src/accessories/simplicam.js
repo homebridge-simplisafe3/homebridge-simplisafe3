@@ -198,7 +198,7 @@ class CameraSource {
           switch (alarmState) {
              case 'OFF':
                 if (this.cameraConfig.cameraSettings.shutterOff !== 'open') {
-                   this.log(`SnapshotRequest ignored, ${this.name} privacy shutter closed`);
+                   this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
                    callback(new Error('Privacy shutter closed'));
                    return;
                 }
@@ -206,7 +206,7 @@ class CameraSource {
 
              case 'HOME':
                 if (this.cameraConfig.cameraSettings.shutterHome !== 'open') {
-                   this.log(`SnapshotRequest ignored, ${this.name} privacy shutter closed`);
+                   this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
                    callback(new Error('Privacy shutter closed'));
                    return;
                 }
@@ -214,7 +214,7 @@ class CameraSource {
 
              case 'AWAY':
                 if (this.cameraConfig.cameraSettings.shutterAway !== 'open') {
-                   this.log(`SnapshotRequest ignored, ${this.name} privacy shutter closed`);
+                   this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
                    callback(new Error('Privacy shutter closed'));
                    return;
                 }
@@ -268,7 +268,7 @@ class CameraSource {
           callback(error);
        });
        ffmpeg.on('close', code => {
-          this.log(`Close ${this.name} stream with image of length: ${imageBuffer.length}`);
+          this.log(`Close ${this.cameraConfig.cameraSettings.cameraName} stream with image of length: ${imageBuffer.length}`);
           callback(undefined, imageBuffer);
        });
     }
