@@ -1,7 +1,7 @@
 # Change Log
 All notable changes are documented here.
 
-## v1.2.8
+## v1.2.9 and v1.2.8
 - Bug fixes on camera event handling
 
 ## v1.2.7
