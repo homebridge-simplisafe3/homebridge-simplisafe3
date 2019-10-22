@@ -365,6 +365,10 @@ class SimpliSafe3 {
         }
     }
 
+    async setDoorLock(newState) {
+        // /ss3/doorlock/{sid}/{serial}/command
+    }
+
     async subscribeToEvents(callback) {
 
         let _socketCallback = data => {

@@ -104,6 +104,7 @@ Entry sensor       | :white_check_mark: |
 Smoke detector     | :white_check_mark: | Includes support for tamper & fault
 Water sensor       | :white_check_mark: |
 Freeze sensor      | :white_check_mark: | Supports temperature readings, not sensor trigger
+Door lock          | :x:                | Working on it!
 Glassbreak sensor  | :x:                | State not provided by SimpliSafe
 Motion sensor      | :x:                | State not provided by SimpliSafe
 Keypad             | :x:                | State not provided by SimpliSafe

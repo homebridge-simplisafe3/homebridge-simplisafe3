@@ -277,6 +277,8 @@ class SS3Platform {
                             this.addAccessory(sensorAccessory);
                         }
                     }
+                } else if (sensor.type == 16) {
+                    // Door lock
                 } else {
                     this.log(`Sensor not (yet) supported: ${sensor.name}`);
                     this.log(sensor);
