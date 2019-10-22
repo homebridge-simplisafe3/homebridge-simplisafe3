@@ -221,7 +221,7 @@ class SS3Platform {
 
                         if (addAndRemove) {
                             let newAccessory = new Accessory(sensor.name || 'CO Detector', UUIDGen.generate(sensor.serial));
-                            newAccessory.addService(Service.SmokeSensor);
+                            newAccessory.addService(Service.CarbonMonoxideSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
                         }
