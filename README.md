@@ -102,6 +102,7 @@ SimpliCam          | :white_check_mark: | Audio, video, motion when armed, no mi
 Doorbell           | :white_check_mark: | Audio, video, motion, no microphone
 Entry sensor       | :white_check_mark: | 
 Smoke detector     | :white_check_mark: | Includes support for tamper & fault
+CO detector        | :white_check_mark: | Includes support for tamper & fault
 Water sensor       | :white_check_mark: |
 Freeze sensor      | :white_check_mark: | Supports temperature readings, not sensor trigger
 Glassbreak sensor  | :x:                | State not provided by SimpliSafe

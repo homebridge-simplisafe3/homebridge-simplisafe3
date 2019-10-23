@@ -100,7 +100,7 @@ class SS3SimpliCam {
             if (data && (data.sensorSerial || data.internal)) {
                 eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
             }
-            
+
             switch (event) {
                 case 'CAMERA_MOTION':
                     if (eventCameraId == this.id) {
