@@ -5,6 +5,7 @@ import SimpliSafe3 from './simplisafe';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
 import SmokeDetector from './accessories/smokeDetector';
+import CODetector from './accessories/coDetector';
 import WaterSensor from './accessories/waterSensor';
 import FreezeSensor from './accessories/freezeSensor';
 import Camera from './accessories/simplicam';
@@ -195,6 +196,32 @@ class SS3Platform {
                         if (addAndRemove) {
                             let newAccessory = new Accessory(sensor.name || 'Entry Sensor', UUIDGen.generate(sensor.serial));
                             newAccessory.addService(Service.ContactSensor);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
+                    }
+                } else if (sensor.type == 7) {
+                    // CO detector
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+
+                    if (!accessory) {
+                        this.log('Sensor not found, adding...');
+                        const sensorAccessory = new CODetector(
+                            sensor.name || 'CO Detector',
+                            sensor.serial,
+                            this.log,
+                            this.simplisafe,
+                            Service,
+                            Characteristic,
+                            UUIDGen
+                        );
+
+                        this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensor.name || 'CO Detector', UUIDGen.generate(sensor.serial));
+                            newAccessory.addService(Service.CarbonMonoxideSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
                         }
