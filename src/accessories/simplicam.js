@@ -160,7 +160,8 @@ class CameraSource {
                     [480, 270, fps],
                     [640, 480, fps],
                     [640, 360, fps],
-                    [1280, 720, fps]
+                    [1280, 720, fps],
+                    [1920, 1080, fps]
                 ],
                 codec: {
                     profiles: [0, 1, 2],
@@ -259,8 +260,8 @@ class CameraSource {
             if (request.type == 'start') {
                 let sessionInfo = this.pendingSessions[sessionIdentifier];
                 if (sessionInfo) {
-                    let width = 1280;
-                    let height = 720;
+                    let width = 1920;
+                    let height = 1080;
                     let fps = this.cameraConfig.cameraSettings.admin.fps;
                     let videoBitrate = this.cameraConfig.cameraSettings.admin.bitRate;
                     let audioBitrate = 32;
