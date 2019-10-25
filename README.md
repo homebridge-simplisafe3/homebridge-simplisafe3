@@ -131,6 +131,7 @@ This will print the data about all the sensors found.
 
 ### Camera Support
 Camera support is experimental and may not work. To enable it, simply switch `"cameras": true` in your `config.json`.
+Once camera support is enabled in your `config.json`, add your cameras to the Home app by selecting Add Accessory - I Don't Have a Code or Cannot Scan, then select your cameras and use your Homebridge pairing code to add it.
 
 For advanced scenarios, you can add the `"cameraOptions"` dictionary to the platform configuration object in `config.json` (all keys are optional):
 
