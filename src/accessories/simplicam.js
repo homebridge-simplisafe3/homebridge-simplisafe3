@@ -192,7 +192,10 @@ class CameraSource {
     }
 
     async handleSnapshotRequest(request, callback) {
-        let ffmpegPath = this.cameraOptions.ffmpegPath;
+        let ffmpegPath = ffmpeg.path;
+        if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
+           ffmpegPath = this.cameraOptions.ffmpegPath;
+        }
         let resolution = `${request.width}x${request.height}`;
         this.log(`Handling snapshot for ${this.cameraConfig.cameraSettings.cameraName} at ${resolution}`);
 
