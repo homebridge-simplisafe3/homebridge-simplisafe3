@@ -120,7 +120,7 @@ class SS3Platform {
     }
 
     async refreshAccessories(addAndRemove = true) {
-        this.log('Refreshing accessories');
+        this.log(`Refreshing accessories (add and remove: ${addAndRemove})`);
         try {
             let subscription = await this.simplisafe.getSubscription();
 
@@ -179,7 +179,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log('Sensor not found, adding...');
+                        this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new EntrySensor(
                             sensor.name || 'Entry Sensor',
                             sensor.serial,
@@ -205,7 +205,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log('Sensor not found, adding...');
+                        this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new SmokeDetector(
                             sensor.name || 'Smoke Detector',
                             sensor.serial,
@@ -231,7 +231,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log('Sensor not found, adding...');
+                        this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new WaterSensor(
                             sensor.name || 'Water Sensor',
                             sensor.serial,
@@ -257,7 +257,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log('Sensor not found, adding...');
+                        this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new FreezeSensor(
                             sensor.name || 'Freeze Sensor',
                             sensor.serial,
@@ -313,14 +313,14 @@ class SS3Platform {
                             newAccessory.addService(Service.Microphone);
                             newAccessory.addService(Service.MotionSensor);
                             if (camera.model == 'SS002') { // SSO02 is doorbell cam
-                              newAccessory.addService(Service.Doorbell);
+                                newAccessory.addService(Service.Doorbell);
                             }
                             cameraAccessory.setAccessory(newAccessory);
                             try {
-                               this.api.publishCameraAccessories(PLUGIN_NAME, [newAccessory]);
-                               this.accessories.push(newAccessory);
+                                this.api.publishCameraAccessories(PLUGIN_NAME, [newAccessory]);
+                                this.accessories.push(newAccessory);
                             } catch (err) {
-                               this.log(`An error occurred while adding camera: ${err}`);
+                                this.log(`An error occurred while adding camera: ${err}`);
                             }
                         }
                     }
