@@ -23,6 +23,7 @@ class SS3Platform {
         this.enableCameras = config.cameras || false;
         this.cameraOptions = config.cameraOptions || null;
         this.debug = config.debug || false;
+        this.persistAccessories = config.persistAccessories || true;
         this.devices = [];
         this.accessories = [];
 
@@ -113,7 +114,9 @@ class SS3Platform {
     removeAccessory(accessory) {
         this.log('Remove accessory');
         if (accessory) {
-            // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            if (!this.persistAccessories) {
+                this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            }
             if (this.accessories.indexOf(accessory) > -1) {
                 this.accessories.splice(this.accessories.indexOf(accessory), 1);
             }

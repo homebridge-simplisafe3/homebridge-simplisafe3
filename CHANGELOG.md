@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.3.1
+- Improved support for accessory removal
+
 ## v1.3.0
 - Added support for rich notifications from doorbell and cameras
 

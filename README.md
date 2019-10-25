@@ -93,6 +93,11 @@ Type: string
 
 Add this parameter in case you have multiple protected locations or accounts with SimpliSafe. The `subscriptionId` can be found at the bottom of your base unit.
 
+#### `persistAccessories`
+Type: boolean (default `true`)
+
+By default, the plugin won't remove old accessories from the Home app. This is to avoid caching issues causing you to lose all your scenes & automations configurations. If you do want to remove old accessories, set this to `false`.
+
 ## Supported Devices
 
 Device             | Supported          | Notes

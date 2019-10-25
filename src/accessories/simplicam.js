@@ -265,7 +265,7 @@ class CameraSource {
             this.log('An error occurred while making snapshot request:', error);
             callback(error);
         });
-        ffmpeg.on('close', code => {
+        ffmpeg.on('close', () => {
             this.log(`Close ${this.cameraConfig.cameraSettings.cameraName} stream with image of length: ${imageBuffer.length}`);
             callback(null, imageBuffer);
         });
