@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.3.0
+- Added support for rich notifications from doorbell and cameras
+
 ## v1.2.10
 - Added support for CO detector
 

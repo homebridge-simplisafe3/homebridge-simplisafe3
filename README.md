@@ -98,7 +98,7 @@ Add this parameter in case you have multiple protected locations or accounts wit
 Device             | Supported          | Notes
 ------------------ | ------------------ | -------------------------------------------------
 Alarm arm/disarm   | :white_check_mark: | Home, away and off modes
-SimpliCam          | :white_check_mark: | Audio, video, motion when armed, no microphone
+SimpliCam          | :white_check_mark: | Audio, video, motion*, no microphone
 Doorbell           | :white_check_mark: | Audio, video, motion, no microphone
 Entry sensor       | :white_check_mark: | 
 Smoke detector     | :white_check_mark: | Includes support for tamper & fault
@@ -109,6 +109,8 @@ Glassbreak sensor  | :x:                | State not provided by SimpliSafe
 Motion sensor      | :x:                | State not provided by SimpliSafe
 Keypad             | :x:                | State not provided by SimpliSafe
 Panic button       | :x:                | State not provided by SimpliSafe
+
+\* SimpliCams provide motion notifications only if the privacy shutter is open.
 
 All devices also support low battery warnings.
 
