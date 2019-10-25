@@ -193,7 +193,7 @@ class CameraSource {
     async handleSnapshotRequest(request, callback) {
         let ffmpegPath = this.cameraOptions.ffmpegPath;
         let resolution = `${request.width}x${request.height}`;
-        this.log("Handling snapshot for " + this.cameraConfig.cameraSettings.cameraName + " at " + resolution);
+        this.log(`Handling snapshot for ${this.cameraConfig.cameraSettings.cameraName} at ${resolution}`);
 
         if (this.cameraConfig.model == 'SS001') { // Model(s) with privacy shutter
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
@@ -201,7 +201,7 @@ class CameraSource {
             switch (alarmState) {
                 case 'OFF':
                     if (this.cameraConfig.cameraSettings.shutterOff !== 'open') {
-                        this.log('SnapshotRequest ignored, privacy shutter closed');
+                        this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -209,7 +209,7 @@ class CameraSource {
 
                 case 'HOME':
                     if (this.cameraConfig.cameraSettings.shutterHome !== 'open') {
-                        this.log('SnapshotRequest ignored, privacy shutter closed');
+                        this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -217,7 +217,7 @@ class CameraSource {
 
                 case 'AWAY':
                     if (this.cameraConfig.cameraSettings.shutterAway !== 'open') {
-                        this.log('SnapshotRequest ignored, privacy shutter closed');
+                        this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -248,7 +248,7 @@ class CameraSource {
 
         let source = [].concat(...sourceArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
 
-        let ffmpeg = (0, _child_process.spawn)(ffmpegPath, [
+        let ffmpeg = spawn(ffmpegPath, [
             ...source,
         ], {
             env: process.env
@@ -261,11 +261,11 @@ class CameraSource {
             imageBuffer = Buffer.concat([imageBuffer, data]);
         });
         ffmpeg.on('error', error => {
-            this.log("An error occurred while making snapshot request:", error);
+            this.log('An error occurred while making snapshot request:', error);
             callback(error);
         });
         ffmpeg.on('close', code => {
-            this.log('Close stream with image of length:', imageBuffer.length);
+            this.log(`Close ${this.cameraConfig.cameraSettings.cameraName} stream with image of length: ${imageBuffer.length}`);
             callback(null, imageBuffer);
         });
     }
