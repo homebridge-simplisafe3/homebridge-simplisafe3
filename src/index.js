@@ -23,7 +23,7 @@ class SS3Platform {
         this.enableCameras = config.cameras || false;
         this.cameraOptions = config.cameraOptions || null;
         this.debug = config.debug || false;
-        this.persistAccessories = config.persistAccessories || true;
+        this.persistAccessories = config.persistAccessories !== undefined ? config.persistAccessories : true;
         this.devices = [];
         this.accessories = [];
 
