@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.3.2
+- Bug fixes to camera support
+
 ## v1.3.1
 - Improved support for accessory removal
 
