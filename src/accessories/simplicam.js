@@ -252,7 +252,7 @@ class CameraSource {
 
         let source = [].concat(...sourceArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
 
-        let ffmpeg = spawn(ffmpegPath, [
+        let ffmpegCmd = spawn(ffmpegPath, [
             ...source,
         ], {
             env: process.env
@@ -261,14 +261,14 @@ class CameraSource {
 
         let imageBuffer = Buffer.alloc(0);
 
-        ffmpeg.stdout.on('data', data => {
+        ffmpegCmd.stdout.on('data', data => {
             imageBuffer = Buffer.concat([imageBuffer, data]);
         });
-        ffmpeg.on('error', error => {
+        ffmpegCmd.on('error', error => {
             this.log('An error occurred while making snapshot request:', error);
             callback(error);
         });
-        ffmpeg.on('close', () => {
+        ffmpegCmd.on('close', () => {
             this.log(`Close ${this.cameraConfig.cameraSettings.cameraName} stream with image of length: ${imageBuffer.length}`);
             callback(null, imageBuffer);
         });
