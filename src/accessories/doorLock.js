@@ -136,18 +136,9 @@ class SS3DoorLock {
         }
 
         try {
-            let data = await this.simplisafe.setLockState(this.id, state);
-            this.log(`Updated lock state: ${JSON.stringify(data)}`);
-
-            // Need to set the characteristic here... depends on response body
-
-            // if (data.state == 'OFF') {
-            //     this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
-            // } else if (data.exitDelay && data.exitDelay > 0) {
-            //     setTimeout(async () => {
-            //         await this.refreshState();
-            //     }, data.exitDelay * 1000);
-            // }
+            await this.simplisafe.setLockState(this.id, state);
+            this.log(`Updated lock state: ${state}`);
+            this.service.setCharacteristic(this.Characteristic.LockCurrentState, homekitState);
             callback(null);
         } catch (err) {
             callback(new Error(`An error occurred while setting the door lock state: ${err}`));
@@ -173,49 +164,36 @@ class SS3DoorLock {
 
     startListening() {
         this.log('Listening to door lock events...');
-        // this.simplisafe.subscribeToEvents(event => {
-        //     this.log(`Received new event from alarm: ${event}`);
-        //     if (this.service) {
-        //         switch (event) {
-        //             case 'DISARM':
-        //             case 'CANCEL':
-        //             case 'OFF':
-        //                 this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
-        //                 this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
-        //                 break;
-        //             case 'HOME_ARM':
-        //                 this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
-        //                 this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
-        //                 break;
-        //             case 'AWAY_ARM':
-        //                 this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
-        //                 this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
-        //                 break;
-        //             case 'HOME_EXIT_DELAY':
-        //                 this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
-        //                 break;
-        //             case 'AWAY_EXIT_DELAY':
-        //                 this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
-        //                 break;
-        //             case 'DISCONNECT':
-        //                 this.log('Real time events disconnected.');
-        //                 this.startListening();
-        //                 break;
-        //             default:
-        //                 this.log(`Unknown event received: ${event}`);
-        //                 break;
-        //         }
-        //     }
-        // });
+        this.simplisafe.subscribeToEvents((event, data) => {
+
+            if (this.service) {
+                if (data && data.sensorSerial && data.sensorSerial == this.id) {
+                    this.log(`Received new door lock event: ${event}`);
+    
+                    switch (event) {
+                        case 'DOORLOCK_UNLOCKED':
+                            this.service.setCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
+                            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.UNSECURED);
+                            break;
+                        case 'DOORLOCK_LOCKED':
+                            this.service.setCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
+                            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.SECURED);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+        });
     }
 
     async refreshState() {
         this.log('Refreshing door lock state');
         try {
-            // let state = await this.simplisafe.getAlarmState();
-            // let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            // this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, homekitState);
-            // this.log(`Updated current state for ${this.name}: ${state}`);
+            let lock = await this.getLockInformation();
+            let state = lock.status.lockState;
+            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
+            this.service.setCharacteristic(this.Characteristic.LockCurrentState, homekitState);
         } catch (err) {
             this.log('An error occurred while refreshing state');
             this.log(err);

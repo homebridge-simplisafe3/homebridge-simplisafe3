@@ -486,6 +486,12 @@ class SimpliSafe3 {
                         case 1458:
                             callback('DOORBELL', data);
                             break;
+                        case 9700:
+                            callback('DOORLOCK_UNLOCKED', data);
+                            break;
+                        case 9701:
+                            callback('DOORLOCK_LOCKED', data);
+                            break;
                         case 1602:
                             // Automatic test
                             break;
