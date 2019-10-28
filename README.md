@@ -93,15 +93,21 @@ Type: string
 
 Add this parameter in case you have multiple protected locations or accounts with SimpliSafe. The `subscriptionId` can be found at the bottom of your base unit.
 
+#### `persistAccessories`
+Type: boolean (default `true`)
+
+By default, the plugin won't remove old accessories from the Home app. This is to avoid caching issues causing you to lose all your scenes & automations configurations. If you do want to remove old accessories, set this to `false`.
+
 ## Supported Devices
 
 Device             | Supported          | Notes
 ------------------ | ------------------ | -------------------------------------------------
 Alarm arm/disarm   | :white_check_mark: | Home, away and off modes
-SimpliCam          | :white_check_mark: | Audio, video, motion when armed, no microphone
+SimpliCam          | :white_check_mark: | Audio, video, motion*, no microphone
 Doorbell           | :white_check_mark: | Audio, video, motion, no microphone
 Entry sensor       | :white_check_mark: | 
 Smoke detector     | :white_check_mark: | Includes support for tamper & fault
+CO detector        | :white_check_mark: | Includes support for tamper & fault
 Water sensor       | :white_check_mark: |
 Freeze sensor      | :white_check_mark: | Supports temperature readings, not sensor trigger
 Door lock          | :x:                | Working on it!
@@ -109,6 +115,8 @@ Glassbreak sensor  | :x:                | State not provided by SimpliSafe
 Motion sensor      | :x:                | State not provided by SimpliSafe
 Keypad             | :x:                | State not provided by SimpliSafe
 Panic button       | :x:                | State not provided by SimpliSafe
+
+\* SimpliCams provide motion notifications only if the privacy shutter is open.
 
 All devices also support low battery warnings.
 
@@ -131,6 +139,7 @@ This will print the data about all the sensors found.
 
 ### Camera Support
 Camera support is experimental and may not work. To enable it, simply switch `"cameras": true` in your `config.json`.
+Once camera support is enabled in your `config.json`, add your cameras to the Home app by selecting Add Accessory - I Don't Have a Code or Cannot Scan, then select your cameras and use your Homebridge pairing code to add it.
 
 For advanced scenarios, you can add the `"cameraOptions"` dictionary to the platform configuration object in `config.json` (all keys are optional):
 

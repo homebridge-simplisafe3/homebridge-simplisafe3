@@ -5,6 +5,7 @@ import SimpliSafe3 from './simplisafe';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
 import SmokeDetector from './accessories/smokeDetector';
+import CODetector from './accessories/coDetector';
 import WaterSensor from './accessories/waterSensor';
 import FreezeSensor from './accessories/freezeSensor';
 import DoorLock from './accessories/doorLock';
@@ -23,6 +24,7 @@ class SS3Platform {
         this.enableCameras = config.cameras || false;
         this.cameraOptions = config.cameraOptions || null;
         this.debug = config.debug || false;
+        this.persistAccessories = config.persistAccessories !== undefined ? config.persistAccessories : true;
         this.devices = [];
         this.accessories = [];
 
@@ -113,7 +115,9 @@ class SS3Platform {
     removeAccessory(accessory) {
         this.log('Remove accessory');
         if (accessory) {
-            // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            if (!this.persistAccessories) {
+                this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            }
             if (this.accessories.indexOf(accessory) > -1) {
                 this.accessories.splice(this.accessories.indexOf(accessory), 1);
             }
@@ -121,7 +125,7 @@ class SS3Platform {
     }
 
     async refreshAccessories(addAndRemove = true) {
-        this.log('Refreshing accessories');
+        this.log(`Refreshing accessories (add and remove: ${addAndRemove})`);
         try {
             let subscription = await this.simplisafe.getSubscription();
 
@@ -183,7 +187,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log('Sensor not found, adding...');
+                        this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new EntrySensor(
                             sensor.name || 'Entry Sensor',
                             sensor.serial,
@@ -203,13 +207,39 @@ class SS3Platform {
                             this.addAccessory(sensorAccessory);
                         }
                     }
+                } else if (sensor.type == 7) {
+                    // CO detector
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+
+                    if (!accessory) {
+                        this.log('Sensor not found, adding...');
+                        const sensorAccessory = new CODetector(
+                            sensor.name || 'CO Detector',
+                            sensor.serial,
+                            this.log,
+                            this.simplisafe,
+                            Service,
+                            Characteristic,
+                            UUIDGen
+                        );
+
+                        this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensor.name || 'CO Detector', UUIDGen.generate(sensor.serial));
+                            newAccessory.addService(Service.CarbonMonoxideSensor);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
+                    }
                 } else if (sensor.type == 8) {
                     // Smoke detector
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log('Sensor not found, adding...');
+                        this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new SmokeDetector(
                             sensor.name || 'Smoke Detector',
                             sensor.serial,
@@ -235,7 +265,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log('Sensor not found, adding...');
+                        this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new WaterSensor(
                             sensor.name || 'Water Sensor',
                             sensor.serial,
@@ -261,7 +291,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log('Sensor not found, adding...');
+                        this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new FreezeSensor(
                             sensor.name || 'Freeze Sensor',
                             sensor.serial,
@@ -352,10 +382,15 @@ class SS3Platform {
                             newAccessory.addService(Service.Microphone);
                             newAccessory.addService(Service.MotionSensor);
                             if (camera.model == 'SS002') { // SSO02 is doorbell cam
-                              newAccessory.addService(Service.Doorbell);
+                                newAccessory.addService(Service.Doorbell);
                             }
                             cameraAccessory.setAccessory(newAccessory);
-                            this.addAccessory(cameraAccessory);
+                            try {
+                                this.api.publishCameraAccessories(PLUGIN_NAME, [newAccessory]);
+                                this.accessories.push(newAccessory);
+                            } catch (err) {
+                                this.log(`An error occurred while adding camera: ${err}`);
+                            }
                         }
                     }
                 }

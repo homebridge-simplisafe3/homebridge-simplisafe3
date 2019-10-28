@@ -1,6 +1,18 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.3.3 and v1.3.2
+- Bug fixes to camera support
+
+## v1.3.1
+- Improved support for accessory removal
+
+## v1.3.0
+- Added support for rich notifications from doorbell and cameras
+
+## v1.2.10
+- Added support for CO detector
+
 ## v1.2.9 and v1.2.8
 - Bug fixes on camera event handling
 
