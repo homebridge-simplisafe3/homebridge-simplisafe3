@@ -163,7 +163,9 @@ class SS3Platform {
                     sensor.type == 4 ||
                     sensor.type == 6 ||
                     sensor.type == 11 ||
-                    sensor.type == 13) {
+                    sensor.type == 13 ||
+                    sensor.type == 16 ||
+                    sensor.type == 253) {
                     // Ignore as no data is provided by SimpliSafe
                     // 1: Keypad
                     // 2: Keychain
@@ -173,6 +175,7 @@ class SS3Platform {
                     // 7: CO sensor
                     // 11: Siren
                     // 13: Keypad
+                    // 16 and 253: Door lock - is added below
                 } else if (sensor.type == 5) {
                     // Entry sensor
                     let uuid = UUIDGen.generate(sensor.serial);
@@ -277,8 +280,6 @@ class SS3Platform {
                             this.addAccessory(sensorAccessory);
                         }
                     }
-                } else if (sensor.type == 16) {
-                    // Door lock
                 } else {
                     this.log(`Sensor not (yet) supported: ${sensor.name}`);
                     this.log(sensor);
