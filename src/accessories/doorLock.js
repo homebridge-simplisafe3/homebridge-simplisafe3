@@ -10,42 +10,20 @@ class SS3DoorLock {
         this.simplisafe = simplisafe;
         this.uuid = UUIDGen.generate(id);
 
-        // this.CURRENT_SS3_TO_HOMEKIT = {
-        //     'OFF': Characteristic.SecuritySystemCurrentState.DISARMED,
-        //     'HOME': Characteristic.SecuritySystemCurrentState.STAY_ARM,
-        //     'AWAY': Characteristic.SecuritySystemCurrentState.AWAY_ARM,
-        //     'HOME_COUNT': Characteristic.SecuritySystemCurrentState.DISARMED,
-        //     'AWAY_COUNT': Characteristic.SecuritySystemCurrentState.DISARMED,
-        //     'ALARM_COUNT': Characteristic.SecuritySystemCurrentState.AWAY_ARM,
-        //     'ALARM': Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
-        // };
+        this.CURRENT_SS3_TO_HOMEKIT = {
+            1: Characteristic.LockCurrentState.SECURED,
+            0: Characteristic.LockCurrentState.UNSECURED
+        };
 
-        // this.TARGET_SS3_TO_HOMEKIT = {
-        //     'OFF': Characteristic.SecuritySystemTargetState.DISARM,
-        //     'HOME': Characteristic.SecuritySystemTargetState.STAY_ARM,
-        //     'AWAY': Characteristic.SecuritySystemTargetState.AWAY_ARM,
-        //     'HOME_COUNT': Characteristic.SecuritySystemTargetState.STAY_ARM,
-        //     'AWAY_COUNT': Characteristic.SecuritySystemTargetState.AWAY_ARM
-        // };
+        this.TARGET_SS3_TO_HOMEKIT = {
+            1: Characteristic.LockTargetState.SECURED,
+            0: Characteristic.LockTargetState.UNSECURED
+        };
 
-        // this.TARGET_HOMEKIT_TO_SS3 = {
-        //     [Characteristic.SecuritySystemTargetState.DISARM]: 'OFF',
-        //     [Characteristic.SecuritySystemTargetState.STAY_ARM]: 'HOME',
-        //     [Characteristic.SecuritySystemTargetState.AWAY_ARM]: 'AWAY'
-        // };
-
-        // this.VALID_CURRENT_STATE_VALUES = [
-        //     Characteristic.SecuritySystemCurrentState.STAY_ARM,
-        //     Characteristic.SecuritySystemCurrentState.AWAY_ARM,
-        //     Characteristic.SecuritySystemCurrentState.DISARMED,
-        //     Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
-        // ];
-
-        // this.VALID_TARGET_STATE_VALUES = [
-        //     Characteristic.SecuritySystemTargetState.STAY_ARM,
-        //     Characteristic.SecuritySystemTargetState.AWAY_ARM,
-        //     Characteristic.SecuritySystemTargetState.DISARM
-        // ];
+        this.TARGET_HOMEKIT_TO_SS3 = {
+            [Characteristic.LockTargetState.SECURED]: 1,
+            [Characteristic.LockTargetState.UNSECURED]: 0
+        };
 
         this.startListening();
     }
@@ -59,33 +37,33 @@ class SS3DoorLock {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(paired, callback));
 
-        // this.accessory.getService(this.Service.AccessoryInformation)
-        //     .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
-        //     .setCharacteristic(this.Characteristic.Model, 'Door Lock')
-        //     .setCharacteristic(this.Characteristic.SerialNumber, this.id);
+        this.accessory.getService(this.Service.AccessoryInformation)
+            .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
+            .setCharacteristic(this.Characteristic.Model, 'Door Lock')
+            .setCharacteristic(this.Characteristic.SerialNumber, this.id);
 
-        // this.service = this.accessory.getService(this.Service.SecuritySystem);
+        this.service = this.accessory.getService(this.Service.LockMechanism);
 
-        // this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState)
-        //     .setProps({ validValues: this.VALID_CURRENT_STATE_VALUES })
-        //     .on('get', async callback => this.getCurrentState(callback));
-        // this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState)
-        //     .setProps({ validValues: this.VALID_TARGET_STATE_VALUES })
-        //     .on('get', async callback => this.getTargetState(callback))
-        //     .on('set', async (state, callback) => this.setTargetState(state, callback));
+        this.service.getCharacteristic(this.Characteristic.LockCurrentState)
+            .on('get', async callback => this.getCurrentState(callback));
+        this.service.getCharacteristic(this.Characteristic.LockTargetState)
+            .on('get', async callback => this.getTargetState(callback))
+            .on('set', async (state, callback) => this.setTargetState(state, callback));
+
+        this.service.getCharacteristic(this.Characteristic.StatusLowBattery)
+            .on('get', async callback => this.getBatteryStatus(callback));
 
         this.refreshState();
     }
 
     async updateReachability() {
         try {
-            let sensors = await this.simplisafe.getSensors();
-            let sensor = sensors.find(sen => sen.serial === this.id);
-            if (!sensor) {
+            let lock = await this.getLockInformation();
+            if (!lock) {
                 this.reachable = false;
             } else {
-                if (sensor.flags) {
-                    this.reachable = !sensor.flags.offline;
+                if (lock.flags) {
+                    this.reachable = !lock.flags.offline;
                 } else {
                     this.reachable = false;
                 }
@@ -98,42 +76,71 @@ class SS3DoorLock {
         }
     }
 
-    async getCurrentState(callback) {
-        this.log('Getting current state...');
+    async getLockInformation() {
         try {
-            // let state = await this.simplisafe.getAlarmState();
-            // let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            // this.log(`Current alarm state is: ${homekitState}`);
-            // callback(null, homekitState);
+            let locks = await this.simplisafe.getLocks();
+            let lock = locks.find(l => l.serial === this.id);
+
+            if (!lock) {
+                throw new Error('Could not find lock');
+            }
+
+            return lock;
+        } catch (err) {
+            throw new Error(`An error occurred while getting lock: ${err}`);
+        }
+    }
+
+    async getCurrentState(callback) {
+        this.log('Getting current lock state...');
+        try {
+            let lock = await this.getLockInformation();
+            let state = lock.status.lockState;
+            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
+
+            if (lock.status.lockJamState) {
+                homekitState = this.Characteristic.LockCurrentState.JAMMED;
+            }
+
+            if (lock.status.lockDisabled) {
+                homekitState = this.Characteristic.LockCurrentState.UNKNOWN;
+            }
+
+            this.log(`Current lock state is: ${homekitState}`);
+            callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the current door lock state: ${err}`));
         }
     }
 
     async getTargetState(callback) {
-        this.log('Getting target state...');
+        this.log('Getting target lock state...');
         try {
-            // let state = await this.simplisafe.getAlarmState();
-            // let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            // this.log(`Target alarm state is: ${homekitState}`);
-            // callback(null, homekitState);
+            let lock = await this.getLockInformation();
+            let state = lock.status.lockState;
+            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
+            this.log(`Target lock state is: ${homekitState}`);
+            callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the target door lock state: ${err}`));
         }
     }
 
     async setTargetState(homekitState, callback) {
-        // let state = this.TARGET_HOMEKIT_TO_SS3[homekitState];
-        // this.log(`Setting target state to ${state}, ${homekitState}`);
+        let state = this.TARGET_HOMEKIT_TO_SS3[homekitState];
+        this.log(`Setting target lock state to ${state}, ${homekitState}`);
 
-        // if (!this.service) {
-        //     callback(new Error('Alarm not linked to Homebridge service'));
-        //     return;
-        // }
+        if (!this.service) {
+            callback(new Error('Lock not linked to Homebridge service'));
+            return;
+        }
 
         try {
-            // let data = await this.simplisafe.setAlarmState(state);
-            // this.log(`Updated alarm state: ${JSON.stringify(data)}`);
+            let data = await this.simplisafe.setLockState(this.id, state);
+            this.log(`Updated lock state: ${JSON.stringify(data)}`);
+
+            // Need to set the characteristic here... depends on response body
+
             // if (data.state == 'OFF') {
             //     this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
             // } else if (data.exitDelay && data.exitDelay > 0) {
@@ -144,6 +151,23 @@ class SS3DoorLock {
             callback(null);
         } catch (err) {
             callback(new Error(`An error occurred while setting the door lock state: ${err}`));
+        }
+    }
+
+    async getBatteryStatus(callback) {
+        try {
+            let lock = await this.getLockInformation();
+
+            if (!lock.flags || !lock.status) {
+                throw new Error('Lock response not understood');
+            }
+
+            let batteryLow = lock.flags.lowBattery || lock.status.lockLowBattery;
+            let homekitState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+            callback(null, homekitState);
+
+        } catch (err) {
+            callback(new Error(`An error occurred while getting lock battery level: ${err}`));
         }
     }
 

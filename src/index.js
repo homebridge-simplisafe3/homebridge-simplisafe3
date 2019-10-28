@@ -286,6 +286,18 @@ class SS3Platform {
                 }
             }
 
+            let doorLocks = await this.simplisafe.getLocks();
+            for (let doorLock of doorLocks) {
+
+                if (this.debug) {
+                    this.log(`Discovered door lock: ${doorLock.name}`);
+                    this.log(doorLock);
+                }
+
+                
+
+            }
+
             if (this.enableCameras) {
                 let cameras = await this.simplisafe.getCameras();
 
