@@ -7,6 +7,7 @@ import EntrySensor from './accessories/entrySensor';
 import SmokeDetector from './accessories/smokeDetector';
 import WaterSensor from './accessories/waterSensor';
 import FreezeSensor from './accessories/freezeSensor';
+import DoorLock from './accessories/doorLock';
 import Camera from './accessories/simplicam';
 
 const PLUGIN_NAME = 'homebridge-simplisafe3';
@@ -286,15 +287,38 @@ class SS3Platform {
                 }
             }
 
-            let doorLocks = await this.simplisafe.getLocks();
-            for (let doorLock of doorLocks) {
+            let locks = await this.simplisafe.getLocks();
+            for (let lock of locks) {
 
                 if (this.debug) {
-                    this.log(`Discovered door lock: ${doorLock.name}`);
-                    this.log(doorLock);
+                    this.log(`Discovered door lock: ${lock.name}`);
+                    this.log(lock);
                 }
 
-                
+                let uuid = UUIDGen.generate(lock.serial);
+                let accessory = this.accessories.find(acc => acc.UUID === uuid);
+
+                if (!accessory) {
+                    this.log('Lock not found, adding...');
+                    const lockAccessory = new DoorLock(
+                        lock.name || 'Door Lock',
+                        lock.serial,
+                        this.log,
+                        this.simplisafe,
+                        Service,
+                        Characteristic,
+                        UUIDGen
+                    );
+
+                    this.devices.push(lockAccessory);
+
+                    if (addAndRemove) {
+                        let newAccessory = new Accessory(lock.name || 'Door Lock', UUIDGen.generate(lock.serial));
+                        newAccessory.addService(Service.LockMechanism);
+                        lockAccessory.setAccessory(newAccessory);
+                        this.addAccessory(lockAccessory);
+                    }
+                }
 
             }
 
