@@ -467,11 +467,11 @@ class SimpliSafe3 {
                 this.socket = null;
             });
 
-            this.socket.on('error', err => {
+            this.socket.on('error', () => {
                 this.socket = null;
             });
 
-            this.socket.on('disconnect', reason => {
+            this.socket.on('disconnect', () => {
                 this.socket = null;
             });
 
