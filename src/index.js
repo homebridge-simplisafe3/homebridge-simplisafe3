@@ -1,7 +1,7 @@
 // © 2019 Niccolò Zapponi
 // SimpliSafe 3 HomeBridge Plugin
 
-import SimpliSafe3 from './simplisafe';
+import SimpliSafe3, { SENSOR_TYPES } from './simplisafe';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
 import SmokeDetector from './accessories/smokeDetector';
@@ -161,24 +161,15 @@ class SS3Platform {
                     this.log(sensor);
                 }
 
-                if (sensor.type == 1 ||
-                    sensor.type == 2 ||
-                    sensor.type == 3 ||
-                    sensor.type == 4 ||
-                    sensor.type == 6 ||
-                    sensor.type == 11 ||
-                    sensor.type == 13) {
+                if (sensor.type == SENSOR_TYPES.KEYPAD ||
+                    sensor.type == SENSOR_TYPES.KEYCHAIN ||
+                    sensor.type == SENSOR_TYPES.PANIC_BUTTON ||
+                    sensor.type == SENSOR_TYPES.MOTION_SENSOR ||
+                    sensor.type == SENSOR_TYPES.GLASSBREAK_SENSOR ||
+                    sensor.type == SENSOR_TYPES.SIREN ||
+                    sensor.type == SENSOR_TYPES.SIREN_2) {
                     // Ignore as no data is provided by SimpliSafe
-                    // 1: Keypad
-                    // 2: Keychain
-                    // 3: Panic button
-                    // 4: Motion sensor
-                    // 6: Glass break sensor
-                    // 7: CO sensor
-                    // 11: Siren
-                    // 13: Keypad
-                } else if (sensor.type == 5) {
-                    // Entry sensor
+                } else if (sensor.type == SENSOR_TYPES.ENTRY_SENSOR) {
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
@@ -203,8 +194,7 @@ class SS3Platform {
                             this.addAccessory(sensorAccessory);
                         }
                     }
-                } else if (sensor.type == 7) {
-                    // CO detector
+                } else if (sensor.type == SENSOR_TYPES.CO_SENSOR) {
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
@@ -229,8 +219,7 @@ class SS3Platform {
                             this.addAccessory(sensorAccessory);
                         }
                     }
-                } else if (sensor.type == 8) {
-                    // Smoke detector
+                } else if (sensor.type == SENSOR_TYPES.SMOKE_SENSOR) {
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
@@ -255,8 +244,7 @@ class SS3Platform {
                             this.addAccessory(sensorAccessory);
                         }
                     }
-                } else if (sensor.type == 9) {
-                    // Water detector
+                } else if (sensor.type == SENSOR_TYPES.WATER_SENSOR) {
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
@@ -281,8 +269,7 @@ class SS3Platform {
                             this.addAccessory(sensorAccessory);
                         }
                     }
-                } else if (sensor.type == 10) {
-                    // Freeze sensor
+                } else if (sensor.type == SENSOR_TYPES.FREEZE_SENSOR) {
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 

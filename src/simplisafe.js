@@ -20,6 +20,23 @@ const validAlarmStates = [
     'away'
 ];
 
+export const SENSOR_TYPES = {
+    'KEYPAD': 1,
+    'KEYCHAIN': 2,
+    'PANIC_BUTTON': 3,
+    'MOTION_SENSOR': 4,
+    'ENTRY_SENSOR': 5,
+    'GLASSBREAK_SENSOR': 6,
+    'CO_SENSOR': 7,
+    'SMOKE_SENSOR': 8,
+    'WATER_SENSOR': 9,
+    'FREEZE_SENSOR': 10,
+    'SIREN': 11,
+    'SIREN_2': 13,
+    'DOORLOCK': 16,
+    'DOORLOCK_2': 253
+};
+
 class SimpliSafe3 {
 
     token;
