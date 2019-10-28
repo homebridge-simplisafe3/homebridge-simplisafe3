@@ -182,6 +182,10 @@ class CameraSource {
             }
         };
 
+        let resolution = cameraConfig.cameraSettings.pictureQuality;
+        let maxSupportedHeight = +(resolution.split('p')[0]);
+        this.options.video.resolutions = this.options.video.resolutions.filter(r => r[1] <= maxSupportedHeight);
+
         this.createStreamControllers(2, this.options);
     }
 
@@ -194,7 +198,7 @@ class CameraSource {
     async handleSnapshotRequest(request, callback) {
         let ffmpegPath = ffmpeg.path;
         if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
-           ffmpegPath = this.cameraOptions.ffmpegPath;
+            ffmpegPath = this.cameraOptions.ffmpegPath;
         }
         let resolution = `${request.width}x${request.height}`;
         this.log(`Handling snapshot for ${this.cameraConfig.cameraSettings.cameraName} at ${resolution}`);
