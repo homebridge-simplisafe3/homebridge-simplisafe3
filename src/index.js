@@ -331,7 +331,7 @@ class SS3Platform {
                 if (!accessory) {
                     this.log('Lock not found, adding...');
                     const lockAccessory = new DoorLock(
-                        lock.name || 'Door Lock',
+                        lock.name || 'Smart Lock',
                         lock.serial,
                         this.log,
                         this.simplisafe,
@@ -343,7 +343,7 @@ class SS3Platform {
                     this.devices.push(lockAccessory);
 
                     if (addAndRemove) {
-                        let newAccessory = new Accessory(lock.name || 'Door Lock', UUIDGen.generate(lock.serial));
+                        let newAccessory = new Accessory(lock.name || 'Smart Lock', UUIDGen.generate(lock.serial));
                         newAccessory.addService(Service.LockMechanism);
                         lockAccessory.setAccessory(newAccessory);
                         this.addAccessory(lockAccessory);

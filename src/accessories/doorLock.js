@@ -39,7 +39,7 @@ class SS3DoorLock {
 
         this.accessory.getService(this.Service.AccessoryInformation)
             .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
-            .setCharacteristic(this.Characteristic.Model, 'Door Lock')
+            .setCharacteristic(this.Characteristic.Model, 'Smart Lock')
             .setCharacteristic(this.Characteristic.SerialNumber, this.id);
 
         this.service = this.accessory.getService(this.Service.LockMechanism);
@@ -82,6 +82,8 @@ class SS3DoorLock {
                 throw new Error('Could not find lock');
             }
 
+            this.log(`Retrieved lock info: ${JSON.stringify(lock, null, 2)}`);
+
             return lock;
         } catch (err) {
             throw new Error(`An error occurred while getting lock: ${err}`);
@@ -93,7 +95,7 @@ class SS3DoorLock {
         try {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
-            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
+            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
 
             if (lock.status.lockJamState) {
                 homekitState = this.Characteristic.LockCurrentState.JAMMED;
@@ -103,7 +105,7 @@ class SS3DoorLock {
                 homekitState = this.Characteristic.LockCurrentState.UNKNOWN;
             }
 
-            this.log(`Current lock state is: ${homekitState}`);
+            this.log(`Current lock state is: ${state}, ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the current door lock state: ${err}`));
@@ -116,7 +118,7 @@ class SS3DoorLock {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
             let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            this.log(`Target lock state is: ${homekitState}`);
+            this.log(`Target lock state is: ${state}, ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the target door lock state: ${err}`));
