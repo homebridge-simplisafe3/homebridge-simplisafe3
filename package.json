@@ -10,6 +10,7 @@
     "start": "nodemon --exec babel-node src/index.js",
     "build": "rm -rf lib && babel src -d lib",
     "deploy": "cp package.json README.md lib/ && npm publish lib/ && rm lib/package.json",
+    "release": "./release.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
