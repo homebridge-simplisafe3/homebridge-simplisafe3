@@ -1,6 +1,6 @@
 {
   "name": "homebridge-simplisafe3",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "A complete Homebridge plugin for the SimpliSafe 3 security system",
   "main": "index.js",
   "engines": {
@@ -10,7 +10,7 @@
     "start": "nodemon --exec babel-node src/index.js",
     "build": "rm -rf lib && babel src -d lib",
     "deploy": "cp package.json README.md lib/ && npm publish lib/ && rm lib/package.json",
-    "release": "./release.sh",
+    "release": "./scripts/release.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

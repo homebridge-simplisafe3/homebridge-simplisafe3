@@ -1,6 +1,11 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.3.4
+- Added smart lock support
+- Improved camera resolution support to honor max resolution available
+- Bug fixes
+
 ## v1.3.3 and v1.3.2
 - Bug fixes to camera support
 
