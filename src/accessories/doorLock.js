@@ -50,9 +50,6 @@ class SS3DoorLock {
             .on('get', async callback => this.getTargetState(callback))
             .on('set', async (state, callback) => this.setTargetState(state, callback));
 
-        this.service.getCharacteristic(this.Characteristic.StatusLowBattery)
-            .on('get', async callback => this.getBatteryStatus(callback));
-
         this.refreshState();
     }
 
@@ -142,23 +139,6 @@ class SS3DoorLock {
             callback(null);
         } catch (err) {
             callback(new Error(`An error occurred while setting the door lock state: ${err}`));
-        }
-    }
-
-    async getBatteryStatus(callback) {
-        try {
-            let lock = await this.getLockInformation();
-
-            if (!lock.flags || !lock.status) {
-                throw new Error('Lock response not understood');
-            }
-
-            let batteryLow = lock.flags.lowBattery || lock.status.lockLowBattery;
-            let homekitState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
-            callback(null, homekitState);
-
-        } catch (err) {
-            callback(new Error(`An error occurred while getting lock battery level: ${err}`));
         }
     }
 
