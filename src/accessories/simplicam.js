@@ -99,7 +99,6 @@ class SS3SimpliCam {
                 // Camera is not yet initialized
                 return;
             }
-            this.log(this.name + ` camera received new event from alarm: ${event}`);
             let eventCameraId;
             if (data && (data.sensorSerial || data.internal)) {
                 eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
@@ -124,7 +123,9 @@ class SS3SimpliCam {
                     this.startListening();
                     break;
                 default:
-                    this.log(this.name + ` camera event received: ${event}`);
+                    if (eventCameraId === this.id) {
+                        this.log(this.name + ` camera event received: ${event}`);
+                    }
                     break;
             }
         });

@@ -82,8 +82,6 @@ class SS3DoorLock {
                 throw new Error('Could not find lock');
             }
 
-            this.log(`Retrieved lock info: ${JSON.stringify(lock, null, 2)}`);
-
             return lock;
         } catch (err) {
             throw new Error(`An error occurred while getting lock: ${err}`);
