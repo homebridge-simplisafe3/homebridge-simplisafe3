@@ -105,6 +105,7 @@ Device             | Supported          | Notes
 Alarm arm/disarm   | :white_check_mark: | Home, away and off modes
 SimpliCam          | :white_check_mark: | Audio, video, motion*, no microphone
 Doorbell           | :white_check_mark: | Audio, video, motion, no microphone
+Smart lock         | :white_check_mark: | 
 Entry sensor       | :white_check_mark: | 
 Smoke detector     | :white_check_mark: | Includes support for tamper & fault
 CO detector        | :white_check_mark: | Includes support for tamper & fault

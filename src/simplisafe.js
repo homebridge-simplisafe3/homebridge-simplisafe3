@@ -20,6 +20,11 @@ const validAlarmStates = [
     'away'
 ];
 
+const validLockStates = [
+    'lock',
+    'unlock'
+];
+
 export const SENSOR_TYPES = {
     'KEYPAD': 1,
     'KEYCHAIN': 2,
@@ -51,6 +56,7 @@ class SimpliSafe3 {
     socket;
     lastSubscriptionRequest;
     lastSensorRequest;
+    lastLockRequest;
     sensorRefreshInterval;
     sensorRefreshTime;
     sensorSubscriptions = [];
@@ -382,6 +388,56 @@ class SimpliSafe3 {
         }
     }
 
+    async getLocks(forceRefresh) {
+
+        if (!this.subId) {
+            await this.getSubscription();
+        }
+
+        if (forceRefresh || !this.lastLockRequest) {
+            this.lastLockRequest = this.request({
+                method: 'GET',
+                url: `/doorlock/${this.subId}`
+            })
+                .then(data => {
+                    return data;
+                })
+                .catch(err => {
+                    throw err;
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        this.lastLockRequest = null;
+                    }, sensorCacheTime);
+                });
+        }
+
+        let data = await this.lastLockRequest;
+        return data;
+
+    }
+
+    async setLockState(lockId, newState) {
+        let state = newState.toLowerCase();
+
+        if (validLockStates.indexOf(state) == -1) {
+            throw new Error('Invalid target state');
+        }
+
+        if (!this.subId) {
+            await this.getSubscription();
+        }
+
+        let data = await this.request({
+            method: 'POST',
+            url: `/doorlock/${this.subId}/${lockId}/state`,
+            data: {
+                state: state
+            }
+        });
+        return data;
+    }
+
     async subscribeToEvents(callback) {
 
         let _socketCallback = data => {
@@ -446,6 +502,12 @@ class SimpliSafe3 {
                             break;
                         case 1458:
                             callback('DOORBELL', data);
+                            break;
+                        case 9700:
+                            callback('DOORLOCK_UNLOCKED', data);
+                            break;
+                        case 9701:
+                            callback('DOORLOCK_LOCKED', data);
                             break;
                         case 1602:
                             // Automatic test

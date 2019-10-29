@@ -8,6 +8,7 @@ import SmokeDetector from './accessories/smokeDetector';
 import CODetector from './accessories/coDetector';
 import WaterSensor from './accessories/waterSensor';
 import FreezeSensor from './accessories/freezeSensor';
+import DoorLock from './accessories/doorLock';
 import Camera from './accessories/simplicam';
 
 const PLUGIN_NAME = 'homebridge-simplisafe3';
@@ -167,8 +168,11 @@ class SS3Platform {
                     sensor.type == SENSOR_TYPES.MOTION_SENSOR ||
                     sensor.type == SENSOR_TYPES.GLASSBREAK_SENSOR ||
                     sensor.type == SENSOR_TYPES.SIREN ||
-                    sensor.type == SENSOR_TYPES.SIREN_2) {
+                    sensor.type == SENSOR_TYPES.SIREN_2 ||
+                    sensor.type == SENSOR_TYPES.DOORLOCK ||
+                    sensor.type == SENSOR_TYPES.DOORLOCK_2) {
                     // Ignore as no data is provided by SimpliSafe
+                    // Door locks are configured below
                 } else if (sensor.type == SENSOR_TYPES.ENTRY_SENSOR) {
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
@@ -298,6 +302,41 @@ class SS3Platform {
                     this.log(`Sensor not (yet) supported: ${sensor.name}`);
                     this.log(sensor);
                 }
+            }
+
+            let locks = await this.simplisafe.getLocks();
+            for (let lock of locks) {
+
+                if (this.debug) {
+                    this.log(`Discovered door lock: ${lock.name}`);
+                    this.log(lock);
+                }
+
+                let uuid = UUIDGen.generate(lock.serial);
+                let accessory = this.accessories.find(acc => acc.UUID === uuid);
+
+                if (!accessory) {
+                    this.log('Lock not found, adding...');
+                    const lockAccessory = new DoorLock(
+                        lock.name || 'Smart Lock',
+                        lock.serial,
+                        this.log,
+                        this.simplisafe,
+                        Service,
+                        Characteristic,
+                        UUIDGen
+                    );
+
+                    this.devices.push(lockAccessory);
+
+                    if (addAndRemove) {
+                        let newAccessory = new Accessory(lock.name || 'Smart Lock', UUIDGen.generate(lock.serial));
+                        newAccessory.addService(Service.LockMechanism);
+                        lockAccessory.setAccessory(newAccessory);
+                        this.addAccessory(lockAccessory);
+                    }
+                }
+
             }
 
             if (this.enableCameras) {
