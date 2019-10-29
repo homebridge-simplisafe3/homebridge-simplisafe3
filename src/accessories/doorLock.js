@@ -21,8 +21,8 @@ class SS3DoorLock {
         };
 
         this.TARGET_HOMEKIT_TO_SS3 = {
-            [Characteristic.LockTargetState.SECURED]: 1,
-            [Characteristic.LockTargetState.UNSECURED]: 0
+            [Characteristic.LockTargetState.SECURED]: 'lock',
+            [Characteristic.LockTargetState.UNSECURED]: 'unlock'
         };
 
         this.startListening();

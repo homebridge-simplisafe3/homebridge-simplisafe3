@@ -415,7 +415,7 @@ class SimpliSafe3 {
             method: 'POST',
             url: `/doorlock/${this.subId}/${lockId}/state`,
             data: {
-                lock: newState
+                lock: state
             }
         });
         return data;
