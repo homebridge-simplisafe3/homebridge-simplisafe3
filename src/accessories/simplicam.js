@@ -108,8 +108,10 @@ class SS3SimpliCam {
                 case 'CAMERA_MOTION':
                     if (eventCameraId == this.id) {
                         this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
+                        this.cameraSource.motionIsTriggered = true;
                         setTimeout(() => {
                             this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, false);
+                            this.cameraSource.motionIsTriggered = false;
                         }, 5000);
                     }
                     break;
@@ -204,7 +206,7 @@ class CameraSource {
         let resolution = `${request.width}x${request.height}`;
         this.log(`Handling snapshot for ${this.cameraConfig.cameraSettings.cameraName} at ${resolution}`);
 
-        if (this.cameraConfig.model == 'SS001') { // Model(s) with privacy shutter
+        if (!this.motionIsTriggered && this.cameraConfig.model == 'SS001') { // Model(s) with privacy shutter
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
             let alarmState = await this.simplisafe.getAlarmState();
             switch (alarmState) {
