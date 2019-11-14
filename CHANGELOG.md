@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.3.5
+- Improved support for rich notifications
+
 ## v1.3.4
 - Added smart lock support
 - Improved camera resolution support to honor max resolution available
