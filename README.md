@@ -111,12 +111,13 @@ Smoke detector     | :white_check_mark: | Includes support for tamper & fault
 CO detector        | :white_check_mark: | Includes support for tamper & fault
 Water sensor       | :white_check_mark: |
 Freeze sensor      | :white_check_mark: | Supports temperature readings, not sensor trigger
-Motion sensor      | :white_check_mark: | Requires motion sensor set to "Secret Alert" or "Alarm" in SimpliSafe settings
+Motion sensor      | :white_check_mark: | Requires motion sensor set to "Secret Alert" or "Alarm" in SimpliSafe settings**
 Glassbreak sensor  | :x:                | State not provided by SimpliSafe
 Keypad             | :x:                | State not provided by SimpliSafe
 Panic button       | :x:                | State not provided by SimpliSafe
 
 \* SimpliCams provide motion notifications only if the privacy shutter is open.
+\** The default SimpliSafe settings for motion sensors are "Disabled" when alarm is "Off" or "Home", in which case motion events will only trigger when the alarm is armed for "Away". Using the "Secret Alert" setting will allow for motion events at all times but note that [this will also record a video clip](https://simplisafe.com/forum/customer-support-forum/installing-and-using-simplisafe/secret-alert-triggers-camera) when motion events are triggered.
 
 All devices also support low battery warnings.
 
