@@ -37,7 +37,7 @@ if you run into issues when starting the plugin and Homebridge displays errors, 
 npm install -g --unsafe-perm homebridge-simplisafe3
 ```
 
-Then, add the following configuration to the `platforms` array in your Homebridge `config.json`. 
+Then, add the following configuration to the `platforms` array in your Homebridge `config.json`.
 
 
 ```
@@ -105,14 +105,14 @@ Device             | Supported          | Notes
 Alarm arm/disarm   | :white_check_mark: | Home, away and off modes
 SimpliCam          | :white_check_mark: | Audio, video, motion*, no microphone
 Doorbell           | :white_check_mark: | Audio, video, motion, no microphone
-Smart lock         | :white_check_mark: | 
-Entry sensor       | :white_check_mark: | 
+Smart lock         | :white_check_mark: |
+Entry sensor       | :white_check_mark: |
 Smoke detector     | :white_check_mark: | Includes support for tamper & fault
 CO detector        | :white_check_mark: | Includes support for tamper & fault
 Water sensor       | :white_check_mark: |
 Freeze sensor      | :white_check_mark: | Supports temperature readings, not sensor trigger
+Motion sensor      | :white_check_mark: | Requires motion sensor set to "Silent Alarm" or "Alarm" in SimpliSafe settings
 Glassbreak sensor  | :x:                | State not provided by SimpliSafe
-Motion sensor      | :x:                | State not provided by SimpliSafe
 Keypad             | :x:                | State not provided by SimpliSafe
 Panic button       | :x:                | State not provided by SimpliSafe
 
