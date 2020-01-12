@@ -111,7 +111,7 @@ Smoke detector     | :white_check_mark: | Includes support for tamper & fault
 CO detector        | :white_check_mark: | Includes support for tamper & fault
 Water sensor       | :white_check_mark: |
 Freeze sensor      | :white_check_mark: | Supports temperature readings, not sensor trigger
-Motion sensor      | :white_check_mark: | Requires motion sensor set to "Silent Alarm" or "Alarm" in SimpliSafe settings
+Motion sensor      | :white_check_mark: | Requires motion sensor set to "Secret Alert" or "Alarm" in SimpliSafe settings
 Glassbreak sensor  | :x:                | State not provided by SimpliSafe
 Keypad             | :x:                | State not provided by SimpliSafe
 Panic button       | :x:                | State not provided by SimpliSafe
