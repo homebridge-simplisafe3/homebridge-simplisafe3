@@ -37,7 +37,7 @@ if you run into issues when starting the plugin and Homebridge displays errors, 
 npm install -g --unsafe-perm homebridge-simplisafe3
 ```
 
-Then, add the following configuration to the `platforms` array in your Homebridge `config.json`. 
+Then, add the following configuration to the `platforms` array in your Homebridge `config.json`.
 
 
 ```
@@ -105,18 +105,22 @@ Device             | Supported          | Notes
 Alarm arm/disarm   | :white_check_mark: | Home, away and off modes
 SimpliCam          | :white_check_mark: | Audio, video, motion*, no microphone
 Doorbell           | :white_check_mark: | Audio, video, motion, no microphone
-Smart lock         | :white_check_mark: | 
-Entry sensor       | :white_check_mark: | 
+Smart lock         | :white_check_mark: |
+Entry sensor       | :white_check_mark: |
 Smoke detector     | :white_check_mark: | Includes support for tamper & fault
 CO detector        | :white_check_mark: | Includes support for tamper & fault
 Water sensor       | :white_check_mark: |
 Freeze sensor      | :white_check_mark: | Supports temperature readings, not sensor trigger
+Motion sensor      | :white_check_mark: | Requires motion sensor set to "Secret Alert" or "Alarm" in SimpliSafe settings**
 Glassbreak sensor  | :x:                | State not provided by SimpliSafe
-Motion sensor      | :x:                | State not provided by SimpliSafe
 Keypad             | :x:                | State not provided by SimpliSafe
 Panic button       | :x:                | State not provided by SimpliSafe
 
 \* SimpliCams provide motion notifications only if the privacy shutter is open.
+
+\** The default SimpliSafe settings for motion sensors are "Disabled" when alarm is "Off" or "Home", in which case motion events will not be accurate since they won't always trigger. For consistency of the Home app, motion sensors need to be switched to either "Secret Alert" or "Alarm" in **every** alarm mode for the sensors to appear in the app.
+For example, setting the motion sensor to Secret Alert in Off and Home mode and Alarm in Away mode **will** display it in the Home app, whereas setting it to Disabled in Off mode, Secret Alert in Home mode and Alarm in Away mode **won't**, since the sensor state and automations in the Home app would be inaccurate.
+Using the "Secret Alert" setting will allow for motion events at all times but note that [this will also record a video clip](https://simplisafe.com/forum/customer-support-forum/installing-and-using-simplisafe/secret-alert-triggers-camera) when motion events are triggered.
 
 All devices also support low battery warnings.
 

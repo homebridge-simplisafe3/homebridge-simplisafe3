@@ -466,6 +466,9 @@ class SimpliSafe3 {
                         case 1406:
                             callback('CANCEL', data);
                             break;
+                        case 1409:
+                            callback('MOTION', data);
+                            break;
                         case 9441:
                             callback('HOME_EXIT_DELAY', data);
                             break;

@@ -4,6 +4,7 @@
 import SimpliSafe3, { SENSOR_TYPES } from './simplisafe';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
+import MotionSensor from './accessories/motionSensor';
 import SmokeDetector from './accessories/smokeDetector';
 import CODetector from './accessories/coDetector';
 import WaterSensor from './accessories/waterSensor';
@@ -165,7 +166,6 @@ class SS3Platform {
                 if (sensor.type == SENSOR_TYPES.KEYPAD ||
                     sensor.type == SENSOR_TYPES.KEYCHAIN ||
                     sensor.type == SENSOR_TYPES.PANIC_BUTTON ||
-                    sensor.type == SENSOR_TYPES.MOTION_SENSOR ||
                     sensor.type == SENSOR_TYPES.GLASSBREAK_SENSOR ||
                     sensor.type == SENSOR_TYPES.SIREN ||
                     sensor.type == SENSOR_TYPES.SIREN_2 ||
@@ -294,6 +294,38 @@ class SS3Platform {
                         if (addAndRemove) {
                             let newAccessory = new Accessory(sensor.name || 'Freeze Sensor', UUIDGen.generate(sensor.serial));
                             newAccessory.addService(Service.TemperatureSensor);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
+                    }
+                } else if (sensor.type == SENSOR_TYPES.MOTION_SENSOR) {
+
+                    // Check if secret alerts are enabled
+                    if (sensor.setting.off == 0 || sensor.setting.home == 0 || sensor.setting.away == 0) {
+                        this.log(`Sensor ${sensor.name} requires secret alerts to be added to Homebridge.`);
+                        continue;
+                    }
+
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+
+                    if (!accessory) {
+                        this.log(`Sensor ${sensor.name} not found, adding...`);
+                        const sensorAccessory = new MotionSensor(
+                            sensor.name || 'Motion Sensor',
+                            sensor.serial,
+                            this.log,
+                            this.simplisafe,
+                            Service,
+                            Characteristic,
+                            UUIDGen
+                        );
+
+                        this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensor.name || 'Motion Sensor', UUIDGen.generate(sensor.serial));
+                            newAccessory.addService(Service.MotionSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
                         }
