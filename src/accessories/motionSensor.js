@@ -28,9 +28,7 @@ class SS3MotionSensor {
             .setCharacteristic(this.Characteristic.Model, 'Motion Sensor')
             .setCharacteristic(this.Characteristic.SerialNumber, this.id);
 
-        this.service = this.accessory.getService(this.Service.MotionSensor);
-
-        this.service.getCharacteristic(this.Characteristic.StatusLowBattery)
+        this.accessory.getService(this.Service.MotionSensor).getCharacteristic(this.Characteristic.StatusLowBattery)
             .on('get', async callback => this.getBatteryStatus(callback));
     }
 
@@ -89,28 +87,26 @@ class SS3MotionSensor {
 
     startListening() {
         this.simplisafe.subscribeToEvents((event, data) => {
-           if (this.id !== data.sensorSerial) return;
+            if (this.id !== data.sensorSerial) return;
 
-           switch (event) {
-               case 'MOTION':
-                   this.service.setCharacteristic(this.Characteristic.MotionDetected, true);
-                   setTimeout(() => {
-                       this.service.setCharacteristic(this.Characteristic.MotionDetected, false);
-                   }, 10000);
-               break;
-           default:
-               this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
-               break;
+            switch (event) {
+                case 'MOTION':
+                    this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
+                    setTimeout(() => {
+                        this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, false);
+                    }, 10000);
+                    break;
+                default:
+                    this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
+                    break;
             }
         });
         this.simplisafe.subscribeToSensor(this.id, sensor => {
-            if (this.service) {
-                if (sensor.flags) {
-                    if (sensor.flags.lowBattery) {
-                        this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
-                    } else {
-                        this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
-                    }
+            if (sensor.flags) {
+                if (sensor.flags.lowBattery) {
+                    this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                } else {
+                    this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                 }
             }
         });
