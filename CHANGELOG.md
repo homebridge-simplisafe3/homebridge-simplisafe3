@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.4.0
+- Added support for motion sensors with secret alerts
+
 ## v1.3.5
 - Improved support for rich notifications
 
