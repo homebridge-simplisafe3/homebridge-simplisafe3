@@ -99,7 +99,7 @@ class SS3MotionSensor {
                    }, 10000);
                break;
            default:
-               this.log(`motion sensor ${this.id} received unknown event '${event}' with data:`, data);
+               this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
                break;
             }
         });
