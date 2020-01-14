@@ -46,6 +46,6 @@ fi
 
 git commit -am "Release v$NEW_VERSION"
 git tag "v$NEW_VERSION"
-git push origin master
+git push origin --tags
 
 echo "Released v$NEW_VERSION"
