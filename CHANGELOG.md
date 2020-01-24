@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.4.2
+- Reverted the default behavior of `persistAccessories` while we implement a workaround for the rate limiting that SimpliSafe imposes.
+
 ## v1.4.1
 - Changed the default behavior of `persistAccessories`. Old accessories are now automatically removed.
 
