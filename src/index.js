@@ -26,6 +26,7 @@ class SS3Platform {
         this.cameraOptions = config.cameraOptions || null;
         this.debug = config.debug || false;
         this.persistAccessories = config.persistAccessories !== undefined ? config.persistAccessories : true;
+        this.resetId = config.resetSimpliSafeId || false;
         this.devices = [];
         this.accessories = [];
 
@@ -36,7 +37,7 @@ class SS3Platform {
             refreshInterval = config.sensorRefresh * 1000;
         }
 
-        this.simplisafe = new SimpliSafe3(refreshInterval);
+        this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId);
 
         this.initialLoad = this.simplisafe.login(config.auth.username, config.auth.password, true)
             .then(() => {

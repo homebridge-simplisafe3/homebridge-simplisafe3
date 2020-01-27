@@ -98,6 +98,11 @@ Type: boolean (default `true`)
 
 By default, the plugin won't remove old accessories from the Home app. This is to avoid caching issues causing you to lose all your scenes & automations configurations. If you do want to remove old accessories, set this to `false`.
 
+#### `resetSimpliSafeId`
+Type: boolean (default `false`)
+
+...
+
 ## Supported Devices
 
 Device             | Supported          | Notes
