@@ -80,7 +80,8 @@ class SimpliSafe3 {
 
     isBlocked;
     nextBlockInterval = rateLimitInitialInterval;
-    nextAttempt;
+    nextAttempt = 0;
+    loginAttempt;
 
     constructor(sensorRefreshTime = 15000, resetConfig = false) {
         this.sensorRefreshTime = sensorRefreshTime;
@@ -295,7 +296,14 @@ class SimpliSafe3 {
             if (this.isBlocked) {
                 // User is not logged in due to the last login attempt being blocked.
                 // It's now time to try logging in again.
-                await this.login(this.username, this.password, true);
+
+                // Use this logic so that if multiple requests happen at the same time,
+                // only one will attempt to log in.
+                if (!this.loginAttempt) {
+                    this.loginAttempt = this.login(this.username, this.password, true);
+                }
+                await this.loginAttempt;
+                this.loginAttempt = null;
             } else {
                 let err = new Error('User is not logged in');
                 throw err;
