@@ -80,6 +80,7 @@ class SimpliSafe3 {
 
     isBlocked;
     nextBlockInterval = rateLimitInitialInterval;
+    nextAttempt;
 
     constructor(sensorRefreshTime = 15000, resetConfig = false) {
         this.sensorRefreshTime = sensorRefreshTime;
@@ -141,7 +142,7 @@ class SimpliSafe3 {
                 let errCode = err.response.status;
                 let errData = err.response.data;
 
-                if (errCode == 403 && (errData && errData.error == 'mfa_required')) {
+                if (errCode == 403 && (errData && errData.error && errData.error == 'mfa_required')) {
 
                     console.log('Multifactor authentication required. Check your email and approve the request!');
 
@@ -168,31 +169,8 @@ class SimpliSafe3 {
                     }
 
                 } else if (errCode == 403) {
-
-                    console.log('Login failed, request blocked (rate limit?). Trying again later...');
-                    this.isBlocked = true;
-                    let interval = this.nextBlockInterval;
-                    
-                    if (interval > rateLimitMaxInterval) {
-                        this.logout(storeCredentials);
-                        let err = new Error('Login forbidden (rate limit?)');
-                        throw err;
-                    }
-
-                    this.nextBlockInterval = this.nextBlockInterval * 2;
-
-                    return new Promise((resolve, reject) => {
-                        setTimeout(async () => {
-                            console.log('New login attempt...');
-                            try {
-                                await this.login(username, password, storeCredentials);
-                                resolve();
-                            } catch (err) {
-                                reject(err);
-                            }
-                        }, interval);
-                    });
-
+                    console.log('Login failed, request blocked (rate limit?).');
+                    this._setRateLimitHandler();
                 } else {
                     this.logout(storeCredentials);
                     throw err.response;
@@ -233,8 +211,16 @@ class SimpliSafe3 {
     }
 
     _resetRateLimitHandler() {
-        this._resetRateLimitHandler();
+        this.isBlocked = false;
         this.nextBlockInterval = rateLimitInitialInterval;
+    }
+
+    _setRateLimitHandler() {
+        this.isBlocked = true;
+        this.nextAttempt = Date.now() + this.nextBlockInterval;
+        if (this.nextBlockInterval < rateLimitMaxInterval) {
+            this.nextBlockInterval = this.nextBlockInterval * 2;
+        }
     }
 
     _storeLogin(tokenResponse) {
@@ -277,18 +263,43 @@ class SimpliSafe3 {
 
             let data = response.data;
             this._storeLogin(data);
+            this._resetRateLimitHandler();
 
         } catch (err) {
-            let response = (err.response) ? err.response : err;
-            this.logout(this.username != null);
 
-            throw response;
+            if (err.response) {
+                let errCode = err.response.status;
+
+                if (errCode == 403) {
+                    console.log('Token refresh failed, request blocked (rate limit?).');
+                    this._setRateLimitHandler();
+                } else {
+                    this.logout(this.username != null);
+                }
+                throw err.response;
+            } else {
+                this.logout(this.username != null);
+                throw err;
+            }
         }
     }
 
     async request(params, tokenRefreshed = false) {
+
+        if (this.isBlocked && Date.now() < this.nextAttempt) {
+            let err = new Error('Blocking request: rate limited');
+            throw err;
+        }
+
         if (!this.isLoggedIn) {
-            return Promise.reject('User is not logged in');
+            if (this.isBlocked) {
+                // User is not logged in due to the last login attempt being blocked.
+                // It's now time to try logging in again.
+                await this.login(this.username, this.password, true);
+            } else {
+                let err = new Error('User is not logged in');
+                throw err;
+            }
         }
 
         try {
@@ -299,6 +310,7 @@ class SimpliSafe3 {
                     Authorization: `${this.tokenType} ${this.token}`
                 }
             });
+            this._resetRateLimitHandler();
             return response.data;
         } catch (err) {
             let statusCode = err.response.status;
@@ -316,6 +328,10 @@ class SimpliSafe3 {
                             throw err;
                         }
                     });
+            } else if (statusCode == 403) {
+                console.log('Request failed, request blocked (rate limit?).');
+                this._setRateLimitHandler();
+                throw err.response.data;
             } else {
                 throw err.response.data;
             }
