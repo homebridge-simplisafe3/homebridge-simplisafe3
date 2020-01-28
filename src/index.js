@@ -117,7 +117,7 @@ class SS3Platform {
     removeAccessory(accessory) {
         this.log('Remove accessory');
         if (accessory) {
-            if (!this.persistAccessories) {
+            if (!this.persistAccessories && !this.simplisafe.isBlocked) {
                 this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
             }
             if (this.accessories.indexOf(accessory) > -1) {

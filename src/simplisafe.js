@@ -170,8 +170,9 @@ class SimpliSafe3 {
                     }
 
                 } else if (errCode == 403) {
-                    console.log('Login failed, request blocked (rate limit?).');
                     this._setRateLimitHandler();
+                    let err = new Error('Login failed, request blocked (rate limit?).');
+                    throw err;
                 } else {
                     this.logout(storeCredentials);
                     throw err.response;
