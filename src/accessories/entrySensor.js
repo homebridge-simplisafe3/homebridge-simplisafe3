@@ -29,8 +29,6 @@ class SS3EntrySensor {
             .setCharacteristic(this.Characteristic.SerialNumber, this.id);
 
         this.service = this.accessory.getService(this.Service.ContactSensor);
-        this.service.getCharacteristic(this.Characteristic.ContactSensorState)
-            .on('get', async callback => this.getState(callback));
 
         this.service.getCharacteristic(this.Characteristic.StatusLowBattery)
             .on('get', async callback => this.getBatteryStatus(callback));
@@ -74,23 +72,6 @@ class SS3EntrySensor {
         }
     }
 
-    async getState(callback) {
-        try {
-            let sensor = await this.getSensorInformation();
-
-            if (!sensor.status) {
-                throw new Error('Sensor response not understood');
-            }
-
-            let open = sensor.status.triggered;
-            let homekitState = open ? this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED : this.Characteristic.ContactSensorState.CONTACT_DETECTED;
-            callback(null, homekitState);
-
-        } catch (err) {
-            callback(new Error(`An error occurred while getting sensor state: ${err}`));
-        }
-    }
-
     async getBatteryStatus(callback) {
         try {
             let sensor = await this.getSensorInformation();
@@ -118,7 +99,7 @@ class SS3EntrySensor {
                         this.service.setCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_DETECTED);
                     }
                 }
-    
+
                 if (sensor.flags) {
                     if (sensor.flags.lowBattery) {
                         this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
