@@ -59,8 +59,7 @@ class SS3Alarm {
         this.service = this.accessory.getService(this.Service.SecuritySystem);
 
         this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState)
-            .setProps({ validValues: this.VALID_CURRENT_STATE_VALUES })
-            .on('get', async callback => this.getCurrentState(callback));
+            .setProps({ validValues: this.VALID_CURRENT_STATE_VALUES });
         this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState)
             .setProps({ validValues: this.VALID_TARGET_STATE_VALUES })
             .on('set', async (state, callback) => this.setTargetState(state, callback));
@@ -77,18 +76,6 @@ class SS3Alarm {
         } catch (err) {
             this.log(`An error occurred while updating reachability for ${this.name}`);
             this.log(err);
-        }
-    }
-
-    async getCurrentState(callback) {
-        this.log('Getting current state...');
-        try {
-            let state = await this.simplisafe.getAlarmState();
-            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            this.log(`Current alarm state is: ${homekitState}`);
-            callback(null, homekitState);
-        } catch (err) {
-            callback(new Error(`An error occurred while getting the current alarm state: ${err}`));
         }
     }
 
