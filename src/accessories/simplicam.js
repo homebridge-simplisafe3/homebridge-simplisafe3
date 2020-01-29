@@ -432,7 +432,7 @@ class CameraSource {
                         }
 
                         if (this.cameraOptions.sourceOptions) {
-                            let options = this.cameraOptions.sourceOptions;
+                            let options = this.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x));
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = sourceArgs.find(arg => arg[0] === key);
@@ -449,7 +449,7 @@ class CameraSource {
                         }
 
                         if (this.cameraOptions.videoOptions) {
-                            let options = this.cameraOptions.videoOptions;
+                            let options = this.cameraOptions.videoOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x));
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = videoArgs.find(arg => arg[0] === key);
@@ -466,7 +466,7 @@ class CameraSource {
                         }
 
                         if (this.cameraOptions.audioOptions) {
-                            let options = this.cameraOptions.audioOptions;
+                            let options = this.cameraOptions.audioOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x));
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = audioArgs.find(arg => arg[0] === key);
