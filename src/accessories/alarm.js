@@ -20,14 +20,6 @@ class SS3Alarm {
             'ALARM': Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
         };
 
-        this.TARGET_SS3_TO_HOMEKIT = {
-            'OFF': Characteristic.SecuritySystemTargetState.DISARM,
-            'HOME': Characteristic.SecuritySystemTargetState.STAY_ARM,
-            'AWAY': Characteristic.SecuritySystemTargetState.AWAY_ARM,
-            'HOME_COUNT': Characteristic.SecuritySystemTargetState.STAY_ARM,
-            'AWAY_COUNT': Characteristic.SecuritySystemTargetState.AWAY_ARM
-        };
-
         this.TARGET_HOMEKIT_TO_SS3 = {
             [Characteristic.SecuritySystemTargetState.DISARM]: 'OFF',
             [Characteristic.SecuritySystemTargetState.STAY_ARM]: 'HOME',
@@ -71,7 +63,6 @@ class SS3Alarm {
             .on('get', async callback => this.getCurrentState(callback));
         this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState)
             .setProps({ validValues: this.VALID_TARGET_STATE_VALUES })
-            .on('get', async callback => this.getTargetState(callback))
             .on('set', async (state, callback) => this.setTargetState(state, callback));
 
         this.refreshState();
@@ -98,18 +89,6 @@ class SS3Alarm {
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the current alarm state: ${err}`));
-        }
-    }
-
-    async getTargetState(callback) {
-        this.log('Getting target state...');
-        try {
-            let state = await this.simplisafe.getAlarmState();
-            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            this.log(`Target alarm state is: ${homekitState}`);
-            callback(null, homekitState);
-        } catch (err) {
-            callback(new Error(`An error occurred while getting the target alarm state: ${err}`));
         }
     }
 
