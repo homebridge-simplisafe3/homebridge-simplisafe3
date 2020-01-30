@@ -89,27 +89,37 @@ class SS3Alarm {
         }
     }
 
-    async getCurrentState(callback) {
+    async getCurrentState(callback, forceRefresh = false) {
         this.log('Getting current state...');
-        try {
-            let state = await this.simplisafe.getAlarmState();
-            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            this.log(`Current alarm state is: ${homekitState}`);
-            callback(null, homekitState);
-        } catch (err) {
-            callback(new Error(`An error occurred while getting the current alarm state: ${err}`));
+        if (!forceRefresh) {
+            let state = this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState);
+            callback(null, state);
+        } else {
+            try {
+                let state = await this.simplisafe.getAlarmState();
+                let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
+                this.log(`Current alarm state is: ${homekitState}`);
+                callback(null, homekitState);
+            } catch (err) {
+                callback(new Error(`An error occurred while getting the current alarm state: ${err}`));
+            }
         }
     }
 
-    async getTargetState(callback) {
+    async getTargetState(callback, forceRefresh = false) {
         this.log('Getting target state...');
-        try {
-            let state = await this.simplisafe.getAlarmState();
-            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            this.log(`Target alarm state is: ${homekitState}`);
-            callback(null, homekitState);
-        } catch (err) {
-            callback(new Error(`An error occurred while getting the target alarm state: ${err}`));
+        if (!forceRefresh) {
+            let state = this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState);
+            callback(null, state);
+        } else {
+            try {
+                let state = await this.simplisafe.getAlarmState();
+                let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
+                this.log(`Target alarm state is: ${homekitState}`);
+                callback(null, homekitState);
+            } catch (err) {
+                callback(new Error(`An error occurred while getting the target alarm state: ${err}`));
+            }
         }
     }
 

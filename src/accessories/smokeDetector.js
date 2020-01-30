@@ -80,30 +80,46 @@ class SS3SmokeDetector {
         }
     }
 
-    async getState(callback, parameter = 'triggered') {
-        try {
-            let sensor = await this.getSensorInformation();
-
-            if (!sensor.status) {
-                throw new Error('Sensor response not understood');
-            }
-
-            let homekitState = null;
+    async getState(callback, parameter = 'triggered', forceRefresh = false) {
+        if (!forceRefresh) {
+            let state = null;
 
             if (parameter == 'triggered') {
-                homekitState = sensor.status.triggered ? this.Characteristic.SmokeDetected.SMOKE_DETECTED : this.Characteristic.SmokeDetected.SMOKE_NOT_DETECTED;
+                state = this.service.getCharacteristic(this.Characteristic.SmokeDetected);
             } else if (parameter == 'tamper') {
-                homekitState = sensor.status.tamper ? this.Characteristic.StatusTampered.TAMPERED : this.Characteristic.StatusTampered.NOT_TAMPERED;
+                state = this.service.getCharacteristic(this.Characteristic.StatusTampered);
             } else if (parameter == 'malfunction') {
-                homekitState = sensor.status.malfunction ? this.Characteristic.StatusFault.GENERAL_FAULT : this.Characteristic.StatusFault.NO_FAULT;
+                state = this.service.getCharacteristic(this.Characteristic.StatusFault);
             } else {
                 throw new Error('Requested data type not understood');
             }
-            
-            callback(null, homekitState);
 
-        } catch (err) {
-            callback(new Error(`An error occurred while getting sensor state: ${err}`));
+            callback(null, state);
+        } else {
+            try {
+                let sensor = await this.getSensorInformation();
+    
+                if (!sensor.status) {
+                    throw new Error('Sensor response not understood');
+                }
+    
+                let homekitState = null;
+    
+                if (parameter == 'triggered') {
+                    homekitState = sensor.status.triggered ? this.Characteristic.SmokeDetected.SMOKE_DETECTED : this.Characteristic.SmokeDetected.SMOKE_NOT_DETECTED;
+                } else if (parameter == 'tamper') {
+                    homekitState = sensor.status.tamper ? this.Characteristic.StatusTampered.TAMPERED : this.Characteristic.StatusTampered.NOT_TAMPERED;
+                } else if (parameter == 'malfunction') {
+                    homekitState = sensor.status.malfunction ? this.Characteristic.StatusFault.GENERAL_FAULT : this.Characteristic.StatusFault.NO_FAULT;
+                } else {
+                    throw new Error('Requested data type not understood');
+                }
+                
+                callback(null, homekitState);
+    
+            } catch (err) {
+                callback(new Error(`An error occurred while getting sensor state: ${err}`));
+            }
         }
     }
 
