@@ -36,7 +36,7 @@ class SS3Platform {
             refreshInterval = config.sensorRefresh * 1000;
         }
 
-        this.simplisafe = new SimpliSafe3(refreshInterval);
+        this.simplisafe = new SimpliSafe3(refreshInterval, log);
 
         this.initialLoad = this.simplisafe.login(config.auth.username, config.auth.password, true)
             .then(() => {

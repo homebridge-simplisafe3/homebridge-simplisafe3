@@ -61,8 +61,9 @@ class SimpliSafe3 {
     sensorRefreshTime;
     sensorSubscriptions = [];
 
-    constructor(sensorRefreshTime = 15000) {
+    constructor(sensorRefreshTime = 15000, log) {
         this.sensorRefreshTime = sensorRefreshTime;
+        this.log = log || console.log;
     }
 
     async login(username, password, storeCredentials = false) {
@@ -606,7 +607,7 @@ class SimpliSafe3 {
                             .map(sub => sub.callback(sensor));
                     }
                 } catch (err) {
-                    // console.log(err);
+                    this.log(err);
                 }
 
             }, this.sensorRefreshTime);
