@@ -90,6 +90,10 @@ class SS3Alarm {
     }
 
     async getCurrentState(callback) {
+        if (this.simplisafe.isBlocked) {
+            callback(new Error('Request blocked (rate limited)'));
+        }
+
         this.log('Getting current state...');
         try {
             let state = await this.simplisafe.getAlarmState();
@@ -102,6 +106,10 @@ class SS3Alarm {
     }
 
     async getTargetState(callback) {
+        if (this.simplisafe.isBlocked) {
+            callback(new Error('Request blocked (rate limited)'));
+        }
+
         this.log('Getting target state...');
         try {
             let state = await this.simplisafe.getAlarmState();

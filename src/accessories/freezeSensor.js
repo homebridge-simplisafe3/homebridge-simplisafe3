@@ -77,6 +77,10 @@ class SS3FreezeSensor {
     }
 
     async getState(callback) {
+        if (this.simplisafe.isBlocked) {
+            callback(new Error('Request blocked (rate limited)'));
+        }
+
         try {
             let sensor = await this.getSensorInformation();
 

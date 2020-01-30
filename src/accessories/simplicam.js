@@ -44,6 +44,7 @@ class SS3SimpliCam {
             .setCharacteristic(this.Characteristic.SerialNumber, this.id)
             .setCharacteristic(this.Characteristic.FirmwareRevision, this.cameraDetails.cameraSettings.admin.firmwareVersion);
 
+        // TODO Add getters and setters for these services to manage rate limiting
 
         this.services.push(this.accessory.getService(this.Service.CameraControl));
         this.services.push(this.accessory.getService(this.Service.Microphone));
@@ -199,6 +200,12 @@ class CameraSource {
     }
 
     async handleSnapshotRequest(request, callback) {
+        if (this.simplisafe.isBlocked) {
+            callback(new Error('Request blocked (rate limited)'));
+        }
+
+        // TODO Add blockers in camera logic
+
         let ffmpegPath = ffmpeg.path;
         if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
             ffmpegPath = this.cameraOptions.ffmpegPath;

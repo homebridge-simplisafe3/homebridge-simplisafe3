@@ -81,6 +81,10 @@ class SS3CODetector {
     }
 
     async getState(callback, parameter = 'triggered') {
+        if (this.simplisafe.isBlocked) {
+            callback(new Error('Request blocked (rate limited)'));
+        }
+
         try {
             let sensor = await this.getSensorInformation();
 
