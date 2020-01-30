@@ -1,10 +1,16 @@
 # Raspberry Pi FFmpeg Hardware Acceleration
 
+## Option 1
+
+Follow this guide: [Compiling FFmpeg and Codecs from Source Code: All-in-One Script](https://retroresolution.com/compiling-ffmpeg-from-source-code-all-in-one-script/)
+
+## Option 2
+
 Use these snippets to compile FFmpeg to support Raspberry Pi's H.264 OpenMAX hardware acceleration. This is recommended to greatly improve camera image quality and speed.
 
 This set up has only been tested on a Raspberry Pi 3 B+ running Raspbian Lite 4.19.57, please note this may not work with other conifgurations.
 
-## Install dependencies and compile FFmpeg
+### Install dependencies and compile FFmpeg
 See complete instructions [here](https://retroresolution.com/2016/05/31/compiling-software-from-source-code-on-the-raspberry-pi-the-ffmpeg-suite/).
 
 ```
@@ -66,7 +72,7 @@ Then, type `ffmpeg` and check that ffmpeg is correctly installed.
 
 Finally, find the path to ffmpeg using the command `which ffmpeg`.
 
-## Configure Homebridge
+### Configure Homebridge
 
 Add `cameraOptions` in your `config.json` configuration as follows:
 ```
