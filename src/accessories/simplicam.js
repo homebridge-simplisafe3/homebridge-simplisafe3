@@ -82,8 +82,8 @@ class SS3SimpliCam {
     }
 
     getState(callback, service, characteristic) {
-        if (this.simplisafe.isBlocked) {
-            callback(new Error('Request blocked (rate limited)'));
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
         }
 
         let state = service.getCharacteristic(characteristic);
@@ -214,8 +214,8 @@ class CameraSource {
     }
 
     async handleSnapshotRequest(request, callback) {
-        if (this.simplisafe.isBlocked) {
-            callback(new Error('Request blocked (rate limited)'));
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
         }
 
         let ffmpegPath = ffmpeg.path;
@@ -360,8 +360,8 @@ class CameraSource {
     }
 
     handleStreamRequest = async (request) => {
-        if (this.simplisafe.isBlocked) {
-            callback(new Error('Request blocked (rate limited)'));
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
         }
 
         let sessionId = request.sessionID;

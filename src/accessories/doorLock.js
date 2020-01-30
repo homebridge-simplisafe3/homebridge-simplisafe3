@@ -89,8 +89,8 @@ class SS3DoorLock {
     }
 
     async getCurrentState(callback) {
-        if (this.simplisafe.isBlocked) {
-            callback(new Error('Request blocked (rate limited)'));
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
         }
 
         this.log('Getting current lock state...');
@@ -115,8 +115,8 @@ class SS3DoorLock {
     }
 
     async getTargetState(callback) {
-        if (this.simplisafe.isBlocked) {
-            callback(new Error('Request blocked (rate limited)'));
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
         }
 
         this.log('Getting target lock state...');

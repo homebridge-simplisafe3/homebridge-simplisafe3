@@ -81,8 +81,8 @@ class SS3CODetector {
     }
 
     async getState(callback, parameter = 'triggered') {
-        if (this.simplisafe.isBlocked) {
-            callback(new Error('Request blocked (rate limited)'));
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
         }
 
         try {

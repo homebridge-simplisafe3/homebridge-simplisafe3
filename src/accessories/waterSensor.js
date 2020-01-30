@@ -75,8 +75,8 @@ class SS3WaterSensor {
     }
 
     async getState(callback) {
-        if (this.simplisafe.isBlocked) {
-            callback(new Error('Request blocked (rate limited)'));
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
         }
 
         try {
