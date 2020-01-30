@@ -101,7 +101,7 @@ By default, the plugin won't remove old accessories from the Home app. This is t
 #### `resetSimpliSafeId`
 Type: boolean (default `false`)
 
-...
+Upon first start, the plugin generates an ID which it uses to identify itself with SimpliSafe. If you wish to reset it, set this to `true`.
 
 ## Supported Devices
 
