@@ -75,7 +75,7 @@ class SS3EntrySensor {
     }
 
     async getState(callback, forceRefresh = false) {
-        if (forceRefresh) {
+        if (!forceRefresh) {
             let state = this.service.getCharacteristic(this.Characteristic.ContactSensorState);
             callback(null, state);
         } else {
