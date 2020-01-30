@@ -1,7 +1,7 @@
 // © 2019 Niccolò Zapponi
 // SimpliSafe 3 HomeBridge Plugin
 
-import SimpliSafe3, { SENSOR_TYPES } from './simplisafe';
+import SimpliSafe3, { SENSOR_TYPES, RateLimitError } from './simplisafe';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
 import MotionSensor from './accessories/motionSensor';
@@ -11,6 +11,7 @@ import WaterSensor from './accessories/waterSensor';
 import FreezeSensor from './accessories/freezeSensor';
 import DoorLock from './accessories/doorLock';
 import Camera from './accessories/simplicam';
+import UnreachableAccessory from './accessories/unreachableAccessory';
 
 const PLUGIN_NAME = 'homebridge-simplisafe3';
 const PLATFORM_NAME = 'SimpliSafe 3';
@@ -31,6 +32,7 @@ class SS3Platform {
         this.accessories = [];
 
         this.cachedAccessoryConfig = [];
+        this.unreachableAccessories = [];
 
         let refreshInterval = 15000;
         if (config.sensorRefresh) {
@@ -39,20 +41,26 @@ class SS3Platform {
 
         this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId);
 
+        if (config.subscriptionId) {
+            this.log(`Specifying account number: ${config.subscriptionId}`);
+            this.simplisafe.setDefaultSubscription(config.subscriptionId);
+        }
+
         this.initialLoad = this.simplisafe.login(config.auth.username, config.auth.password, true)
             .then(() => {
                 this.log('Logged in!');
-
-                if (config.subscriptionId) {
-                    this.log(`Specifying account number: ${config.subscriptionId}`);
-                    this.simplisafe.setDefaultSubscription(config.subscriptionId);
-                }
-
                 return this.refreshAccessories(false);
             })
             .catch(err => {
-                this.log('SS3 init failed');
-                this.log(err);
+                if (err instanceof RateLimitError) {
+                    this.log('Log in failed due to rate limiting, trying again later');
+                    setTimeout(async () => {
+                        await this.retryBlockedAccessories();
+                    }, this.simplisafe.nextAttempt - Date.now());
+                } else {
+                    this.log('SS3 init failed');
+                    this.log(err);
+                }
             });
 
         if (api) {
@@ -93,6 +101,14 @@ class SS3Platform {
         let config = new Promise((resolve, reject) => {
             this.initialLoad
                 .then(() => {
+
+                    if (this.simplisafe.isBlocked) {
+                        let unreachableAccessory = new UnreachableAccessory(accessory, Service, Characteristic);
+                        this.unreachableAccessories.push(unreachableAccessory);
+
+                        return resolve();
+                    }
+
                     let device = this.devices.find(device => device.uuid === accessory.UUID);
 
                     if (device) {
@@ -416,8 +432,12 @@ class SS3Platform {
                 }
             }
         } catch (err) {
-            this.log('An error occurred while refreshing accessories');
-            this.log(err);
+            if (err instanceof RateLimitError) {
+                this.log('Accessory refresh failed due to rate limiting');
+            } else {
+                this.log('An error occurred while refreshing accessories');
+                this.log(err);
+            }
         }
 
     }
@@ -426,6 +446,32 @@ class SS3Platform {
         this.log('Updating reacahability');
         for (let accessory of this.accessories) {
             accessory.updateReachability();
+        }
+    }
+
+    async retryBlockedAccessories() {
+        try {
+            await this.simplisafe.login(this.simplisafe.username, this.simplisafe.password, true);
+            this.log('Recovered from 403 rate limit!');
+            await this.refreshAccessories(false);
+            this.cachedAccessoryConfig = [];
+            for (let accessory of this.unreachableAccessories) {
+                accessory.clearAccessory();
+                this.configureAccessory(accessory.accessory);
+            }
+            await Promise.all(this.cachedAccessoryConfig);
+            await this.refreshAccessories();
+
+        } catch (err) {
+            if (err instanceof RateLimitError) {
+                this.log('Log in attempt failed, still rate limited');
+                setTimeout(async () => {
+                    await this.retryBlockedAccessories();
+                }, this.simplisafe.nextAttempt - Date.now());
+            } else {
+                this.log('An error occurred while logging in again');
+                this.log(err);
+            }
         }
     }
 

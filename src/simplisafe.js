@@ -11,13 +11,18 @@ const clientUsername = `${clientUuid}.WebApp.simplisafe.com`;
 const clientPassword = '';
 const subscriptionCacheTime = 3000; // ms
 const sensorCacheTime = 3000; // ms
+// TODO Change path of config file
 const internalConfigFile = '~/.homebridge/.simplisafe3.conf';
 const mfaTimeout = 5 * 60 * 1000; // ms
 const rateLimitInitialInterval = 60000; // ms
 const rateLimitMaxInterval = 2 * 60 * 60 * 1000; // ms
 
 const ssApi = axios.create({
-    baseURL: 'https://api.simplisafe.com/v1'
+    baseURL: 'https://api.simplisafe.com/v1',
+    proxy: {
+        host: 'localhost',
+        port: 8888
+    }
 });
 
 const validAlarmStates = [
@@ -48,12 +53,25 @@ export const SENSOR_TYPES = {
     'DOORLOCK_2': 253
 };
 
+export class RateLimitError extends Error {
+    constructor(...params) {
+        super(...params);
+        // Maintains proper stack trace for where our error was thrown (only available on V8)
+        if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, RateLimitError);
+        }
+        this.name = 'RateLimitError';
+    }
+}
+
 const generateSimplisafeId = () => {
     const supportedCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz0123456789';
-    let id = '';
+    let id = [];
     while (id.length < 10) {
-        id.push(supportedCharacters(Math.floor(Math.random() * supportedCharacters.length)));
+        id.push(supportedCharacters[Math.floor(Math.random() * supportedCharacters.length)]);
     }
+
+    id = id.join('');
 
     return `${id.substring(0, 5)}-${id.substring(5)}`;
 };
@@ -94,12 +112,9 @@ class SimpliSafe3 {
         if (fs.existsSync(internalConfigFile)) {
             let configFile = fs.readFileSync(internalConfigFile);
             let config = JSON.parse(configFile);
-            console.log(`Config file found. SS-ID: ${config.ssId}`);
             this.ssId = config.ssId;
         } else {
             this.ssId = generateSimplisafeId();
-
-            console.log(`Config file not found. Generating SS-ID: ${this.ssId}`);
 
             // Ensure folder path exists
             let pathComponents = internalConfigFile.split('/');
@@ -117,6 +132,11 @@ class SimpliSafe3 {
         if (storeCredentials) {
             this.username = username;
             this.password = password;
+        }
+
+        if (this.isBlocked && Date.now() < this.nextAttempt) {
+            let err = new RateLimitError('Login request blocked (rate limit).');
+            throw err;
         }
 
         try {
@@ -164,14 +184,13 @@ class SimpliSafe3 {
                         this._resetRateLimitHandler();
 
                     } catch (err) {
-                        console.log('Multifactor authentication failed');
                         this.logout(storeCredentials);
                         throw err.response ? err.response : err;
                     }
 
                 } else if (errCode == 403) {
                     this._setRateLimitHandler();
-                    let err = new Error('Login failed, request blocked (rate limit?).');
+                    let err = new RateLimitError('Login failed, request blocked (rate limit?).');
                     throw err;
                 } else {
                     this.logout(storeCredentials);
@@ -249,7 +268,13 @@ class SimpliSafe3 {
 
     async refreshToken() {
         if (!this.isLoggedIn() || !this.refreshToken) {
-            return Promise.reject('User is not logged in');
+            let err = new Error('User is not logged in');
+            throw err;
+        }
+
+        if (this.isBlocked && Date.now() < this.nextAttempt) {
+            let err = new RateLimitError('Refresh token request blocked (rate limit).');
+            throw err;
         }
 
         try {
@@ -289,7 +314,7 @@ class SimpliSafe3 {
     async request(params, tokenRefreshed = false) {
 
         if (this.isBlocked && Date.now() < this.nextAttempt) {
-            let err = new Error('Blocking request: rate limited');
+            let err = new RateLimitError('Blocking request: rate limited');
             throw err;
         }
 
