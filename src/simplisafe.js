@@ -54,7 +54,7 @@ class SimpliSafe3 {
     subId;
     accountNumber;
     socket;
-    lastSubscriptionRequest;
+    lastSubscriptionRequests = {};
     lastSensorRequest;
     lastLockRequest;
     sensorRefreshInterval;
@@ -224,7 +224,7 @@ class SimpliSafe3 {
         return subscriptions;
     }
 
-    async getSubscription(subId = null) {
+    async getSubscription(subId = null, forceRefresh = false) {
         let subscriptionId = subId;
 
         if (!subscriptionId) {
@@ -243,11 +243,25 @@ class SimpliSafe3 {
             }
         }
 
-        let data = await this.request({
-            method: 'GET',
-            url: `/subscriptions/${subscriptionId}/`
-        });
+        if (forceRefresh || !this.lastSubscriptionRequests[subscriptionId]) {
+            this.lastSubscriptionRequests[subscriptionId] = this.request({
+                method: 'GET',
+                url: `/subscriptions/${subscriptionId}/`
+            })
+                .then(sub => {
+                    return sub;
+                })
+                .catch(err => {
+                    throw err;
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        this.lastSubscriptionRequests[subscriptionId] = null;
+                    }, subscriptionCacheTime);
+                });
+        }
 
+        let data = await this.lastSubscriptionRequests[subscriptionId];
         return data.subscription;
     }
 
@@ -260,21 +274,7 @@ class SimpliSafe3 {
     }
 
     async getAlarmState(forceRefresh = false, retry = false) {
-        if (forceRefresh || !this.lastSubscriptionRequest) {
-            this.lastSubscriptionRequest = this.getSubscription()
-                .then(sub => {
-                    return sub;
-                })
-                .catch(err => {
-                    throw err;
-                })
-                .finally(() => {
-                    setTimeout(() => {
-                        this.lastSubscriptionRequest = null;
-                    }, subscriptionCacheTime);
-                });
-        }
-        let subscription = await this.lastSubscriptionRequest;
+        let subscription = await this.getSubscription(null, forceRefresh);
 
         if (subscription.location && subscription.location.system) {
             if (subscription.location.system.isAlarming) {
@@ -366,21 +366,7 @@ class SimpliSafe3 {
     }
 
     async getCameras(forceRefresh = false) {
-        if (forceRefresh || !this.lastSubscriptionRequest) {
-            this.lastSubscriptionRequest = this.getSubscription()
-                .then(sub => {
-                    return sub;
-                })
-                .catch(err => {
-                    throw err;
-                })
-                .finally(() => {
-                    setTimeout(() => {
-                        this.lastSubscriptionRequest = null;
-                    }, subscriptionCacheTime);
-                });
-        }
-        let subscription = await this.lastSubscriptionRequest;
+        let subscription = await this.getSubscription(null, forceRefresh);
 
         if (subscription.location && subscription.location.system && subscription.location.system.cameras) {
             return subscription.location.system.cameras;
