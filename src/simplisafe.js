@@ -4,6 +4,7 @@
 import axios from 'axios';
 import io from 'socket.io-client';
 import fs from 'fs';
+import os from 'os';
 
 // Do not touch these - they allow the client to make requests to the SimpliSafe API
 const clientUuid = '4df55627-46b2-4e2c-866b-1521b395ded2';
@@ -11,18 +12,13 @@ const clientUsername = `${clientUuid}.WebApp.simplisafe.com`;
 const clientPassword = '';
 const subscriptionCacheTime = 3000; // ms
 const sensorCacheTime = 3000; // ms
-// TODO Change path of config file
-const internalConfigFile = '~/.homebridge/.simplisafe3.conf';
+const internalConfigFile = os.homedir() + '/.homebridge/.simplisafe3.conf';
 const mfaTimeout = 5 * 60 * 1000; // ms
 const rateLimitInitialInterval = 60000; // ms
 const rateLimitMaxInterval = 2 * 60 * 60 * 1000; // ms
 
 const ssApi = axios.create({
-    baseURL: 'https://api.simplisafe.com/v1',
-    proxy: {
-        host: 'localhost',
-        port: 8888
-    }
+    baseURL: 'https://api.simplisafe.com/v1'
 });
 
 const validAlarmStates = [
