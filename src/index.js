@@ -53,7 +53,7 @@ class SS3Platform {
             })
             .catch(err => {
                 if (err instanceof RateLimitError) {
-                    this.log('Log in failed due to rate limiting, trying again later');
+                    this.log('Log in failed due to rate limiting or connectivity, trying again later');
                     setTimeout(async () => {
                         await this.retryBlockedAccessories();
                     }, this.simplisafe.nextAttempt - Date.now());
@@ -66,8 +66,6 @@ class SS3Platform {
         if (api) {
             this.api = api;
             this.api.on('didFinishLaunching', () => {
-
-                this.log('DidFinishLaunching');
                 this.log(`Found ${this.cachedAccessoryConfig.length} cached accessories being configured`);
 
                 this.initialLoad
@@ -433,7 +431,7 @@ class SS3Platform {
             }
         } catch (err) {
             if (err instanceof RateLimitError) {
-                this.log('Accessory refresh failed due to rate limiting');
+                this.log('Accessory refresh failed due to rate limiting or connectivity');
             } else {
                 this.log('An error occurred while refreshing accessories');
                 this.log(err);

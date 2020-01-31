@@ -217,7 +217,8 @@ class SimpliSafe3 {
                     throw err.response;
                 }
             } else {
-                this.logout(storeCredentials);
+                this._setRateLimitHandler();
+                let err = new RateLimitError('Login failed, request blocked (connectivity?).');
                 throw err;
             }
         }
@@ -325,7 +326,8 @@ class SimpliSafe3 {
                 }
                 throw err.response;
             } else {
-                this.logout(this.username != null);
+                this._setRateLimitHandler();
+                let err = new RateLimitError('Login failed, request blocked (connectivity?).');
                 throw err;
             }
         }
@@ -367,6 +369,11 @@ class SimpliSafe3 {
             this._resetRateLimitHandler();
             return response.data;
         } catch (err) {
+            if (!err.response) {
+                let err = new RateLimitError(err);
+                throw err;
+            }
+
             let statusCode = err.response.status;
             if (statusCode == 401 && !tokenRefreshed) {
                 return this.refreshToken()
