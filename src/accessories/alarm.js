@@ -92,7 +92,6 @@ class SS3Alarm {
     }
 
     async getCurrentState(callback, forceRefresh = false) {
-        this.log('Getting current state...');
         if (!forceRefresh) {
             let state = this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState);
             callback(null, state);
@@ -109,7 +108,6 @@ class SS3Alarm {
     }
 
     async getTargetState(callback, forceRefresh = false) {
-        this.log('Getting target state...');
         if (!forceRefresh) {
             let state = this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState);
             callback(null, state);
