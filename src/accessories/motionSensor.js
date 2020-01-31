@@ -93,9 +93,9 @@ class SS3MotionSensor {
 
             switch (event) {
                 case EVENT_TYPES.MOTION:
-                    this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
+                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
                     setTimeout(() => {
-                        this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, false);
+                        this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
                     }, 10000);
                     break;
                 default:
@@ -106,9 +106,9 @@ class SS3MotionSensor {
         this.simplisafe.subscribeToSensor(this.id, sensor => {
             if (sensor.flags) {
                 if (sensor.flags.lowBattery) {
-                    this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                 } else {
-                    this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                 }
             }
         });
