@@ -91,48 +91,54 @@ class SS3DoorLock {
     }
 
     async getCurrentState(callback, forceRefresh = false) {
-        this.log('Getting current lock state...');
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
         if (!forceRefresh) {
             let state = this.service.getCharacteristic(this.Characteristic.LockCurrentState);
-            callback(null, state);
-        } else {
-            try {
-                let lock = await this.getLockInformation();
-                let state = lock.status.lockState;
-                let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
+            return callback(null, state);
+        }
 
-                if (lock.status.lockJamState) {
-                    homekitState = this.Characteristic.LockCurrentState.JAMMED;
-                }
+        try {
+            let lock = await this.getLockInformation();
+            let state = lock.status.lockState;
+            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
 
-                if (lock.status.lockDisabled) {
-                    homekitState = this.Characteristic.LockCurrentState.UNKNOWN;
-                }
-
-                this.log(`Current lock state is: ${state}, ${homekitState}`);
-                callback(null, homekitState);
-            } catch (err) {
-                callback(new Error(`An error occurred while getting the current door lock state: ${err}`));
+            if (lock.status.lockJamState) {
+                homekitState = this.Characteristic.LockCurrentState.JAMMED;
             }
+
+            if (lock.status.lockDisabled) {
+                homekitState = this.Characteristic.LockCurrentState.UNKNOWN;
+            }
+
+            this.log(`Current lock state is: ${state}, ${homekitState}`);
+            callback(null, homekitState);
+        } catch (err) {
+            callback(new Error(`An error occurred while getting the current door lock state: ${err}`));
         }
 
     }
 
     async getTargetState(callback, forceRefresh = false) {
-        this.log('Getting target lock state...');
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
         if (!forceRefresh) {
             let state = this.service.getCharacteristic(this.Characteristic.LockTargetState);
-            callback(null, state);
-        } else {
-            try {
-                let lock = await this.getLockInformation();
-                let state = lock.status.lockState;
-                let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-                this.log(`Target lock state is: ${state}, ${homekitState}`);
-                callback(null, homekitState);
-            } catch (err) {
-                callback(new Error(`An error occurred while getting the target door lock state: ${err}`));
-            }
+            return callback(null, state);
+        }
+
+        try {
+            let lock = await this.getLockInformation();
+            let state = lock.status.lockState;
+            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
+            this.log(`Target lock state is: ${state}, ${homekitState}`);
+            callback(null, homekitState);
+        } catch (err) {
+            callback(new Error(`An error occurred while getting the target door lock state: ${err}`));
         }
     }
 

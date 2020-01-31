@@ -46,19 +46,25 @@ class SS3SimpliCam {
             .setCharacteristic(this.Characteristic.SerialNumber, this.id)
             .setCharacteristic(this.Characteristic.FirmwareRevision, this.cameraDetails.cameraSettings.admin.firmwareVersion);
 
-
         this.services.push(this.accessory.getService(this.Service.CameraControl));
         this.services.push(this.accessory.getService(this.Service.Microphone));
-        this.services.push(this.accessory.getService(this.Service.MotionSensor));
+
+        let motionSensor = this.accessory.getService(this.Service.MotionSensor)
+            .getCharacteristic(this.Characteristic.MotionDetected)
+            .on('get', callback => this.getState(callback, this.accessory.getService(this.Service.MotionSensor), this.Characteristic.MotionDetected));
+        this.services.push(motionSensor);
+
         if (this.accessory.getService(this.Service.Doorbell)) {
-            this.services.push(this.accessory.getService(this.Service.Doorbell));
+            let doorbell = this.accessory.getService(this.Service.Doorbell)
+                .getCharacteristic(this.Characteristic.ProgrammableSwitchEvent)
+                .on('get', callback => this.getState(callback, this.accessory.getService(this.Service.Doorbell), this.Characteristic.ProgrammableSwitchEvent));
+            this.services.push(doorbell);
         }
 
         // Clear cached stream controllers
         this.accessory.services
             .filter(service => service.UUID === this.Service.CameraRTPStreamManagement.UUID)
             .map(service => {
-                this.log('Found cached stream');
                 this.accessory.removeService(service);
             });
 
@@ -75,6 +81,15 @@ class SS3SimpliCam {
 
         this.accessory.configureCameraSource(this.cameraSource);
         this.cameraSource.services = this.services;
+    }
+
+    getState(callback, service, characteristic) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
+        let state = service.getCharacteristic(characteristic);
+        callback(null, state);
     }
 
     async updateReachability() {
@@ -201,6 +216,10 @@ class CameraSource {
     }
 
     async handleSnapshotRequest(request, callback) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
         let ffmpegPath = ffmpeg.path;
         if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
             ffmpegPath = this.cameraOptions.ffmpegPath;
@@ -343,6 +362,10 @@ class CameraSource {
     }
 
     handleStreamRequest = async (request) => {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
         let sessionId = request.sessionID;
 
         if (sessionId) {

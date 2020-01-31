@@ -77,23 +77,27 @@ class SS3FreezeSensor {
     }
 
     async getState(callback, forceRefresh = false) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
         if (!forceRefresh) {
             let state = this.service.getCharacteristic(this.Characteristic.CurrentTemperature);
-            callback(null, state);
-        } else {
-            try {
-                let sensor = await this.getSensorInformation();
-    
-                if (!sensor.status) {
-                    throw new Error('Sensor response not understood');
-                }
-    
-                let temperature = fahrenheitToCelsius(sensor.status.temperature);
-                callback(null, temperature);
-    
-            } catch (err) {
-                callback(new Error(`An error occurred while getting sensor state: ${err}`));
+            return callback(null, state);
+        }
+
+        try {
+            let sensor = await this.getSensorInformation();
+
+            if (!sensor.status) {
+                throw new Error('Sensor response not understood');
             }
+
+            let temperature = fahrenheitToCelsius(sensor.status.temperature);
+            callback(null, temperature);
+
+        } catch (err) {
+            callback(new Error(`An error occurred while getting sensor state: ${err}`));
         }
     }
 
@@ -121,7 +125,7 @@ class SS3FreezeSensor {
                     let temperature = fahrenheitToCelsius(sensor.status.temperature);
                     this.service.setCharacteristic(this.Characteristic.CurrentTemperature, temperature);
                 }
-    
+
                 if (sensor.flags) {
                     if (sensor.flags.lowBattery) {
                         this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
@@ -142,7 +146,7 @@ class SS3FreezeSensor {
             }
 
             let temperature = fahrenheitToCelsius(sensor.status.temperature);
-            
+
             let batteryLow = sensor.flags.lowBattery;
             let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
 

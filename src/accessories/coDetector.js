@@ -81,6 +81,10 @@ class SS3CODetector {
     }
 
     async getState(callback, parameter = 'triggered', forceRefresh = false) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
         if (!forceRefresh) {
             let state = null;
 
@@ -94,32 +98,32 @@ class SS3CODetector {
                 throw new Error('Requested data type not understood');
             }
 
-            callback(null, state);
-        } else {
-            try {
-                let sensor = await this.getSensorInformation();
+            return callback(null, state);
+        }
 
-                if (!sensor.status) {
-                    throw new Error('Sensor response not understood');
-                }
+        try {
+            let sensor = await this.getSensorInformation();
 
-                let homekitState = null;
-
-                if (parameter == 'triggered') {
-                    homekitState = sensor.status.triggered ? this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL : this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL;
-                } else if (parameter == 'tamper') {
-                    homekitState = sensor.status.tamper ? this.Characteristic.StatusTampered.TAMPERED : this.Characteristic.StatusTampered.NOT_TAMPERED;
-                } else if (parameter == 'malfunction') {
-                    homekitState = sensor.status.malfunction ? this.Characteristic.StatusFault.GENERAL_FAULT : this.Characteristic.StatusFault.NO_FAULT;
-                } else {
-                    throw new Error('Requested data type not understood');
-                }
-
-                callback(null, homekitState);
-
-            } catch (err) {
-                callback(new Error(`An error occurred while getting sensor state: ${err}`));
+            if (!sensor.status) {
+                throw new Error('Sensor response not understood');
             }
+
+            let homekitState = null;
+
+            if (parameter == 'triggered') {
+                homekitState = sensor.status.triggered ? this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL : this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL;
+            } else if (parameter == 'tamper') {
+                homekitState = sensor.status.tamper ? this.Characteristic.StatusTampered.TAMPERED : this.Characteristic.StatusTampered.NOT_TAMPERED;
+            } else if (parameter == 'malfunction') {
+                homekitState = sensor.status.malfunction ? this.Characteristic.StatusFault.GENERAL_FAULT : this.Characteristic.StatusFault.NO_FAULT;
+            } else {
+                throw new Error('Requested data type not understood');
+            }
+
+            callback(null, homekitState);
+
+        } catch (err) {
+            callback(new Error(`An error occurred while getting sensor state: ${err}`));
         }
     }
 

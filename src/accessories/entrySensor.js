@@ -75,24 +75,28 @@ class SS3EntrySensor {
     }
 
     async getState(callback, forceRefresh = false) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
         if (!forceRefresh) {
             let state = this.service.getCharacteristic(this.Characteristic.ContactSensorState);
-            callback(null, state);
-        } else {
-            try {
-                let sensor = await this.getSensorInformation();
-    
-                if (!sensor.status) {
-                    throw new Error('Sensor response not understood');
-                }
-    
-                let open = sensor.status.triggered;
-                let homekitState = open ? this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED : this.Characteristic.ContactSensorState.CONTACT_DETECTED;
-                callback(null, homekitState);
-    
-            } catch (err) {
-                callback(new Error(`An error occurred while getting sensor state: ${err}`));
+            return callback(null, state);
+        }
+
+        try {
+            let sensor = await this.getSensorInformation();
+
+            if (!sensor.status) {
+                throw new Error('Sensor response not understood');
             }
+
+            let open = sensor.status.triggered;
+            let homekitState = open ? this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED : this.Characteristic.ContactSensorState.CONTACT_DETECTED;
+            callback(null, homekitState);
+
+        } catch (err) {
+            callback(new Error(`An error occurred while getting sensor state: ${err}`));
         }
     }
 
@@ -123,7 +127,7 @@ class SS3EntrySensor {
                         this.service.setCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_DETECTED);
                     }
                 }
-    
+
                 if (sensor.flags) {
                     if (sensor.flags.lowBattery) {
                         this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);

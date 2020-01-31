@@ -92,34 +92,42 @@ class SS3Alarm {
     }
 
     async getCurrentState(callback, forceRefresh = false) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
         if (!forceRefresh) {
             let state = this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState);
-            callback(null, state);
-        } else {
-            try {
-                let state = await this.simplisafe.getAlarmState();
-                let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-                this.log(`Current alarm state is: ${homekitState}`);
-                callback(null, homekitState);
-            } catch (err) {
-                callback(new Error(`An error occurred while getting the current alarm state: ${err}`));
-            }
+            return callback(null, state);
+        }
+
+        try {
+            let state = await this.simplisafe.getAlarmState();
+            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
+            this.log(`Current alarm state is: ${homekitState}`);
+            callback(null, homekitState);
+        } catch (err) {
+            callback(new Error(`An error occurred while getting the current alarm state: ${err}`));
         }
     }
 
     async getTargetState(callback, forceRefresh = false) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
         if (!forceRefresh) {
             let state = this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState);
-            callback(null, state);
-        } else {
-            try {
-                let state = await this.simplisafe.getAlarmState();
-                let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-                this.log(`Target alarm state is: ${homekitState}`);
-                callback(null, homekitState);
-            } catch (err) {
-                callback(new Error(`An error occurred while getting the target alarm state: ${err}`));
-            }
+            return callback(null, state);
+        }
+
+        try {
+            let state = await this.simplisafe.getAlarmState();
+            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
+            this.log(`Target alarm state is: ${homekitState}`);
+            callback(null, homekitState);
+        } catch (err) {
+            callback(new Error(`An error occurred while getting the target alarm state: ${err}`));
         }
     }
 
