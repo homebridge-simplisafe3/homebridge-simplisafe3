@@ -74,20 +74,25 @@ class SS3WaterSensor {
         }
     }
 
-    async getState(callback) {
-        try {
-            let sensor = await this.getSensorInformation();
+    async getState(callback, forceRefresh = false) {
+        if (!forceRefresh) {
+            let state = this.service.getCharacteristic(this.Characteristic.LeakDetected);
+            callback(null, state);
+        } else {
+            try {
+                let sensor = await this.getSensorInformation();
 
-            if (!sensor.status) {
-                throw new Error('Sensor response not understood');
+                if (!sensor.status) {
+                    throw new Error('Sensor response not understood');
+                }
+
+                let leak = sensor.status.triggered;
+                let homekitState = leak ? this.Characteristic.LeakDetected.LEAK_DETECTED : this.Characteristic.LeakDetected.LEAK_NOT_DETECTED;
+                callback(null, homekitState);
+
+            } catch (err) {
+                callback(new Error(`An error occurred while getting sensor state: ${err}`));
             }
-
-            let leak = sensor.status.triggered;
-            let homekitState = leak ? this.Characteristic.LeakDetected.LEAK_DETECTED : this.Characteristic.LeakDetected.LEAK_NOT_DETECTED;
-            callback(null, homekitState);
-
-        } catch (err) {
-            callback(new Error(`An error occurred while getting sensor state: ${err}`));
         }
     }
 
@@ -118,7 +123,7 @@ class SS3WaterSensor {
                         this.service.setCharacteristic(this.Characteristic.LeakDetected, this.Characteristic.LeakDetected.LEAK_NOT_DETECTED);
                     }
                 }
-    
+
                 if (sensor.flags) {
                     if (sensor.flags.lowBattery) {
                         this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);

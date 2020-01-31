@@ -76,19 +76,24 @@ class SS3FreezeSensor {
         }
     }
 
-    async getState(callback) {
-        try {
-            let sensor = await this.getSensorInformation();
-
-            if (!sensor.status) {
-                throw new Error('Sensor response not understood');
+    async getState(callback, forceRefresh = false) {
+        if (!forceRefresh) {
+            let state = this.service.getCharacteristic(this.Characteristic.CurrentTemperature);
+            callback(null, state);
+        } else {
+            try {
+                let sensor = await this.getSensorInformation();
+    
+                if (!sensor.status) {
+                    throw new Error('Sensor response not understood');
+                }
+    
+                let temperature = fahrenheitToCelsius(sensor.status.temperature);
+                callback(null, temperature);
+    
+            } catch (err) {
+                callback(new Error(`An error occurred while getting sensor state: ${err}`));
             }
-
-            let temperature = fahrenheitToCelsius(sensor.status.temperature);
-            callback(null, temperature);
-
-        } catch (err) {
-            callback(new Error(`An error occurred while getting sensor state: ${err}`));
         }
     }
 

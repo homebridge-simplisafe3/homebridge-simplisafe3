@@ -1,3 +1,5 @@
+import { EVENT_TYPES } from '../simplisafe';
+
 class SS3DoorLock {
 
     constructor(name, id, log, simplisafe, Service, Characteristic, UUIDGen) {
@@ -88,38 +90,49 @@ class SS3DoorLock {
         }
     }
 
-    async getCurrentState(callback) {
+    async getCurrentState(callback, forceRefresh = false) {
         this.log('Getting current lock state...');
-        try {
-            let lock = await this.getLockInformation();
-            let state = lock.status.lockState;
-            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
+        if (!forceRefresh) {
+            let state = this.service.getCharacteristic(this.Characteristic.LockCurrentState);
+            callback(null, state);
+        } else {
+            try {
+                let lock = await this.getLockInformation();
+                let state = lock.status.lockState;
+                let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
 
-            if (lock.status.lockJamState) {
-                homekitState = this.Characteristic.LockCurrentState.JAMMED;
+                if (lock.status.lockJamState) {
+                    homekitState = this.Characteristic.LockCurrentState.JAMMED;
+                }
+
+                if (lock.status.lockDisabled) {
+                    homekitState = this.Characteristic.LockCurrentState.UNKNOWN;
+                }
+
+                this.log(`Current lock state is: ${state}, ${homekitState}`);
+                callback(null, homekitState);
+            } catch (err) {
+                callback(new Error(`An error occurred while getting the current door lock state: ${err}`));
             }
-
-            if (lock.status.lockDisabled) {
-                homekitState = this.Characteristic.LockCurrentState.UNKNOWN;
-            }
-
-            this.log(`Current lock state is: ${state}, ${homekitState}`);
-            callback(null, homekitState);
-        } catch (err) {
-            callback(new Error(`An error occurred while getting the current door lock state: ${err}`));
         }
+
     }
 
-    async getTargetState(callback) {
+    async getTargetState(callback, forceRefresh = false) {
         this.log('Getting target lock state...');
-        try {
-            let lock = await this.getLockInformation();
-            let state = lock.status.lockState;
-            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            this.log(`Target lock state is: ${state}, ${homekitState}`);
-            callback(null, homekitState);
-        } catch (err) {
-            callback(new Error(`An error occurred while getting the target door lock state: ${err}`));
+        if (!forceRefresh) {
+            let state = this.service.getCharacteristic(this.Characteristic.LockTargetState);
+            callback(null, state);
+        } else {
+            try {
+                let lock = await this.getLockInformation();
+                let state = lock.status.lockState;
+                let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
+                this.log(`Target lock state is: ${state}, ${homekitState}`);
+                callback(null, homekitState);
+            } catch (err) {
+                callback(new Error(`An error occurred while getting the target door lock state: ${err}`));
+            }
         }
     }
 
@@ -144,20 +157,33 @@ class SS3DoorLock {
 
     startListening() {
         this.log('Listening to door lock events...');
-        this.simplisafe.subscribeToEvents((event, data) => {
+        this.simplisafe.subscribeToEvents(async (event, data) => {
 
             if (this.service) {
                 if (data && data.sensorSerial && data.sensorSerial == this.id) {
                     this.log(`Received new door lock event: ${event}`);
-    
+
                     switch (event) {
-                        case 'DOORLOCK_UNLOCKED':
+                        case EVENT_TYPES.DOORLOCK_UNLOCKED:
                             this.service.setCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
                             this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.UNSECURED);
                             break;
-                        case 'DOORLOCK_LOCKED':
+                        case EVENT_TYPES.DOORLOCK_LOCKED:
                             this.service.setCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
                             this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.SECURED);
+                            break;
+                        case EVENT_TYPES.DOORLOCK_ERROR:
+                            try {
+                                let lock = await this.getLockInformation();
+
+                                if (lock.status.lockJamState) {
+                                    this.service.setCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.JAMMED);
+                                } else if (lock.status.lockDisabled) {
+                                    this.service.setCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNKNOWN);
+                                }
+                            } catch (err) {
+                                this.log(`An error occurred while updating lock error state: ${err}`);
+                            }
                             break;
                         default:
                             break;
