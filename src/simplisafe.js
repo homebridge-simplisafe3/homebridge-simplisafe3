@@ -10,6 +10,7 @@ import os from 'os';
 const clientUuid = '4df55627-46b2-4e2c-866b-1521b395ded2';
 const clientUsername = `${clientUuid}.WebApp.simplisafe.com`;
 const clientPassword = '';
+
 const subscriptionCacheTime = 3000; // ms
 const sensorCacheTime = 3000; // ms
 const internalConfigFile = os.homedir() + '/.homebridge/.simplisafe3.conf';
@@ -136,9 +137,13 @@ class SimpliSafe3 {
             let folderPath = pathComponents.slice(0, pathComponents.length - 1).join('/');
             fs.mkdirSync(folderPath, { recursive: true });
 
-            fs.writeFileSync(internalConfigFile, JSON.stringify({
-                ssId: this.ssId
-            }));
+            try {
+                fs.writeFileSync(internalConfigFile, JSON.stringify({
+                    ssId: this.ssId
+                }));
+            } catch (err) {
+                this.log('Warning: could not save SS config file. SS-ID will vary');
+            }
         }
     }
 
@@ -180,7 +185,7 @@ class SimpliSafe3 {
 
                 if (errCode == 403 && (errData && errData.error && errData.error == 'mfa_required')) {
 
-                    console.log('Multifactor authentication required. Check your email and approve the request!');
+                    this.log('Multifactor authentication required. Check your email and approve the request!');
 
                     // Multifactor Authentication required
                     let mfaToken = errData.mfa_token;
@@ -313,7 +318,7 @@ class SimpliSafe3 {
                 let errCode = err.response.status;
 
                 if (errCode == 403) {
-                    console.log('Token refresh failed, request blocked (rate limit?).');
+                    this.log('Token refresh failed, request blocked (rate limit?).');
                     this._setRateLimitHandler();
                 } else {
                     this.logout(this.username != null);
@@ -378,9 +383,9 @@ class SimpliSafe3 {
                         }
                     });
             } else if (statusCode == 403) {
-                console.log('Request failed, request blocked (rate limit?).');
+                this.log('Request failed, request blocked (rate limit?).');
                 this._setRateLimitHandler();
-                throw err.response.data;
+                throw new RateLimitError(err.response.data);
             } else {
                 throw err.response.data;
             }
@@ -720,6 +725,11 @@ class SimpliSafe3 {
             }
         };
 
+        if (this.isBlocked && Date.now() < this.nextAttempt) {
+            let err = new RateLimitError('Login request blocked (rate limit).');
+            throw err;
+        }
+
         if (!this.socket) {
             let userId = await this.getUserId();
 
@@ -733,16 +743,16 @@ class SimpliSafe3 {
             });
 
             this.socket.on('connect', () => {
-                // console.log('Connect');
+                // this.log('Connect');
             });
 
             this.socket.on('connect_error', () => {
-                // console.log('Connect_error', err);
+                // this.log('Connect_error', err);
                 this.socket = null;
             });
 
             this.socket.on('connect_timeout', () => {
-                // console.log('Connect_timeout');
+                // this.log('Connect_timeout');
                 this.socket = null;
             });
 
@@ -755,7 +765,7 @@ class SimpliSafe3 {
             });
 
             this.socket.on('reconnect_failed', () => {
-                // console.log('Reconnect_failed');
+                // this.log('Reconnect_failed');
                 this.socket = null;
             });
         }
@@ -803,7 +813,9 @@ class SimpliSafe3 {
                             .map(sub => sub.callback(sensor));
                     }
                 } catch (err) {
-                    this.log(err);
+                    if (!err instanceof RateLimitError) {
+                        this.log(err);
+                    }
                 }
 
             }, this.sensorRefreshTime);
