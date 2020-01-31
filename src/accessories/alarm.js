@@ -1,3 +1,5 @@
+import { EVENT_TYPES } from '../simplisafe';
+
 class SS3Alarm {
 
     constructor(name, id, log, simplisafe, Service, Characteristic, UUIDGen) {
@@ -154,27 +156,27 @@ class SS3Alarm {
             this.log(`Received new event from alarm: ${event}`);
             if (this.service) {
                 switch (event) {
-                    case 'DISARM':
-                    case 'CANCEL':
-                    case 'OFF':
+                    case EVENT_TYPES.ALARM_DISARM:
+                    case EVENT_TYPES.ALARM_CANCEL:
+                    case EVENT_TYPES.ALARM_OFF:
                         this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
                         this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
                         break;
-                    case 'HOME_ARM':
+                    case EVENT_TYPES.HOME_ARM:
                         this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
                         this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
                         break;
-                    case 'AWAY_ARM':
+                    case EVENT_TYPES.AWAY_ARM:
                         this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
                         this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                         break;
-                    case 'HOME_EXIT_DELAY':
+                    case EVENT_TYPES.HOME_EXIT_DELAY:
                         this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
                         break;
-                    case 'AWAY_EXIT_DELAY':
+                    case EVENT_TYPES.AWAY_EXIT_DELAY:
                         this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                         break;
-                    case 'DISCONNECT':
+                    case EVENT_TYPES.DISCONNECT:
                         this.log('Real time events disconnected.');
                         this.startListening();
                         break;

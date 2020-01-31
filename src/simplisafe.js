@@ -42,6 +42,25 @@ export const SENSOR_TYPES = {
     'DOORLOCK_2': 253
 };
 
+export const EVENT_TYPES = {
+    ALARM_TRIGGER: 'ALARM_TRIGGER',
+    ALARM_OFF: 'ALARM_OFF',
+    ALARM_DISARM: 'ALARM_DISARM',
+    ALARM_CANCEL: 'ALARM_CANCEL',
+    HOME_EXIT_DELAY: 'HOME_EXIT_DELAY',
+    HOME_ARM: 'HOME_ARM',
+    AWAY_EXIT_DELAY: 'AWAY_EXIT_DELAY',
+    AWAY_ARM: 'AWAY_ARM',
+    MOTION: 'MOTION',
+    ENTRY: 'ENTRY',
+    CAMERA_MOTION: 'CAMERA_MOTION',
+    DOORBELL: 'DOORBELL',
+    DOORLOCK_LOCKED: 'DOORLOCK_LOCKED',
+    DOORLOCK_UNLOCKED: 'DOORLOCK_UNLOCKED',
+    DOORLOCK_ERROR: 'DOORLOCK_ERROR',
+    DISCONNECT: 'DISCONNECT'
+};
+
 class SimpliSafe3 {
 
     token;
@@ -435,10 +454,10 @@ class SimpliSafe3 {
 
             switch (data.eventType) {
                 case 'alarm':
-                    callback('ALARM', data);
+                    callback(EVENT_TYPES.ALARM_TRIGGER, data);
                     break;
                 case 'alarmCancel':
-                    callback('OFF', data);
+                    callback(EVENT_TYPES.ALARM_OFF, data);
                     break;
                 case 'activity':
                 case 'activityQuiet':
@@ -448,35 +467,35 @@ class SimpliSafe3 {
                         case 1400:
                         case 1407:
                             // 1400 is disarmed with Master PIN, 1407 is disarmed with Remote
-                            callback('DISARM', data);
+                            callback(EVENT_TYPES.ALARM_DISARM, data);
                             break;
                         case 1406:
-                            callback('CANCEL', data);
+                            callback(EVENT_TYPES.ALARM_CANCEL, data);
                             break;
                         case 1409:
-                            callback('MOTION', data);
+                            callback(EVENT_TYPES.MOTION, data);
                             break;
                         case 9441:
-                            callback('HOME_EXIT_DELAY', data);
+                            callback(EVENT_TYPES.HOME_EXIT_DELAY, data);
                             break;
                         case 3441:
                         case 3491:
-                            callback('HOME_ARM', data);
+                            callback(EVENT_TYPES.HOME_ARM, data);
                             break;
                         case 9401:
                         case 9407:
                             // 9401 is for Keypad, 9407 is for Remote
-                            callback('AWAY_EXIT_DELAY', data);
+                            callback(EVENT_TYPES.AWAY_EXIT_DELAY, data);
                             break;
                         case 3401:
                         case 3407:
                         case 3487:
                         case 3481:
                             // 3401 is for Keypad, 3407 is for Remote
-                            callback('AWAY_ARM', data);
+                            callback(EVENT_TYPES.AWAY_ARM, data);
                             break;
                         case 1429:
-                            callback('ENTRY', data);
+                            callback(EVENT_TYPES.ENTRY, data);
                             break;
                         case 1110:
                         case 1154:
@@ -485,19 +504,22 @@ class SimpliSafe3 {
                         case 1132:
                         case 1134:
                         case 1120:
-                            callback('ALARM', data);
+                            callback(EVENT_TYPES.ALARM_TRIGGER, data);
                             break;
                         case 1170:
-                            callback('CAMERA_MOTION', data);
+                            callback(EVENT_TYPES.CAMERA_MOTION, data);
                             break;
                         case 1458:
-                            callback('DOORBELL', data);
+                            callback(EVENT_TYPES.DOORBELL, data);
                             break;
                         case 9700:
-                            callback('DOORLOCK_UNLOCKED', data);
+                            callback(EVENT_TYPES.DOORLOCK_UNLOCKED, data);
                             break;
                         case 9701:
-                            callback('DOORLOCK_LOCKED', data);
+                            callback(EVENT_TYPES.DOORLOCK_LOCKED, data);
+                            break;
+                        case 9703:
+                            callback(EVENT_TYPES.DOORLOCK_ERROR, data);
                             break;
                         case 1602:
                             // Automatic test
@@ -552,13 +574,13 @@ class SimpliSafe3 {
 
         this.socket.on('error', err => {
             if (err === 'Not authorized') {
-                callback('DISCONNECT');
+                callback(EVENT_TYPES.DISCONNECT);
             }
         });
 
         this.socket.on('disconnect', reason => {
             if (reason === 'transport close') {
-                callback('DISCONNECT');
+                callback(EVENT_TYPES.DISCONNECT);
             }
         });
 

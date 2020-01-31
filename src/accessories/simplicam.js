@@ -5,6 +5,8 @@ import { promisify } from 'util';
 import { spawn } from 'child_process';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
 
+import { EVENT_TYPES } from '../simplisafe';
+
 const dnsLookup = promisify(dns.lookup);
 
 class SS3SimpliCam {
@@ -105,7 +107,7 @@ class SS3SimpliCam {
             }
 
             switch (event) {
-                case 'CAMERA_MOTION':
+                case EVENT_TYPES.CAMERA_MOTION:
                     if (eventCameraId == this.id) {
                         this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
                         this.cameraSource.motionIsTriggered = true;
@@ -115,12 +117,12 @@ class SS3SimpliCam {
                         }, 5000);
                     }
                     break;
-                case 'DOORBELL':
+                case EVENT_TYPES.DOORBELL:
                     if (eventCameraId == this.id) {
                         this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
                     }
                     break;
-                case 'DISCONNECT':
+                case EVENT_TYPES.DISCONNECT:
                     this.log(this.name + ' camera real time events disconnected.');
                     this.startListening();
                     break;

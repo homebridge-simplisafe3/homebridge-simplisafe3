@@ -1,3 +1,5 @@
+import { EVENT_TYPES } from '../simplisafe';
+
 class SS3MotionSensor {
 
     constructor(name, id, log, simplisafe, Service, Characteristic, UUIDGen) {
@@ -90,7 +92,7 @@ class SS3MotionSensor {
             if (this.id !== data.sensorSerial) return;
 
             switch (event) {
-                case 'MOTION':
+                case EVENT_TYPES.MOTION:
                     this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
                     setTimeout(() => {
                         this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, false);
