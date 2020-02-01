@@ -24,6 +24,8 @@ Here are some examples of how the set up looks like:
 
 ## Usage
 
+This plugin supports installation and changing settings (for `config.js`) via the popular [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x).
+
 Ensure you are running Node v8 or higher. You can check by using `node -v`.
 
 Install the plugin by running:
@@ -147,33 +149,26 @@ To provide sample data, add `"debug": true` to the platform configuration inside
 This will print the data about all the sensors found.
 
 ### Camera Support
-Camera support is experimental and may not work. To enable it, simply switch `"cameras": true` in your `config.json`.
+Camera support is experimental and may not work. To enable it, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin).
 Once camera support is enabled in your `config.json`, add your cameras to the Home app by selecting Add Accessory - I Don't Have a Code or Cannot Scan, then select your cameras and use your Homebridge pairing code to add it.
 
-For advanced scenarios, you can add the `"cameraOptions"` dictionary to the platform configuration object in `config.json` (all keys are optional):
+For advanced scenarios, you can set `"cameraOptions"` in Config UI X or manually in `config.json`\*:
 
 ```
 "cameraOptions": {
     "ffmpegPath": "/path/to/custom/ffmpeg",
-    "sourceOptions": {
-        "-format": "flv",
-        ... (any other ffmpeg argument)
-    },
-    "videoOptions": {
-        "-vcodec": "h264_omx",
-        ... (any other ffmpeg argument)
-    },
-    "audioOptions": {
-        "-ar": "256k",
-        ... (any other ffmpeg argument)
-    }  
+    "sourceOptions": "-format: flv ... (any other ffmpeg argument)",
+    "videoOptions": "-vcodec h264_omx -tune false ... (any other ffmpeg argument)",
+    "audioOptions": "-ar 256k ... (any other ffmpeg argument)"
 }
 ```
+\* *Note that the format of `"cameraOptions"` changed as of version 1.4.3. Old config files should continue work but your settings may need to be re-entered if you are switching to using Config UI X*
+
 Here, `ffmpegPath` allows to specify a specific ffmpeg binary to be used, a useful feature for the use of hardware acceleration on the Raspberry Pi, for example.
 
 Any arguments provided in `sourceOptions`, `videoOptions` and `audioOptions` will be added to the list of arguments passed to ffmpeg, or will replace the default ones if these already exist.
-To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re": ""`.
-To remove a default argument, define it with `false` as its value, e.g. `"-re": false`.
+To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re "`.
+To remove a default argument, define it with `false` as its value, e.g. `"-re false"`.
 
 Here is a sample configuration to use a locally installed ffmpeg binary:
 ```
@@ -203,14 +198,8 @@ And here is a sample configuration to use the Raspberry Pi H.264 hardware accele
     "cameras": true,
     "cameraOptions": {
         "ffmpegPath": "/usr/local/bin/ffmpeg",
-        "sourceOptions": {
-            "-vcodec": "h264_mmal"
-        },
-        "videoOptions": {
-            "-vcodec": "h264_omx",
-            "-tune": false,
-            "-preset": false
-        }
+        "sourceOptions": "-vcodec h264_mmal",
+        "videoOptions": "-vcodec h264_omx -tune false -preset false"
     }
 }
 ```
