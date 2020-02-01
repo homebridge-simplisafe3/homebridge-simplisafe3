@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.4.4
+- Bug fixes
+
 ## v1.4.3
 - Added support for Homebridge Config UI X settings plugin
 - Improved performance of alarm and sensor state requests
