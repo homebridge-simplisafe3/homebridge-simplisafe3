@@ -13,7 +13,7 @@ const clientPassword = '';
 
 const subscriptionCacheTime = 3000; // ms
 const sensorCacheTime = 3000; // ms
-const internalConfigFile = os.homedir() + '/.homebridge/.simplisafe3.conf';
+const internalConfigFile = os.homedir() + '/.simplisafe3.conf';
 const mfaTimeout = 5 * 60 * 1000; // ms
 const rateLimitInitialInterval = 60000; // ms
 const rateLimitMaxInterval = 2 * 60 * 60 * 1000; // ms
