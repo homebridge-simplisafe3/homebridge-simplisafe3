@@ -56,7 +56,7 @@
 				"title": " Reset Generated SimpliSafe ID",
 				"type": "boolean",
 				"default": false
-			}
+			},
 			"cameraOptions": {
 			    "title": "Optional Camera Settings",
 			    "type": "object",
