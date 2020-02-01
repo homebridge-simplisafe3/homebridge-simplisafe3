@@ -1,6 +1,13 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.4.3
+- Added support for Homebridge Config UI X settings plugin
+- Improved performance of alarm and sensor state requests
+- Plugin now handles rate limiting by automatically stopping outgoing requests and recovering when rate limiting is over
+- Improved management of loss of connectivity
+- Changed the default behavior of `persistAccessories`. Old accessories are now automatically removed
+
 ## v1.4.2
 - Reverted the default behavior of `persistAccessories` while we implement a workaround for the rate limiting that SimpliSafe imposes.
 
