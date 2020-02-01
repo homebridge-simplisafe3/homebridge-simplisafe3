@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "nodemon --exec babel-node src/index.js",
-    "build": "rm -rf lib && babel src -d lib && cp package.json README.md lib/",
+    "build": "rm -rf lib && babel src -d lib && cp package.json config.schema.json README.md lib/",
     "deploy": "npm publish lib/",
     "release": "./scripts/release.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
