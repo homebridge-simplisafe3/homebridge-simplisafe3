@@ -174,15 +174,15 @@ class SS3Alarm {
                         case EVENT_TYPES.ALARM_CANCEL:
                         case EVENT_TYPES.ALARM_OFF:
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
-                            this.service.setCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
                             break;
                         case EVENT_TYPES.HOME_ARM:
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
-                            this.service.setCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
                             break;
                         case EVENT_TYPES.AWAY_ARM:
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
-                            this.service.setCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                             break;
                         case EVENT_TYPES.HOME_EXIT_DELAY:
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
@@ -215,7 +215,7 @@ class SS3Alarm {
             let currentHomekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
             let targetHomekitState = this.TARGET_SS3_TO_HOMEKIT[state];
             this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, currentHomekitState);
-            this.service.setCharacteristic(this.Characteristic.SecuritySystemTargetState, targetHomekitState);
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, targetHomekitState);
             this.log(`Updated current state for ${this.name}: ${state}`);
         } catch (err) {
             this.log('An error occurred while refreshing state');
