@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.4.5
+- Bug fixes
+
 ## v1.4.4
 - Bug fixes
 
