@@ -150,7 +150,7 @@ class SS3Alarm {
             let data = await this.simplisafe.setAlarmState(state);
             this.log(`Updated alarm state: ${JSON.stringify(data)}`);
             if (data.state == 'OFF') {
-                this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+                this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
             } else if (data.exitDelay && data.exitDelay > 0) {
                 setTimeout(async () => {
                     await this.refreshState();
@@ -173,15 +173,15 @@ class SS3Alarm {
                         case EVENT_TYPES.ALARM_DISARM:
                         case EVENT_TYPES.ALARM_CANCEL:
                         case EVENT_TYPES.ALARM_OFF:
-                            this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
                             break;
                         case EVENT_TYPES.HOME_ARM:
-                            this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
                             break;
                         case EVENT_TYPES.AWAY_ARM:
-                            this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                             break;
                         case EVENT_TYPES.HOME_EXIT_DELAY:
@@ -214,7 +214,7 @@ class SS3Alarm {
             let state = await this.simplisafe.getAlarmState();
             let currentHomekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
             let targetHomekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, currentHomekitState);
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, currentHomekitState);
             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, targetHomekitState);
             this.log(`Updated current state for ${this.name}: ${state}`);
         } catch (err) {

@@ -30,7 +30,11 @@ class SS3MotionSensor {
             .setCharacteristic(this.Characteristic.Model, 'Motion Sensor')
             .setCharacteristic(this.Characteristic.SerialNumber, this.id);
 
-        this.accessory.getService(this.Service.MotionSensor).getCharacteristic(this.Characteristic.StatusLowBattery)
+        this.service = this.accessory.getService(this.Service.MotionSensor);
+        this.service.getCharacteristic(this.Characteristic.MotionDetected)
+            .on('get', callback => this.getState(callback));
+
+        this.service.getCharacteristic(this.Characteristic.StatusLowBattery)
             .on('get', async callback => this.getBatteryStatus(callback));
     }
 
@@ -70,6 +74,15 @@ class SS3MotionSensor {
         }
     }
 
+    getState(callback) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
+        let state = this.service.getCharacteristic(this.Characteristic.MotionDetected);
+        return callback(null, state);
+    }
+
     async getBatteryStatus(callback) {
         try {
             let sensor = await this.getSensorInformation();
@@ -93,9 +106,9 @@ class SS3MotionSensor {
 
             switch (event) {
                 case EVENT_TYPES.MOTION:
-                    this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
+                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
                     setTimeout(() => {
-                        this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, false);
+                        this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
                     }, 10000);
                     break;
                 default:
@@ -106,9 +119,9 @@ class SS3MotionSensor {
         this.simplisafe.subscribeToSensor(this.id, sensor => {
             if (sensor.flags) {
                 if (sensor.flags.lowBattery) {
-                    this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                 } else {
-                    this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                 }
             }
         });
