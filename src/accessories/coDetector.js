@@ -149,29 +149,29 @@ class SS3CODetector {
             if (this.service) {
                 if (sensor.status) {
                     if (sensor.status.triggered) {
-                        this.service.setCharacteristic(this.Characteristic.CarbonMonoxideDetected, this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL);
+                        this.service.updateCharacteristic(this.Characteristic.CarbonMonoxideDetected, this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL);
                     } else {
-                        this.service.setCharacteristic(this.Characteristic.CarbonMonoxideDetected, this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL);
+                        this.service.updateCharacteristic(this.Characteristic.CarbonMonoxideDetected, this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL);
                     }
 
                     if (sensor.status.tamper) {
-                        this.service.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.TAMPERED);
+                        this.service.updateCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.TAMPERED);
                     } else {
-                        this.service.setCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
+                        this.service.updateCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
                     }
 
                     if (sensor.status.malfunction) {
-                        this.service.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.GENERAL_FAULT);
+                        this.service.updateCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.GENERAL_FAULT);
                     } else {
-                        this.service.setCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
+                        this.service.updateCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
                     }
                 }
 
                 if (sensor.flags) {
                     if (sensor.flags.lowBattery) {
-                        this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                     } else {
-                        this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                     }
                 }
             }
@@ -193,10 +193,10 @@ class SS3CODetector {
             let batteryLow = sensor.flags.lowBattery;
             let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
 
-            this.service.setCharacteristic(this.Characteristic.CarbonMonoxideDetected, homekitTriggeredState);
-            this.service.setCharacteristic(this.Characteristic.StatusTampered, homekitTamperState);
-            this.service.setCharacteristic(this.Characteristic.StatusFault, homekitFaultState);
-            this.service.setCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
+            this.service.updateCharacteristic(this.Characteristic.CarbonMonoxideDetected, homekitTriggeredState);
+            this.service.updateCharacteristic(this.Characteristic.StatusTampered, homekitTamperState);
+            this.service.updateCharacteristic(this.Characteristic.StatusFault, homekitFaultState);
+            this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
 
             this.log(`Updated current state for ${this.name}: ${sensor.status.triggered}, ${sensor.status.tamper}, ${sensor.status.malfunction}, ${batteryLow}`);
 

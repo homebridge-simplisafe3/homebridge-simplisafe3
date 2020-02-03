@@ -124,10 +124,10 @@ class SS3SimpliCam {
             switch (event) {
                 case EVENT_TYPES.CAMERA_MOTION:
                     if (eventCameraId == this.id) {
-                        this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
+                        this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
                         this.cameraSource.motionIsTriggered = true;
                         setTimeout(() => {
-                            this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, false);
+                            this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
                             this.cameraSource.motionIsTriggered = false;
                         }, 5000);
                     }

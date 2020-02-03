@@ -154,7 +154,7 @@ class SS3DoorLock {
         try {
             await this.simplisafe.setLockState(this.id, state);
             this.log(`Updated lock state: ${state}`);
-            this.service.setCharacteristic(this.Characteristic.LockCurrentState, homekitState);
+            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, homekitState);
             callback(null);
         } catch (err) {
             callback(new Error(`An error occurred while setting the door lock state: ${err}`));
@@ -171,11 +171,11 @@ class SS3DoorLock {
 
                     switch (event) {
                         case EVENT_TYPES.DOORLOCK_UNLOCKED:
-                            this.service.setCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
+                            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
                             this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.UNSECURED);
                             break;
                         case EVENT_TYPES.DOORLOCK_LOCKED:
-                            this.service.setCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
+                            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
                             this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.SECURED);
                             break;
                         case EVENT_TYPES.DOORLOCK_ERROR:
@@ -183,9 +183,9 @@ class SS3DoorLock {
                                 let lock = await this.getLockInformation();
 
                                 if (lock.status.lockJamState) {
-                                    this.service.setCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.JAMMED);
+                                    this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.JAMMED);
                                 } else if (lock.status.lockDisabled) {
-                                    this.service.setCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNKNOWN);
+                                    this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNKNOWN);
                                 }
                             } catch (err) {
                                 this.log(`An error occurred while updating lock error state: ${err}`);
@@ -205,7 +205,7 @@ class SS3DoorLock {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
             let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            this.service.setCharacteristic(this.Characteristic.LockCurrentState, homekitState);
+            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, homekitState);
         } catch (err) {
             this.log('An error occurred while refreshing state');
             this.log(err);

@@ -123,14 +123,14 @@ class SS3FreezeSensor {
             if (this.service) {
                 if (sensor.status) {
                     let temperature = fahrenheitToCelsius(sensor.status.temperature);
-                    this.service.setCharacteristic(this.Characteristic.CurrentTemperature, temperature);
+                    this.service.updateCharacteristic(this.Characteristic.CurrentTemperature, temperature);
                 }
 
                 if (sensor.flags) {
                     if (sensor.flags.lowBattery) {
-                        this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                     } else {
-                        this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                     }
                 }
             }
@@ -150,8 +150,8 @@ class SS3FreezeSensor {
             let batteryLow = sensor.flags.lowBattery;
             let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
 
-            this.service.setCharacteristic(this.Characteristic.CurrentTemperature, temperature);
-            this.service.setCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
+            this.service.updateCharacteristic(this.Characteristic.CurrentTemperature, temperature);
+            this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
 
             this.log(`Updated current state for ${this.name}: ${temperature}, ${batteryLow}`);
 
