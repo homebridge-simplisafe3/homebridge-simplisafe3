@@ -132,11 +132,6 @@ class SimpliSafe3 {
         } else {
             this.ssId = generateSimplisafeId();
 
-            // Ensure folder path exists
-            let pathComponents = internalConfigFile.split('/');
-            let folderPath = pathComponents.slice(0, pathComponents.length - 1).join('/');
-            fs.mkdirSync(folderPath, { recursive: true });
-
             try {
                 fs.writeFileSync(internalConfigFile, JSON.stringify({
                     ssId: this.ssId
