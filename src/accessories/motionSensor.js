@@ -102,7 +102,7 @@ class SS3MotionSensor {
 
     startListening() {
         this.simplisafe.subscribeToEvents((event, data) => {
-            if (data &&  this.id !== data.sensorSerial) return;
+            if (data && this.id !== data.sensorSerial) return;
 
             switch (event) {
                 case EVENT_TYPES.MOTION:

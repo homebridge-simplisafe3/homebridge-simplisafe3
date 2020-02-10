@@ -720,6 +720,9 @@ class SimpliSafe3 {
                             // Automatic test
                             break;
                         default:
+                            // Unknown event
+                            this.log('Unknown SimpliSafe event');
+                            this.log(data);
                             callback(null, data);
                             break;
                     }
