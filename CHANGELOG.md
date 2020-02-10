@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.4.7
+- Bug fixes to support empty events, added logging to identify root cause
+
 ## v1.4.6
 - Bug fixes
 
