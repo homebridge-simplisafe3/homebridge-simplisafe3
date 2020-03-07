@@ -4,6 +4,7 @@ import {
 } from '../simplisafe';
 
 const eventSubscribeRetryInterval = 10000; // ms
+const targetStateMaxRetries = 5;
 
 class SS3Alarm {
 
@@ -156,10 +157,19 @@ class SS3Alarm {
                     await this.refreshState();
                 }, data.exitDelay * 1000);
             }
+            this.nRetries = 0;
             callback(null);
         } catch (err) {
-            this.log(`Error while setting alarm state: ${err}`);
-            callback(new Error(`An error occurred while setting the alarm state: ${err}`));
+            this.log(`Error while setting alarm state:`, err);
+            if (err.type == 'SettingsInProgress' && this.nRetries < targetStateMaxRetries) {
+                this.nRetries++;
+                setTimeout(async () => {
+                    await this.setTargetState(homekitState, callback);
+                }, 1000); // wait 1  second and try again
+            } else {
+                this.nRetries = 0;
+                callback(new Error(`An error occurred while setting the alarm state: ${err}`));
+            }
         }
     }
 
