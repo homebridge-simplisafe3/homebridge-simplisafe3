@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.4.8
+- Resolved a bug that would cause arming/disarming to fail silently (#85)
+
 ## v1.4.7
 - Bug fixes to support empty events, added logging to identify root cause
 
