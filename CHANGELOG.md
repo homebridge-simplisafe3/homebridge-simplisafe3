@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.4.9
+- Updated dependencies to fix vulnerabilities
+
 ## v1.4.8
 - Resolved a bug that would cause arming/disarming to fail silently (#85)
 
