@@ -74,7 +74,16 @@ class SS3EntrySensor {
         }
     }
 
-    async getState(callback) {
+    async getState(callback, forceRefresh = false) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
+        if (!forceRefresh) {
+            let state = this.service.getCharacteristic(this.Characteristic.ContactSensorState);
+            return callback(null, state);
+        }
+
         try {
             let sensor = await this.getSensorInformation();
 
@@ -113,17 +122,17 @@ class SS3EntrySensor {
             if (this.service) {
                 if (sensor.status) {
                     if (sensor.status.triggered) {
-                        this.service.setCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
+                        this.service.updateCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
                     } else {
-                        this.service.setCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_DETECTED);
+                        this.service.updateCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_DETECTED);
                     }
                 }
-    
+
                 if (sensor.flags) {
                     if (sensor.flags.lowBattery) {
-                        this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                     } else {
-                        this.service.setCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                     }
                 }
             }
@@ -144,8 +153,8 @@ class SS3EntrySensor {
             let batteryLow = sensor.flags.lowBattery;
             let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
 
-            this.service.setCharacteristic(this.Characteristic.ContactSensorState, homekitSensorState);
-            this.service.setCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
+            this.service.updateCharacteristic(this.Characteristic.ContactSensorState, homekitSensorState);
+            this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
 
             this.log(`Updated current state for ${this.name}: ${open}, ${batteryLow}`);
 

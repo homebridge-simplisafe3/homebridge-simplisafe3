@@ -1,6 +1,48 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.4.9
+- Updated dependencies to fix vulnerabilities
+
+## v1.4.8
+- Resolved a bug that would cause arming/disarming to fail silently (#85)
+
+## v1.4.7
+- Bug fixes to support empty events, added logging to identify root cause
+
+## v1.4.6
+- Bug fixes
+
+## v1.4.5
+- Bug fixes
+
+## v1.4.4
+- Bug fixes
+
+## v1.4.3
+- Added support for Homebridge Config UI X settings plugin
+- Improved performance of alarm and sensor state requests
+- Plugin now handles rate limiting by automatically stopping outgoing requests and recovering when rate limiting is over
+- Improved management of loss of connectivity
+- Changed the default behavior of `persistAccessories`. Old accessories are now automatically removed
+
+## v1.4.2
+- Reverted the default behavior of `persistAccessories` while we implement a workaround for the rate limiting that SimpliSafe imposes.
+
+## v1.4.1
+- Changed the default behavior of `persistAccessories`. Old accessories are now automatically removed.
+
+## v1.4.0
+- Added support for motion sensors with secret alerts
+
+## v1.3.5
+- Improved support for rich notifications
+
+## v1.3.4
+- Added smart lock support
+- Improved camera resolution support to honor max resolution available
+- Bug fixes
+
 ## v1.3.3 and v1.3.2
 - Bug fixes to camera support
 

@@ -1,14 +1,22 @@
-// © 2019 Niccolò Zapponi
+// © 2020 Niccolò Zapponi
 // SimpliSafe 3 API Wrapper
 
 import axios from 'axios';
 import io from 'socket.io-client';
+import fs from 'fs';
+import os from 'os';
 
 // Do not touch these - they allow the client to make requests to the SimpliSafe API
-const clientUsername = '4df55627-46b2-4e2c-866b-1521b395ded2.1-28-0.WebApp.simplisafe.com';
+const clientUuid = '4df55627-46b2-4e2c-866b-1521b395ded2';
+const clientUsername = `${clientUuid}.WebApp.simplisafe.com`;
 const clientPassword = '';
+
 const subscriptionCacheTime = 3000; // ms
 const sensorCacheTime = 3000; // ms
+const internalConfigFile = os.homedir() + '/.simplisafe3.conf';
+const mfaTimeout = 5 * 60 * 1000; // ms
+const rateLimitInitialInterval = 60000; // ms
+const rateLimitMaxInterval = 2 * 60 * 60 * 1000; // ms
 
 const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
@@ -19,6 +27,69 @@ const validAlarmStates = [
     'home',
     'away'
 ];
+
+const validLockStates = [
+    'lock',
+    'unlock'
+];
+
+export const SENSOR_TYPES = {
+    'KEYPAD': 1,
+    'KEYCHAIN': 2,
+    'PANIC_BUTTON': 3,
+    'MOTION_SENSOR': 4,
+    'ENTRY_SENSOR': 5,
+    'GLASSBREAK_SENSOR': 6,
+    'CO_SENSOR': 7,
+    'SMOKE_SENSOR': 8,
+    'WATER_SENSOR': 9,
+    'FREEZE_SENSOR': 10,
+    'SIREN': 11,
+    'SIREN_2': 13,
+    'DOORLOCK': 16,
+    'DOORLOCK_2': 253
+};
+
+export const EVENT_TYPES = {
+    ALARM_TRIGGER: 'ALARM_TRIGGER',
+    ALARM_OFF: 'ALARM_OFF',
+    ALARM_DISARM: 'ALARM_DISARM',
+    ALARM_CANCEL: 'ALARM_CANCEL',
+    HOME_EXIT_DELAY: 'HOME_EXIT_DELAY',
+    HOME_ARM: 'HOME_ARM',
+    AWAY_EXIT_DELAY: 'AWAY_EXIT_DELAY',
+    AWAY_ARM: 'AWAY_ARM',
+    MOTION: 'MOTION',
+    ENTRY: 'ENTRY',
+    CAMERA_MOTION: 'CAMERA_MOTION',
+    DOORBELL: 'DOORBELL',
+    DOORLOCK_LOCKED: 'DOORLOCK_LOCKED',
+    DOORLOCK_UNLOCKED: 'DOORLOCK_UNLOCKED',
+    DOORLOCK_ERROR: 'DOORLOCK_ERROR',
+    DISCONNECT: 'DISCONNECT'
+};
+export class RateLimitError extends Error {
+    constructor(...params) {
+        super(...params);
+        // Maintains proper stack trace for where our error was thrown (only available on V8)
+        if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, RateLimitError);
+        }
+        this.name = 'RateLimitError';
+    }
+}
+
+const generateSimplisafeId = () => {
+    const supportedCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz0123456789';
+    let id = [];
+    while (id.length < 10) {
+        id.push(supportedCharacters[Math.floor(Math.random() * supportedCharacters.length)]);
+    }
+
+    id = id.join('');
+
+    return `${id.substring(0, 5)}-${id.substring(5)}`;
+};
 
 class SimpliSafe3 {
 
@@ -32,14 +103,43 @@ class SimpliSafe3 {
     subId;
     accountNumber;
     socket;
-    lastSubscriptionRequest;
+    lastSubscriptionRequests = {};
     lastSensorRequest;
+    lastLockRequest;
     sensorRefreshInterval;
     sensorRefreshTime;
     sensorSubscriptions = [];
+    ssId;
 
-    constructor(sensorRefreshTime = 15000) {
+    isBlocked;
+    nextBlockInterval = rateLimitInitialInterval;
+    nextAttempt = 0;
+    loginAttempt;
+
+    constructor(sensorRefreshTime = 15000, resetConfig = false, log) {
         this.sensorRefreshTime = sensorRefreshTime;
+        this.log = log || console.log;
+
+        if (fs.existsSync(internalConfigFile) && resetConfig) {
+            fs.unlinkSync(internalConfigFile);
+        }
+
+        // Load IDs from internal config file
+        if (fs.existsSync(internalConfigFile)) {
+            let configFile = fs.readFileSync(internalConfigFile);
+            let config = JSON.parse(configFile);
+            this.ssId = config.ssId;
+        } else {
+            this.ssId = generateSimplisafeId();
+
+            try {
+                fs.writeFileSync(internalConfigFile, JSON.stringify({
+                    ssId: this.ssId
+                }));
+            } catch (err) {
+                this.log('Warning: could not save SS config file. SS-ID will vary');
+            }
+        }
     }
 
     async login(username, password, storeCredentials = false) {
@@ -49,11 +149,19 @@ class SimpliSafe3 {
             this.password = password;
         }
 
+        if (this.isBlocked && Date.now() < this.nextAttempt) {
+            let err = new RateLimitError('Login request blocked (rate limit).');
+            throw err;
+        }
+
         try {
             const response = await ssApi.post('/api/token', {
                 username: username,
                 password: password,
-                grant_type: 'password'
+                grant_type: 'password',
+                client_id: clientUsername,
+                device_id: `Homebridge; useragent="Homebridge-SimpliSafe3 (SS-ID: ${this.ssId})"; uuid="${this.clientUuid}"; id="${this.ssId}"`,
+                scope: ''
             }, {
                 auth: {
                     username: clientUsername,
@@ -63,11 +171,92 @@ class SimpliSafe3 {
 
             let data = response.data;
             this._storeLogin(data);
+            this._resetRateLimitHandler();
         } catch (err) {
-            let response = (err.response && err.response) ? err.response : err;
-            this.logout(storeCredentials);
 
-            throw response;
+            if (err.response) {
+                let errCode = err.response.status;
+                let errData = err.response.data;
+
+                if (errCode == 403 && (errData && errData.error && errData.error == 'mfa_required')) {
+
+                    this.log('Multifactor authentication required. Check your email and approve the request!');
+
+                    // Multifactor Authentication required
+                    let mfaToken = errData.mfa_token;
+                    try {
+                        let mfaResponse = await ssApi.post('/api/mfa/challenge', {
+                            challenge_type: 'oob',
+                            client_id: clientUsername,
+                            mfa_token: mfaToken
+                        });
+
+                        let oobCode = mfaResponse.data.oob_code;
+                        let interval = mfaResponse.data.interval * 1000;
+
+                        let tokenData = await this.checkMultifactorAuthentication(mfaToken, oobCode, interval);
+                        this._storeLogin(tokenData);
+                        this._resetRateLimitHandler();
+
+                    } catch (err) {
+                        this.logout(storeCredentials);
+                        throw err.response ? err.response : err;
+                    }
+
+                } else if (errCode == 403) {
+                    this._setRateLimitHandler();
+                    let err = new RateLimitError('Login failed, request blocked (rate limit?).');
+                    throw err;
+                } else {
+                    this.logout(storeCredentials);
+                    throw err.response;
+                }
+            } else {
+                this._setRateLimitHandler();
+                let err = new RateLimitError('Login failed, request blocked (connectivity?).');
+                throw err;
+            }
+        }
+    }
+
+    async checkMultifactorAuthentication(mfaToken, oob, interval) {
+        const timeLimit = Date.now() + mfaTimeout;
+
+        const intervalChecker = new Promise((resolve, reject) => {
+            setInterval(async () => {
+
+                if (Date.now() > timeLimit) {
+                    reject();
+                }
+
+                let response = await ssApi.post('/api/token', {
+                    grant_type: 'http://simplisafe.com/oauth/grant-type/mfa-oob',
+                    client_id: clientUsername,
+                    mfa_token: mfaToken,
+                    oob_code: oob
+                });
+
+                let data = response.data;
+                if (data.access_token) {
+                    resolve(data);
+                }
+
+            }, interval);
+        });
+
+        return intervalChecker;
+    }
+
+    _resetRateLimitHandler() {
+        this.isBlocked = false;
+        this.nextBlockInterval = rateLimitInitialInterval;
+    }
+
+    _setRateLimitHandler() {
+        this.isBlocked = true;
+        this.nextAttempt = Date.now() + this.nextBlockInterval;
+        if (this.nextBlockInterval < rateLimitMaxInterval) {
+            this.nextBlockInterval = this.nextBlockInterval * 2;
         }
     }
 
@@ -95,7 +284,13 @@ class SimpliSafe3 {
 
     async refreshToken() {
         if (!this.isLoggedIn() || !this.refreshToken) {
-            return Promise.reject('User is not logged in');
+            let err = new Error('User is not logged in');
+            throw err;
+        }
+
+        if (this.isBlocked && Date.now() < this.nextAttempt) {
+            let err = new RateLimitError('Refresh token request blocked (rate limit).');
+            throw err;
         }
 
         try {
@@ -111,18 +306,51 @@ class SimpliSafe3 {
 
             let data = response.data;
             this._storeLogin(data);
+            this._resetRateLimitHandler();
 
         } catch (err) {
-            let response = (err.response) ? err.response : err;
-            this.logout(this.username != null);
 
-            throw response;
+            if (err.response) {
+                let errCode = err.response.status;
+
+                if (errCode == 403) {
+                    this.log('Token refresh failed, request blocked (rate limit?).');
+                    this._setRateLimitHandler();
+                } else {
+                    this.logout(this.username != null);
+                }
+                throw err.response;
+            } else {
+                this._setRateLimitHandler();
+                let err = new RateLimitError('Login failed, request blocked (connectivity?).');
+                throw err;
+            }
         }
     }
 
     async request(params, tokenRefreshed = false) {
+
+        if (this.isBlocked && Date.now() < this.nextAttempt) {
+            let err = new RateLimitError('Blocking request: rate limited');
+            throw err;
+        }
+
         if (!this.isLoggedIn) {
-            return Promise.reject('User is not logged in');
+            if (this.isBlocked) {
+                // User is not logged in due to the last login attempt being blocked.
+                // It's now time to try logging in again.
+
+                // Use this logic so that if multiple requests happen at the same time,
+                // only one will attempt to log in.
+                if (!this.loginAttempt) {
+                    this.loginAttempt = this.login(this.username, this.password, true);
+                }
+                await this.loginAttempt;
+                this.loginAttempt = null;
+            } else {
+                let err = new Error('User is not logged in');
+                throw err;
+            }
         }
 
         try {
@@ -133,8 +361,14 @@ class SimpliSafe3 {
                     Authorization: `${this.tokenType} ${this.token}`
                 }
             });
+            this._resetRateLimitHandler();
             return response.data;
         } catch (err) {
+            if (!err.response) {
+                let err = new RateLimitError(err);
+                throw err;
+            }
+
             let statusCode = err.response.status;
             if (statusCode == 401 && !tokenRefreshed) {
                 return this.refreshToken()
@@ -150,6 +384,10 @@ class SimpliSafe3 {
                             throw err;
                         }
                     });
+            } else if (statusCode == 403) {
+                this.log('Request failed, request blocked (rate limit?).');
+                this._setRateLimitHandler();
+                throw new RateLimitError(err.response.data);
             } else {
                 throw err.response.data;
             }
@@ -200,7 +438,7 @@ class SimpliSafe3 {
         return subscriptions;
     }
 
-    async getSubscription(subId = null) {
+    async getSubscription(subId = null, forceRefresh = false) {
         let subscriptionId = subId;
 
         if (!subscriptionId) {
@@ -219,11 +457,25 @@ class SimpliSafe3 {
             }
         }
 
-        let data = await this.request({
-            method: 'GET',
-            url: `/subscriptions/${subscriptionId}/`
-        });
+        if (forceRefresh || !this.lastSubscriptionRequests[subscriptionId]) {
+            this.lastSubscriptionRequests[subscriptionId] = this.request({
+                method: 'GET',
+                url: `/subscriptions/${subscriptionId}/`
+            })
+                .then(sub => {
+                    return sub;
+                })
+                .catch(err => {
+                    throw err;
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        this.lastSubscriptionRequests[subscriptionId] = null;
+                    }, subscriptionCacheTime);
+                });
+        }
 
+        let data = await this.lastSubscriptionRequests[subscriptionId];
         return data.subscription;
     }
 
@@ -236,21 +488,7 @@ class SimpliSafe3 {
     }
 
     async getAlarmState(forceRefresh = false, retry = false) {
-        if (forceRefresh || !this.lastSubscriptionRequest) {
-            this.lastSubscriptionRequest = this.getSubscription()
-                .then(sub => {
-                    return sub;
-                })
-                .catch(err => {
-                    throw err;
-                })
-                .finally(() => {
-                    setTimeout(() => {
-                        this.lastSubscriptionRequest = null;
-                    }, subscriptionCacheTime);
-                });
-        }
-        let subscription = await this.lastSubscriptionRequest;
+        let subscription = await this.getSubscription(null, forceRefresh);
 
         if (subscription.location && subscription.location.system) {
             if (subscription.location.system.isAlarming) {
@@ -342,27 +580,63 @@ class SimpliSafe3 {
     }
 
     async getCameras(forceRefresh = false) {
-        if (forceRefresh || !this.lastSubscriptionRequest) {
-            this.lastSubscriptionRequest = this.getSubscription()
-                .then(sub => {
-                    return sub;
-                })
-                .catch(err => {
-                    throw err;
-                })
-                .finally(() => {
-                    setTimeout(() => {
-                        this.lastSubscriptionRequest = null;
-                    }, subscriptionCacheTime);
-                });
-        }
-        let subscription = await this.lastSubscriptionRequest;
+        let subscription = await this.getSubscription(null, forceRefresh);
 
         if (subscription.location && subscription.location.system && subscription.location.system.cameras) {
             return subscription.location.system.cameras;
         } else {
             throw new Error('Subscription format not understood');
         }
+    }
+
+    async getLocks(forceRefresh) {
+
+        if (!this.subId) {
+            await this.getSubscription();
+        }
+
+        if (forceRefresh || !this.lastLockRequest) {
+            this.lastLockRequest = this.request({
+                method: 'GET',
+                url: `/doorlock/${this.subId}`
+            })
+                .then(data => {
+                    return data;
+                })
+                .catch(err => {
+                    throw err;
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        this.lastLockRequest = null;
+                    }, sensorCacheTime);
+                });
+        }
+
+        let data = await this.lastLockRequest;
+        return data;
+
+    }
+
+    async setLockState(lockId, newState) {
+        let state = newState.toLowerCase();
+
+        if (validLockStates.indexOf(state) == -1) {
+            throw new Error('Invalid target state');
+        }
+
+        if (!this.subId) {
+            await this.getSubscription();
+        }
+
+        let data = await this.request({
+            method: 'POST',
+            url: `/doorlock/${this.subId}/${lockId}/state`,
+            data: {
+                state: state
+            }
+        });
+        return data;
     }
 
     async subscribeToEvents(callback) {
@@ -375,10 +649,10 @@ class SimpliSafe3 {
 
             switch (data.eventType) {
                 case 'alarm':
-                    callback('ALARM', data);
+                    callback(EVENT_TYPES.ALARM_TRIGGER, data);
                     break;
                 case 'alarmCancel':
-                    callback('OFF', data);
+                    callback(EVENT_TYPES.ALARM_OFF, data);
                     break;
                 case 'activity':
                 case 'activityQuiet':
@@ -388,32 +662,35 @@ class SimpliSafe3 {
                         case 1400:
                         case 1407:
                             // 1400 is disarmed with Master PIN, 1407 is disarmed with Remote
-                            callback('DISARM', data);
+                            callback(EVENT_TYPES.ALARM_DISARM, data);
                             break;
                         case 1406:
-                            callback('CANCEL', data);
+                            callback(EVENT_TYPES.ALARM_CANCEL, data);
+                            break;
+                        case 1409:
+                            callback(EVENT_TYPES.MOTION, data);
                             break;
                         case 9441:
-                            callback('HOME_EXIT_DELAY', data);
+                            callback(EVENT_TYPES.HOME_EXIT_DELAY, data);
                             break;
                         case 3441:
                         case 3491:
-                            callback('HOME_ARM', data);
+                            callback(EVENT_TYPES.HOME_ARM, data);
                             break;
                         case 9401:
                         case 9407:
                             // 9401 is for Keypad, 9407 is for Remote
-                            callback('AWAY_EXIT_DELAY', data);
+                            callback(EVENT_TYPES.AWAY_EXIT_DELAY, data);
                             break;
                         case 3401:
                         case 3407:
                         case 3487:
                         case 3481:
                             // 3401 is for Keypad, 3407 is for Remote
-                            callback('AWAY_ARM', data);
+                            callback(EVENT_TYPES.AWAY_ARM, data);
                             break;
                         case 1429:
-                            callback('ENTRY', data);
+                            callback(EVENT_TYPES.ENTRY, data);
                             break;
                         case 1110:
                         case 1154:
@@ -422,24 +699,41 @@ class SimpliSafe3 {
                         case 1132:
                         case 1134:
                         case 1120:
-                            callback('ALARM', data);
+                            callback(EVENT_TYPES.ALARM_TRIGGER, data);
                             break;
                         case 1170:
-                            callback('CAMERA_MOTION', data);
+                            callback(EVENT_TYPES.CAMERA_MOTION, data);
                             break;
                         case 1458:
-                            callback('DOORBELL', data);
+                            callback(EVENT_TYPES.DOORBELL, data);
+                            break;
+                        case 9700:
+                            callback(EVENT_TYPES.DOORLOCK_UNLOCKED, data);
+                            break;
+                        case 9701:
+                            callback(EVENT_TYPES.DOORLOCK_LOCKED, data);
+                            break;
+                        case 9703:
+                            callback(EVENT_TYPES.DOORLOCK_ERROR, data);
                             break;
                         case 1602:
                             // Automatic test
                             break;
                         default:
+                            // Unknown event
+                            this.log('Unknown SimpliSafe event');
+                            this.log(data);
                             callback(null, data);
                             break;
                     }
                     break;
             }
         };
+
+        if (this.isBlocked && Date.now() < this.nextAttempt) {
+            let err = new RateLimitError('Login request blocked (rate limit).');
+            throw err;
+        }
 
         if (!this.socket) {
             let userId = await this.getUserId();
@@ -454,42 +748,42 @@ class SimpliSafe3 {
             });
 
             this.socket.on('connect', () => {
-                // console.log('Connect');
+                // this.log('Connect');
             });
 
             this.socket.on('connect_error', () => {
-                // console.log('Connect_error', err);
+                // this.log('Connect_error', err);
                 this.socket = null;
             });
 
             this.socket.on('connect_timeout', () => {
-                // console.log('Connect_timeout');
+                // this.log('Connect_timeout');
                 this.socket = null;
             });
 
-            this.socket.on('error', err => {
+            this.socket.on('error', () => {
                 this.socket = null;
             });
 
-            this.socket.on('disconnect', reason => {
+            this.socket.on('disconnect', () => {
                 this.socket = null;
             });
 
             this.socket.on('reconnect_failed', () => {
-                // console.log('Reconnect_failed');
+                // this.log('Reconnect_failed');
                 this.socket = null;
             });
         }
 
         this.socket.on('error', err => {
             if (err === 'Not authorized') {
-                callback('DISCONNECT');
+                callback(EVENT_TYPES.DISCONNECT);
             }
         });
 
         this.socket.on('disconnect', reason => {
             if (reason === 'transport close') {
-                callback('DISCONNECT');
+                callback(EVENT_TYPES.DISCONNECT);
             }
         });
 
@@ -524,7 +818,9 @@ class SimpliSafe3 {
                             .map(sub => sub.callback(sensor));
                     }
                 } catch (err) {
-                    // console.log(err);
+                    if (!err instanceof RateLimitError) {
+                        this.log(err);
+                    }
                 }
 
             }, this.sensorRefreshTime);

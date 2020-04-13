@@ -1,6 +1,6 @@
-const fahrenheitToCelsius = f => (f - 32.0) * 5.0 / 9.0;
+import { EVENT_TYPES } from '../simplisafe';
 
-class SS3FreezeSensor {
+class SS3MotionSensor {
 
     constructor(name, id, log, simplisafe, Service, Characteristic, UUIDGen) {
 
@@ -27,17 +27,15 @@ class SS3FreezeSensor {
 
         this.accessory.getService(this.Service.AccessoryInformation)
             .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
-            .setCharacteristic(this.Characteristic.Model, 'Freeze Sensor')
+            .setCharacteristic(this.Characteristic.Model, 'Motion Sensor')
             .setCharacteristic(this.Characteristic.SerialNumber, this.id);
 
-        this.service = this.accessory.getService(this.Service.TemperatureSensor);
-        this.service.getCharacteristic(this.Characteristic.CurrentTemperature)
-            .on('get', async callback => this.getState(callback));
+        this.service = this.accessory.getService(this.Service.MotionSensor);
+        this.service.getCharacteristic(this.Characteristic.MotionDetected)
+            .on('get', callback => this.getState(callback));
 
         this.service.getCharacteristic(this.Characteristic.StatusLowBattery)
             .on('get', async callback => this.getBatteryStatus(callback));
-
-        this.refreshState();
     }
 
     async updateReachability() {
@@ -76,29 +74,13 @@ class SS3FreezeSensor {
         }
     }
 
-    async getState(callback, forceRefresh = false) {
+    getState(callback) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
             return callback(new Error('Request blocked (rate limited)'));
         }
 
-        if (!forceRefresh) {
-            let state = this.service.getCharacteristic(this.Characteristic.CurrentTemperature);
-            return callback(null, state);
-        }
-
-        try {
-            let sensor = await this.getSensorInformation();
-
-            if (!sensor.status) {
-                throw new Error('Sensor response not understood');
-            }
-
-            let temperature = fahrenheitToCelsius(sensor.status.temperature);
-            callback(null, temperature);
-
-        } catch (err) {
-            callback(new Error(`An error occurred while getting sensor state: ${err}`));
-        }
+        let state = this.service.getCharacteristic(this.Characteristic.MotionDetected);
+        return callback(null, state);
     }
 
     async getBatteryStatus(callback) {
@@ -119,48 +101,32 @@ class SS3FreezeSensor {
     }
 
     startListening() {
-        this.simplisafe.subscribeToSensor(this.id, sensor => {
-            if (this.service) {
-                if (sensor.status) {
-                    let temperature = fahrenheitToCelsius(sensor.status.temperature);
-                    this.service.updateCharacteristic(this.Characteristic.CurrentTemperature, temperature);
-                }
+        this.simplisafe.subscribeToEvents((event, data) => {
+            if (data && this.id !== data.sensorSerial) return;
 
-                if (sensor.flags) {
-                    if (sensor.flags.lowBattery) {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
-                    } else {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
-                    }
+            switch (event) {
+                case EVENT_TYPES.MOTION:
+                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
+                    setTimeout(() => {
+                        this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
+                    }, 10000);
+                    break;
+                default:
+                    this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
+                    break;
+            }
+        });
+        this.simplisafe.subscribeToSensor(this.id, sensor => {
+            if (sensor.flags) {
+                if (sensor.flags.lowBattery) {
+                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                } else {
+                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                 }
             }
         });
     }
 
-    async refreshState() {
-        this.log('Refreshing sensor state');
-        try {
-            let sensor = await this.getSensorInformation();
-            if (!sensor.status || !sensor.flags) {
-                throw new Error('Sensor response not understood');
-            }
-
-            let temperature = fahrenheitToCelsius(sensor.status.temperature);
-
-            let batteryLow = sensor.flags.lowBattery;
-            let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
-
-            this.service.updateCharacteristic(this.Characteristic.CurrentTemperature, temperature);
-            this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
-
-            this.log(`Updated current state for ${this.name}: ${temperature}, ${batteryLow}`);
-
-        } catch (err) {
-            this.log('An error occurred while refreshing state');
-            this.log(err);
-        }
-    }
-
 }
 
-export default SS3FreezeSensor;
+export default SS3MotionSensor;

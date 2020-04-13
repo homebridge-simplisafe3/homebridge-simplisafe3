@@ -5,6 +5,8 @@ import { promisify } from 'util';
 import { spawn } from 'child_process';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
 
+import { EVENT_TYPES } from '../simplisafe';
+
 const dnsLookup = promisify(dns.lookup);
 
 class SS3SimpliCam {
@@ -44,19 +46,25 @@ class SS3SimpliCam {
             .setCharacteristic(this.Characteristic.SerialNumber, this.id)
             .setCharacteristic(this.Characteristic.FirmwareRevision, this.cameraDetails.cameraSettings.admin.firmwareVersion);
 
-
         this.services.push(this.accessory.getService(this.Service.CameraControl));
         this.services.push(this.accessory.getService(this.Service.Microphone));
-        this.services.push(this.accessory.getService(this.Service.MotionSensor));
+
+        let motionSensor = this.accessory.getService(this.Service.MotionSensor)
+            .getCharacteristic(this.Characteristic.MotionDetected)
+            .on('get', callback => this.getState(callback, this.accessory.getService(this.Service.MotionSensor), this.Characteristic.MotionDetected));
+        this.services.push(motionSensor);
+
         if (this.accessory.getService(this.Service.Doorbell)) {
-            this.services.push(this.accessory.getService(this.Service.Doorbell));
+            let doorbell = this.accessory.getService(this.Service.Doorbell)
+                .getCharacteristic(this.Characteristic.ProgrammableSwitchEvent)
+                .on('get', callback => this.getState(callback, this.accessory.getService(this.Service.Doorbell), this.Characteristic.ProgrammableSwitchEvent));
+            this.services.push(doorbell);
         }
 
         // Clear cached stream controllers
         this.accessory.services
             .filter(service => service.UUID === this.Service.CameraRTPStreamManagement.UUID)
             .map(service => {
-                this.log('Found cached stream');
                 this.accessory.removeService(service);
             });
 
@@ -73,6 +81,15 @@ class SS3SimpliCam {
 
         this.accessory.configureCameraSource(this.cameraSource);
         this.cameraSource.services = this.services;
+    }
+
+    getState(callback, service, characteristic) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
+        let state = service.getCharacteristic(characteristic);
+        callback(null, state);
     }
 
     async updateReachability() {
@@ -99,32 +116,35 @@ class SS3SimpliCam {
                 // Camera is not yet initialized
                 return;
             }
-            this.log(this.name + ` camera received new event from alarm: ${event}`);
             let eventCameraId;
             if (data && (data.sensorSerial || data.internal)) {
                 eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
             }
 
             switch (event) {
-                case 'CAMERA_MOTION':
+                case EVENT_TYPES.CAMERA_MOTION:
                     if (eventCameraId == this.id) {
-                        this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, true);
+                        this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
+                        this.cameraSource.motionIsTriggered = true;
                         setTimeout(() => {
-                            this.accessory.getService(this.Service.MotionSensor).setCharacteristic(this.Characteristic.MotionDetected, false);
+                            this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
+                            this.cameraSource.motionIsTriggered = false;
                         }, 5000);
                     }
                     break;
-                case 'DOORBELL':
+                case EVENT_TYPES.DOORBELL:
                     if (eventCameraId == this.id) {
                         this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
                     }
                     break;
-                case 'DISCONNECT':
+                case EVENT_TYPES.DISCONNECT:
                     this.log(this.name + ' camera real time events disconnected.');
                     this.startListening();
                     break;
                 default:
-                    this.log(this.name + ` camera event received: ${event}`);
+                    if (eventCameraId === this.id) {
+                        this.log(this.name + ` camera event received: ${event}`);
+                    }
                     break;
             }
         });
@@ -196,6 +216,10 @@ class CameraSource {
     }
 
     async handleSnapshotRequest(request, callback) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
         let ffmpegPath = ffmpeg.path;
         if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
             ffmpegPath = this.cameraOptions.ffmpegPath;
@@ -203,7 +227,7 @@ class CameraSource {
         let resolution = `${request.width}x${request.height}`;
         this.log(`Handling snapshot for ${this.cameraConfig.cameraSettings.cameraName} at ${resolution}`);
 
-        if (this.cameraConfig.model == 'SS001') { // Model(s) with privacy shutter
+        if (!this.motionIsTriggered && this.cameraConfig.model == 'SS001') { // Model(s) with privacy shutter
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
             let alarmState = await this.simplisafe.getAlarmState();
             switch (alarmState) {
@@ -338,6 +362,10 @@ class CameraSource {
     }
 
     handleStreamRequest = async (request) => {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
         let sessionId = request.sessionID;
 
         if (sessionId) {
@@ -429,7 +457,8 @@ class CameraSource {
                         }
 
                         if (this.cameraOptions.sourceOptions) {
-                            let options = this.cameraOptions.sourceOptions;
+                            let options = (typeof this.cameraOptions.sourceOptions === 'string') ? this.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
+                                                                                                 : this.cameraOptions.sourceOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = sourceArgs.find(arg => arg[0] === key);
@@ -446,7 +475,8 @@ class CameraSource {
                         }
 
                         if (this.cameraOptions.videoOptions) {
-                            let options = this.cameraOptions.videoOptions;
+                            let options = (typeof this.cameraOptions.videoOptions === 'string') ? this.cameraOptions.videoOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
+                                                                                                : this.cameraOptions.videoOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = videoArgs.find(arg => arg[0] === key);
@@ -463,7 +493,8 @@ class CameraSource {
                         }
 
                         if (this.cameraOptions.audioOptions) {
-                            let options = this.cameraOptions.audioOptions;
+                            let options = (typeof this.cameraOptions.audioOptions === 'string') ? this.cameraOptions.audioOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
+                                                                                                : this.cameraOptions.audioOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = audioArgs.find(arg => arg[0] === key);

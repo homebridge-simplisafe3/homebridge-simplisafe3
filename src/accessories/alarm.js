@@ -1,3 +1,11 @@
+import {
+    EVENT_TYPES,
+    RateLimitError
+} from '../simplisafe';
+
+const eventSubscribeRetryInterval = 10000; // ms
+const targetStateMaxRetries = 5;
+
 class SS3Alarm {
 
     constructor(name, id, log, simplisafe, Service, Characteristic, UUIDGen) {
@@ -89,8 +97,16 @@ class SS3Alarm {
         }
     }
 
-    async getCurrentState(callback) {
-        this.log('Getting current state...');
+    async getCurrentState(callback, forceRefresh = false) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
+        if (!forceRefresh) {
+            let state = this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState);
+            return callback(null, state);
+        }
+
         try {
             let state = await this.simplisafe.getAlarmState();
             let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
@@ -101,8 +117,16 @@ class SS3Alarm {
         }
     }
 
-    async getTargetState(callback) {
-        this.log('Getting target state...');
+    async getTargetState(callback, forceRefresh = false) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            return callback(new Error('Request blocked (rate limited)'));
+        }
+
+        if (!forceRefresh) {
+            let state = this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState);
+            return callback(null, state);
+        }
+
         try {
             let state = await this.simplisafe.getAlarmState();
             let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
@@ -118,6 +142,7 @@ class SS3Alarm {
         this.log(`Setting target state to ${state}, ${homekitState}`);
 
         if (!this.service) {
+            this.log('Alarm not linked to Homebridge service');
             callback(new Error('Alarm not linked to Homebridge service'));
             return;
         }
@@ -126,62 +151,81 @@ class SS3Alarm {
             let data = await this.simplisafe.setAlarmState(state);
             this.log(`Updated alarm state: ${JSON.stringify(data)}`);
             if (data.state == 'OFF') {
-                this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+                this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
             } else if (data.exitDelay && data.exitDelay > 0) {
                 setTimeout(async () => {
                     await this.refreshState();
                 }, data.exitDelay * 1000);
             }
+            this.nRetries = 0;
             callback(null);
         } catch (err) {
-            callback(new Error(`An error occurred while setting the alarm state: ${err}`));
+            this.log(`Error while setting alarm state:`, err);
+            if (err.type == 'SettingsInProgress' && this.nRetries < targetStateMaxRetries) {
+                this.nRetries++;
+                setTimeout(async () => {
+                    await this.setTargetState(homekitState, callback);
+                }, 1000); // wait 1  second and try again
+            } else {
+                this.nRetries = 0;
+                callback(new Error(`An error occurred while setting the alarm state: ${err}`));
+            }
         }
     }
 
-    startListening() {
+    async startListening() {
         this.log('Listening to alarm events...');
-        this.simplisafe.subscribeToEvents(event => {
-            this.log(`Received new event from alarm: ${event}`);
-            if (this.service) {
-                switch (event) {
-                    case 'DISARM':
-                    case 'CANCEL':
-                    case 'OFF':
-                        this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
-                        this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
-                        break;
-                    case 'HOME_ARM':
-                        this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
-                        this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
-                        break;
-                    case 'AWAY_ARM':
-                        this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
-                        this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
-                        break;
-                    case 'HOME_EXIT_DELAY':
-                        this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
-                        break;
-                    case 'AWAY_EXIT_DELAY':
-                        this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
-                        break;
-                    case 'DISCONNECT':
-                        this.log('Real time events disconnected.');
-                        this.startListening();
-                        break;
-                    default:
-                        this.log(`Unknown event received: ${event}`);
-                        break;
+        try {
+            await this.simplisafe.subscribeToEvents(event => {
+                this.log(`Received new event from alarm: ${event}`);
+                if (this.service) {
+                    switch (event) {
+                        case EVENT_TYPES.ALARM_DISARM:
+                        case EVENT_TYPES.ALARM_CANCEL:
+                        case EVENT_TYPES.ALARM_OFF:
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
+                            break;
+                        case EVENT_TYPES.HOME_ARM:
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
+                            break;
+                        case EVENT_TYPES.AWAY_ARM:
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
+                            break;
+                        case EVENT_TYPES.HOME_EXIT_DELAY:
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
+                            break;
+                        case EVENT_TYPES.AWAY_EXIT_DELAY:
+                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
+                            break;
+                        case EVENT_TYPES.DISCONNECT:
+                            this.log('Real time events disconnected.');
+                            this.startListening();
+                            break;
+                        default:
+                            break;
+                    }
                 }
+            });
+        } catch (err) {
+            if (err instanceof RateLimitError) {
+                setTimeout(async () => {
+                    await this.startListening();
+                }, eventSubscribeRetryInterval);
             }
-        });
+        }
     }
 
     async refreshState() {
         this.log('Refreshing alarm state');
         try {
             let state = await this.simplisafe.getAlarmState();
-            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            this.service.setCharacteristic(this.Characteristic.SecuritySystemCurrentState, homekitState);
+            let currentHomekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
+            let targetHomekitState = this.TARGET_SS3_TO_HOMEKIT[state];
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, currentHomekitState);
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, targetHomekitState);
             this.log(`Updated current state for ${this.name}: ${state}`);
         } catch (err) {
             this.log('An error occurred while refreshing state');

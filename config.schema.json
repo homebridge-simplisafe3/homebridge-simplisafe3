@@ -1,0 +1,140 @@
+{
+	"pluginAlias": "homebridge-simplisafe3.SimpliSafe 3",
+	"pluginType": "platform",
+	"singular": true,
+	"schema": {
+		"type": "object",
+		"properties": {
+			"name": {
+				"title": "Name",
+				"type": "string",
+				"required": true,
+				"default": "Home Alarm",
+				"placeholder": "e.g. Home Alarm"
+			},
+			"auth": {
+				"title": "Authorization",
+				"type": "object",
+				"properties": {
+                    "username": {
+                        "title": "SimpliSafe Username",
+                        "type": "string",
+						"required": true
+                    },
+                    "password": {
+                        "title": "SimpliSafe Password",
+                        "type": "string",
+						"required": true
+                    }
+				}
+			},
+			"cameras": {
+				"title": " Cameras",
+				"type": "boolean",
+				"default": false,
+				"description": "Enable camera support."
+			},
+			"debug": {
+				"title": " Debug",
+				"type": "boolean"
+			},
+			"subscriptionId": {
+				"title": "Subscription ID",
+				"type": "string"
+			},
+			"sensorRefresh": {
+				"title": "Sensor Refresh Interval",
+				"type": "integer",
+				"default": 15
+			},
+			"persistAccessories": {
+				"title": " Persist Accessories",
+				"type": "boolean",
+				"default": false
+			},
+			"resetSimpliSafeId": {
+				"title": " Reset Generated SimpliSafe ID",
+				"type": "boolean",
+				"default": false
+			},
+			"cameraOptions": {
+			    "title": "Optional Camera Settings",
+			    "type": "object",
+			    "condition": {
+                    "functionBody": "return (model.cameras)"
+                },
+			    "properties" : {
+			        "ffmpegPath": {
+			            "title": "ffmpeg Path",
+			            "type": "string",
+				        "placeholder": "/path/to/custom/ffmpeg",
+			            "condition": {
+                            "functionBody": "return (model.cameras)"
+                        }
+			        },
+			        "sourceOptions": {
+			            "title": "Source Options",
+			            "type": "string",
+			            "placeholder": "e.g. -vcodec h264_mmal",
+			            "condition": {
+                            "functionBody": "return (model.cameras)"
+                        }
+			        },
+			        "videoOptions": {
+			            "title": "Video Options",
+			            "type": "string",
+			            "placeholder": "e.g. -vcodec h264_omx -tune false",
+			            "condition": {
+                            "functionBody": "return (model.cameras)"
+                        }
+			        },
+			        "audioOptions": {
+			            "title": "Audio Options",
+			            "type": "string",
+			            "placeholder": "e.g. -ar 256k",
+			            "condition": {
+                            "functionBody": "return (model.cameras)"
+                        }
+			        }
+			    }
+			}
+		}
+	},
+	"layout": [
+	    {
+        "type": "fieldset",
+          "items": [
+            "name",
+            "auth.username",
+            "auth.password",
+            "cameras"
+          ]
+        },
+        {
+		"type": "fieldset",
+		"expandable": true,
+		"title": "Advanced Settings",
+		"items": [
+			"debug",
+			{
+				"key": "subscriptionId",
+				"description": "Add this parameter in case you have multiple protected locations or accounts with SimpliSafe. The subscriptionId can be found at the bottom of your base unit."
+			},
+			"sensorRefresh",
+			{
+				"key": "persistAccessories",
+				"description": "By default, the plugin won't remove old accessories from the Home app. This is to avoid caching issues causing you to lose all your scenes & automations configurations. If you do want to remove old accessories, set this to false."
+			},
+			{
+                "type": "fieldset",
+                "items": [
+                    "cameraOptions",
+                    "cameraOptions.ffmpegPath",
+                    "cameraOptions.sourceOptions",
+                    "cameraOptions.videoOptions",
+                    "cameraOptions.audioOptions"
+                ]
+            }
+		]
+	}]
+}
