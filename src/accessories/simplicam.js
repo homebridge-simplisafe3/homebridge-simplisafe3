@@ -5,9 +5,13 @@ import { promisify } from 'util';
 import { spawn } from 'child_process';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
 
-import { EVENT_TYPES } from '../simplisafe';
+import {
+    EVENT_TYPES,
+    RateLimitError
+} from '../simplisafe';
 
 const dnsLookup = promisify(dns.lookup);
+const eventSubscribeRetryInterval = 10000; // ms
 
 class SS3SimpliCam {
 
@@ -109,45 +113,54 @@ class SS3SimpliCam {
         }
     }
 
-    startListening() {
-        this.log(this.name + ' camera listening to alarm events...');
-        this.simplisafe.subscribeToEvents((event, data) => {
-            if (!this.accessory) {
-                // Camera is not yet initialized
-                return;
-            }
-            let eventCameraId;
-            if (data && (data.sensorSerial || data.internal)) {
-                eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
-            }
+    async startListening() {
+        try {
+           await this.simplisafe.subscribeToEvents((event, data) => {
+               if (!this.accessory) {
+                   // Camera is not yet initialized
+                   return;
+               }
+               let eventCameraId;
+               if (data && (data.sensorSerial || data.internal)) {
+                   eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
+               }
 
-            switch (event) {
-                case EVENT_TYPES.CAMERA_MOTION:
-                    if (eventCameraId == this.id) {
-                        this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
-                        this.cameraSource.motionIsTriggered = true;
-                        setTimeout(() => {
-                            this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
-                            this.cameraSource.motionIsTriggered = false;
-                        }, 5000);
-                    }
-                    break;
-                case EVENT_TYPES.DOORBELL:
-                    if (eventCameraId == this.id) {
-                        this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
-                    }
-                    break;
-                case EVENT_TYPES.DISCONNECT:
-                    this.log(this.name + ' camera real time events disconnected.');
-                    this.startListening();
-                    break;
-                default:
-                    if (eventCameraId === this.id) {
-                        this.log(this.name + ` camera event received: ${event}`);
-                    }
-                    break;
+               switch (event) {
+                   case EVENT_TYPES.CAMERA_MOTION:
+                       if (eventCameraId == this.id) {
+                           this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
+                           this.cameraSource.motionIsTriggered = true;
+                           setTimeout(() => {
+                               this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
+                               this.cameraSource.motionIsTriggered = false;
+                           }, 5000);
+                       }
+                       break;
+                   case EVENT_TYPES.DOORBELL:
+                       if (eventCameraId == this.id) {
+                           this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
+                       }
+                       break;
+                   case EVENT_TYPES.DISCONNECT:
+                       this.log(`${this.name} camera real time events disconnected.`);
+                       this.startListening();
+                       break;
+                   default:
+                       if (eventCameraId === this.id) {
+                           this.log(`${this.name} camera event received: ${event}`);
+                       }
+                       break;
+               }
+           });
+           this.log(`${this.name} camera now listening to alarm events.`);
+        } catch (err) {
+            if (err instanceof RateLimitError) {
+                this.log(`${this.name} camera caught RateLimitError, waiting to retry...`);
+                setTimeout(async () => {
+                    await this.startListening();
+                }, eventSubscribeRetryInterval);
             }
-        });
+        }
     }
 
 }
