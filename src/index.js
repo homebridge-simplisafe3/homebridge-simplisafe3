@@ -94,7 +94,7 @@ class SS3Platform {
     }
 
     configureAccessory(accessory) {
-        this.log('Configure existing accessory');
+        this.log(`Configure existing accessory ${accessory.UUID} ${accessory.displayName}`);
 
         let config = new Promise((resolve, reject) => {
             this.initialLoad
@@ -391,11 +391,12 @@ class SS3Platform {
 
                 for (let camera of cameras) {
                     let uuid = UUIDGen.generate(camera.uuid);
-                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+                    let cameraAccessory = this.accessories.find(acc => acc.UUID === uuid);
 
-                    if (!accessory) {
-                        this.log('Camera not found, adding...');
-                        const cameraAccessory = new Camera(
+                    if (!cameraAccessory) {
+                        // cameras are not cached by Homebridge
+                        this.log(`Initializing camera ${camera.cameraSettings.cameraName} (uuid ${uuid}).`);
+                        const cameraDevice = new Camera(
                             camera.cameraSettings.cameraName || 'Camera',
                             camera.uuid,
                             camera,
@@ -408,23 +409,22 @@ class SS3Platform {
                             StreamController
                         );
 
-                        this.devices.push(cameraAccessory);
+                        cameraAccessory = new Accessory(camera.cameraSettings.cameraName || 'Camera', UUIDGen.generate(camera.uuid));
+                        cameraAccessory.addService(Service.CameraControl);
+                        cameraAccessory.addService(Service.Microphone);
+                        cameraAccessory.addService(Service.MotionSensor);
+                        if (camera.model == 'SS002') { // SSO02 is doorbell cam
+                            cameraAccessory.addService(Service.Doorbell);
+                        }
+                        cameraDevice.setAccessory(cameraAccessory);
 
-                        if (addAndRemove) {
-                            let newAccessory = new Accessory(camera.cameraSettings.cameraName || 'Camera', UUIDGen.generate(camera.uuid));
-                            newAccessory.addService(Service.CameraControl);
-                            newAccessory.addService(Service.Microphone);
-                            newAccessory.addService(Service.MotionSensor);
-                            if (camera.model == 'SS002') { // SSO02 is doorbell cam
-                                newAccessory.addService(Service.Doorbell);
-                            }
-                            cameraAccessory.setAccessory(newAccessory);
-                            try {
-                                this.api.publishCameraAccessories(PLUGIN_NAME, [newAccessory]);
-                                this.accessories.push(newAccessory);
-                            } catch (err) {
-                                this.log(`An error occurred while adding camera: ${err}`);
-                            }
+                        try {
+                            this.api.publishCameraAccessories(PLUGIN_NAME, [cameraAccessory]);
+                            this.accessories.push(cameraAccessory);
+                            this.devices.push(cameraDevice);
+                        } catch (err) {
+                            this.log('An error occurred while publishing camera:');
+                            this.log(err);
                         }
                     }
                 }
