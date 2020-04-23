@@ -143,16 +143,22 @@ class SS3SimpliCam {
                        break;
                    case EVENT_TYPES.DISCONNECT:
                        this.log(`${this.name} camera real time events disconnected.`);
+                       break;
+                   case EVENT_TYPES.RECONNECT:
+                       this.log(this.name + ' camera real time events re-connected.');
+                       break;
+                   case EVENT_TYPES.RECONNECT_FAILED:
+                       this.log(this.name + ' camera real time events re-connect failed. Restarting');
                        this.startListening();
                        break;
                    default:
                        if (eventCameraId === this.id) {
-                           this.log(`${this.name} camera event received: ${event}`);
+                           this.log(`${this.name} camera ignoring unhandled event: ${event}`);
                        }
                        break;
                }
            });
-           this.log(`${this.name} camera now listening to alarm events.`);
+           this.log(`${this.name} camera now listening for real time events.`);
         } catch (err) {
             if (err instanceof RateLimitError) {
                 this.log(`${this.name} camera caught RateLimitError, waiting to retry...`);

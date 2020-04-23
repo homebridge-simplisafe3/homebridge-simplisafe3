@@ -66,7 +66,9 @@ export const EVENT_TYPES = {
     DOORLOCK_LOCKED: 'DOORLOCK_LOCKED',
     DOORLOCK_UNLOCKED: 'DOORLOCK_UNLOCKED',
     DOORLOCK_ERROR: 'DOORLOCK_ERROR',
-    DISCONNECT: 'DISCONNECT'
+    DISCONNECT: 'DISCONNECT',
+    RECONNECT: 'RECONNECT',
+    RECONNECT_FAILED: 'RECONNECT_FAILED'
 };
 export class RateLimitError extends Error {
     constructor(...params) {
@@ -761,17 +763,9 @@ class SimpliSafe3 {
                 this.socket = null;
             });
 
-            this.socket.on('error', () => {
-                this.socket = null;
-            });
-
-            this.socket.on('disconnect', () => {
-                this.socket = null;
-            });
-
             this.socket.on('reconnect_failed', () => {
                 // this.log('Reconnect_failed');
-                this.socket = null;
+                this.unsubscribeFromEvents();
             });
         }
 
@@ -779,6 +773,14 @@ class SimpliSafe3 {
             if (err === 'Not authorized') {
                 callback(EVENT_TYPES.DISCONNECT);
             }
+        });
+
+        this.socket.on('reconnect_failed', () => {
+            callback(EVENT_TYPES.RECONNECT_FAILED);
+        });
+
+        this.socket.on('reconnect', () => {
+            callback(EVENT_TYPES.RECONNECT);
         });
 
         this.socket.on('disconnect', reason => {

@@ -174,10 +174,9 @@ class SS3Alarm {
     }
 
     async startListening() {
-        this.log('Listening to alarm events...');
+        this.log('Alarm listening for real time events...');
         try {
             await this.simplisafe.subscribeToEvents(event => {
-                this.log(`Received new event from alarm: ${event}`);
                 if (this.service) {
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:
@@ -201,10 +200,17 @@ class SS3Alarm {
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                             break;
                         case EVENT_TYPES.DISCONNECT:
-                            this.log('Real time events disconnected.');
+                            this.log('Alarm real time events disconnected.');
+                            break;
+                        case EVENT_TYPES.RECONNECT:
+                            this.log('Alarm real time events re-connected.');
+                            break;
+                        case EVENT_TYPES.RECONNECT_FAILED:
+                            this.log(this.name + ' camera real time events re-connect failed. Restarting');
                             this.startListening();
                             break;
                         default:
+                            this.log(`Alarm ignoring unhandled event: ${event}`);
                             break;
                     }
                 }
