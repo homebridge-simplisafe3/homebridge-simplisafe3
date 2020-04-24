@@ -176,18 +176,15 @@ class SS3Alarm {
 
     async startListening() {
         try {
-            if (this.simplisafe.isSocketConnected()) this.log('Alarm listening for real time events.');
+            if (this.simplisafe.isSocketConnected()) this.log('Alarm now listening for real time events.');
             await this.simplisafe.subscribeToEvents(event => {
                 switch (event) {
                     // Socket events
                     case EVENT_TYPES.CONNECTED:
-                        this.log('Alarm listening for real time events.');
+                        this.log('Alarm now listening for real time events.');
                         break;
                     case EVENT_TYPES.DISCONNECT:
                         this.log('Alarm real time events disconnected.');
-                        break;
-                    case EVENT_TYPES.RECONNECT:
-                        this.log('Alarm real time events re-connected.');
                         break;
                     case EVENT_TYPES.CONNECTION_LOST:
                         this.log('Alarm real time events connection lost. Attempting to restart...');

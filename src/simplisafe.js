@@ -68,7 +68,6 @@ export const EVENT_TYPES = {
     DOORLOCK_ERROR: 'DOORLOCK_ERROR',
     CONNECTED: 'CONNECTED',
     DISCONNECT: 'DISCONNECT',
-    RECONNECT: 'RECONNECT',
     CONNECTION_LOST: 'CONNECTION_LOST'
 };
 export class RateLimitError extends Error {
@@ -760,6 +759,10 @@ class SimpliSafe3 {
            // this.log(`Socket reconnect_attempt ${attemptNumber}`);
         });
 
+        this.socket.on('reconnect', () => {
+            // this.log('Socket reconnect');
+        });
+
         this.socket.on('connect_error', (err) => {
             // this.log('Socket connect_error:', err);
             this.unsubscribeFromEvents();
@@ -782,11 +785,6 @@ class SimpliSafe3 {
             // this.log('Socket reconnect_failed');
             this.unsubscribeFromEvents();
             callback(EVENT_TYPES.CONNECTION_LOST);
-        });
-
-        this.socket.on('reconnect', () => {
-            // this.log('Socket reconnect');
-            callback(EVENT_TYPES.RECONNECT);
         });
 
         this.socket.on('disconnect', (reason) => {

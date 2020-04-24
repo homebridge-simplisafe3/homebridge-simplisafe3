@@ -115,6 +115,7 @@ class SS3SimpliCam {
 
     async startListening() {
         try {
+           if (this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
            await this.simplisafe.subscribeToEvents((event, data) => {
                switch (event) {
                   // Socket events
@@ -123,9 +124,6 @@ class SS3SimpliCam {
                      break;
                    case EVENT_TYPES.DISCONNECT:
                        this.log(`${this.name} camera real time events disconnected.`);
-                     break;
-                   case EVENT_TYPES.RECONNECT:
-                       this.log(this.name + ' camera real time events re-connected.');
                      break;
                    case EVENT_TYPES.CONNECTION_LOST:
                        this.log(this.name + ' camera real time events connection lost. Attempting to restart...');
@@ -164,7 +162,6 @@ class SS3SimpliCam {
                   }
                }
            });
-           if (this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
         } catch (err) {
             if (err instanceof RateLimitError) {
                 this.log(`${this.name} camera caught RateLimitError, waiting to retry...`);
