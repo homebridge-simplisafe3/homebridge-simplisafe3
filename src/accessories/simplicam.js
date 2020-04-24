@@ -132,7 +132,7 @@ class SS3SimpliCam {
                }
 
                if (this.accessory) {
-                  // this.log(`${this.name} camera received new door lock event: ${event}`);
+                  // this.log(`${this.name} camera received new event: ${event}`);
                   // camera is initialzied
                   let eventCameraId;
                   if (data && (data.sensorSerial || data.internal)) {
