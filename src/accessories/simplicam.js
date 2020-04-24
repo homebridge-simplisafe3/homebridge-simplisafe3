@@ -126,7 +126,7 @@ class SS3SimpliCam {
                        this.log(`${this.name} camera real time events disconnected.`);
                      break;
                    case EVENT_TYPES.CONNECTION_LOST:
-                       this.log(this.name + ' camera real time events connection lost. Attempting to restart...');
+                       this.log(`${this.name} camera real time events connection lost. Attempting to restart...`);
                        this.startListening();
                        break;
                }
