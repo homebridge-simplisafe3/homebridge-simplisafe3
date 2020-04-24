@@ -160,10 +160,11 @@ class SS3Alarm {
             this.nRetries = 0;
             callback(null);
         } catch (err) {
-            this.log(`Error while setting alarm state:`, err);
+            this.log(`Error while setting alarm state:`, err, 'nRetries:', this.nRetries);
             if (err.type == 'SettingsInProgress' && this.nRetries < targetStateMaxRetries) {
                 this.nRetries++;
                 setTimeout(async () => {
+                   // this.console.log('Retrying setTargetState...');
                     await this.setTargetState(homekitState, callback);
                 }, 1000); // wait 1  second and try again
             } else {
@@ -198,6 +199,9 @@ class SS3Alarm {
                         case EVENT_TYPES.AWAY_EXIT_DELAY:
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                             break;
+                        case EVENT_TYPES.CONNECTED:
+                            this.log('Alarm listening for real time events.');
+                            break;
                         case EVENT_TYPES.DISCONNECT:
                             this.log('Alarm real time events disconnected.');
                             break;
@@ -214,7 +218,7 @@ class SS3Alarm {
                     }
                 }
             });
-            this.log('Alarm listening for real time events...');
+            if (this.simplisafe.isSocketConnected()) this.log('Alarm listening for real time events.');
         } catch (err) {
             if (err instanceof RateLimitError) {
                 setTimeout(async () => {

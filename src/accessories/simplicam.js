@@ -141,6 +141,9 @@ class SS3SimpliCam {
                            this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
                        }
                        break;
+                   case EVENT_TYPES.CONNECTED:
+                       this.log(`${this.name} camera now listening for real time events.`);
+                       break;
                    case EVENT_TYPES.DISCONNECT:
                        this.log(`${this.name} camera real time events disconnected.`);
                        break;
@@ -158,7 +161,7 @@ class SS3SimpliCam {
                        break;
                }
            });
-           this.log(`${this.name} camera now listening for real time events.`);
+           if (this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
         } catch (err) {
             if (err instanceof RateLimitError) {
                 this.log(`${this.name} camera caught RateLimitError, waiting to retry...`);

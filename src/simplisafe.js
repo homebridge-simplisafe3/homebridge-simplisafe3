@@ -66,6 +66,7 @@ export const EVENT_TYPES = {
     DOORLOCK_LOCKED: 'DOORLOCK_LOCKED',
     DOORLOCK_UNLOCKED: 'DOORLOCK_UNLOCKED',
     DOORLOCK_ERROR: 'DOORLOCK_ERROR',
+    CONNECTED: 'CONNECTED',
     DISCONNECT: 'DISCONNECT',
     RECONNECT: 'RECONNECT',
     CONNECTION_LOST: 'CONNECTION_LOST'
@@ -748,15 +749,16 @@ class SimpliSafe3 {
                 },
                 transports: ['websocket', 'polling']
             });
-
-            this.socket.on('connect', () => {
-                // this.log('Socket connect');
-            });
-
-            this.socket.on('reconnect_attempt', (attemptNumber) => {
-               // this.log(`Socket reconnect_attempt ${attemptNumber}`);
-            });
         }
+
+        this.socket.on('connect', () => {
+           // this.log('Socket connect');
+           callback(EVENT_TYPES.CONNECTED);
+        });
+
+        this.socket.on('reconnect_attempt', (attemptNumber) => {
+           // this.log(`Socket reconnect_attempt ${attemptNumber}`);
+        });
 
         this.socket.on('connect_error', (err) => {
             // this.log('Socket connect_error:', err);
@@ -783,6 +785,7 @@ class SimpliSafe3 {
         });
 
         this.socket.on('reconnect', () => {
+            // this.log('Socket reconnect');
             callback(EVENT_TYPES.RECONNECT);
         });
 
