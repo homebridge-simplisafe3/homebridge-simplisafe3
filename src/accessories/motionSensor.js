@@ -100,22 +100,46 @@ class SS3MotionSensor {
         }
     }
 
-    startListening() {
-        this.simplisafe.subscribeToEvents((event, data) => {
-            if (data && this.id !== data.sensorSerial) return;
+    async startListening() {
+        try {
+            if (this.simplisafe.isSocketConnected()) this.log(`${this.name} motion sensor now listening for real time events.`);
+            await this.simplisafe.subscribeToEvents((event, data) => {
+               switch (event) {
+                  // Socket events
+                  case EVENT_TYPES.CONNECTED:
+                     this.log(`${this.name} motion sensor now listening for real time events.`);
+                     break;
+                  case EVENT_TYPES.DISCONNECT:
+                     this.log(`${this.name} motion sensor real time events disconnected.`);
+                     break;
+                  case EVENT_TYPES.CONNECTION_LOST:
+                     this.log(`${this.name} motion sensor real time events connection lost. Attempting to restart...`);
+                     this.startListening();
+                  break;
+               }
 
-            switch (event) {
-                case EVENT_TYPES.MOTION:
-                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
-                    setTimeout(() => {
-                        this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
-                    }, 10000);
-                    break;
-                default:
-                    this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
-                    break;
+               if (data && this.id == data.sensorSerial) {
+                  switch (event) {
+                      case EVENT_TYPES.MOTION:
+                          this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
+                          setTimeout(() => {
+                              this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
+                          }, 10000);
+                          break;
+                      default:
+                          this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
+                          break;
+                  }
+               }
+            });
+        } catch (err) {
+            if (err instanceof RateLimitError) {
+                this.log(`${this.name} motion sensor caught RateLimitError, waiting to retry...`);
+                setTimeout(async () => {
+                    await this.startListening();
+                }, eventSubscribeRetryInterval);
             }
-        });
+        }
         this.simplisafe.subscribeToSensor(this.id, sensor => {
             if (sensor.flags) {
                 if (sensor.flags.lowBattery) {
