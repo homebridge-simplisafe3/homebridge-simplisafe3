@@ -18,7 +18,7 @@ class SS3MotionSensor {
     }
 
     identify(paired, callback) {
-        this.log(`Identify request for ${this.name}, paired: ${paired}`);
+        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
         callback();
     }
 
@@ -113,7 +113,7 @@ class SS3MotionSensor {
                     }, 10000);
                     break;
                 default:
-                    this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
+                    if (this.debug) this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
                     break;
             }
         });

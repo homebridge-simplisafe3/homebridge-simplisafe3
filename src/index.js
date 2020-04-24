@@ -42,13 +42,13 @@ class SS3Platform {
         this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, log, this.debug);
 
         if (config.subscriptionId) {
-            this.log(`Specifying account number: ${config.subscriptionId}`);
+            if (this.debug) this.log(`Specifying account number: ${config.subscriptionId}`);
             this.simplisafe.setDefaultSubscription(config.subscriptionId);
         }
 
         this.initialLoad = this.simplisafe.login(config.auth.username, config.auth.password, true)
             .then(() => {
-                this.log('Logged in!');
+                if (this.debug) this.log('Logged in!');
                 return this.refreshAccessories(false);
             })
             .catch(err => {
@@ -66,7 +66,7 @@ class SS3Platform {
         if (api) {
             this.api = api;
             this.api.on('didFinishLaunching', () => {
-                this.log(`Found ${this.cachedAccessoryConfig.length} cached accessories being configured`);
+                if (this.debug) this.log(`Found ${this.cachedAccessoryConfig.length} cached accessories being configured`);
 
                 this.initialLoad
                     .then(() => {
@@ -84,7 +84,7 @@ class SS3Platform {
     }
 
     addAccessory(device) {
-        this.log('Add accessory');
+        if (this.debug) this.log('Add accessory');
         try {
             this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [device.accessory]);
             this.accessories.push(device.accessory);
@@ -94,7 +94,7 @@ class SS3Platform {
     }
 
     configureAccessory(accessory) {
-        this.log(`Configure existing accessory ${accessory.UUID} ${accessory.displayName}`);
+        if (this.debug) this.log(`Configure existing accessory ${accessory.UUID} ${accessory.displayName}`);
 
         let config = new Promise((resolve, reject) => {
             this.initialLoad
@@ -110,11 +110,11 @@ class SS3Platform {
                     let device = this.devices.find(device => device.uuid === accessory.UUID);
 
                     if (device) {
-                        this.log('Found device!');
+                        if (this.debug) this.log('Found device!');
                         device.setAccessory(accessory);
                         this.accessories.push(accessory);
                     } else {
-                        this.log('Device not found!');
+                        if (this.debug) this.log('Device not found!');
                         this.removeAccessory(accessory);
                     }
 
@@ -129,7 +129,7 @@ class SS3Platform {
     }
 
     removeAccessory(accessory) {
-        this.log('Remove accessory');
+        if (this.debug) this.log('Remove accessory');
         if (accessory) {
             if (!this.persistAccessories && !this.simplisafe.isBlocked) {
                 this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
@@ -141,7 +141,7 @@ class SS3Platform {
     }
 
     async refreshAccessories(addAndRemove = true) {
-        this.log(`Refreshing accessories (add and remove: ${addAndRemove})`);
+        if (this.debug) this.log(`Refreshing accessories (add and remove: ${addAndRemove})`);
         try {
             let subscription = await this.simplisafe.getSubscription();
 
@@ -149,7 +149,7 @@ class SS3Platform {
             let alarm = this.accessories.find(acc => acc.UUID === uuid);
 
             if (!alarm) {
-                this.log('Alarm not found, adding...');
+                if (this.debug) this.log('Alarm not found, adding...');
                 const alarmAccessory = new Alarm(
                     'SimpliSafe 3',
                     subscription.location.system.serial,
@@ -194,7 +194,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log(`Sensor ${sensor.name} not found, adding...`);
+                        if (this.debug) this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new EntrySensor(
                             sensor.name || 'Entry Sensor',
                             sensor.serial,
@@ -220,7 +220,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log('Sensor not found, adding...');
+                        if (this.debug) this.log('Sensor not found, adding...');
                         const sensorAccessory = new CODetector(
                             sensor.name || 'CO Detector',
                             sensor.serial,
@@ -246,7 +246,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log(`Sensor ${sensor.name} not found, adding...`);
+                        if (this.debug) this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new SmokeDetector(
                             sensor.name || 'Smoke Detector',
                             sensor.serial,
@@ -272,7 +272,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log(`Sensor ${sensor.name} not found, adding...`);
+                        if (this.debug) this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new WaterSensor(
                             sensor.name || 'Water Sensor',
                             sensor.serial,
@@ -298,7 +298,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log(`Sensor ${sensor.name} not found, adding...`);
+                        if (this.debug) this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new FreezeSensor(
                             sensor.name || 'Freeze Sensor',
                             sensor.serial,
@@ -331,7 +331,7 @@ class SS3Platform {
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                     if (!accessory) {
-                        this.log(`Sensor ${sensor.name} not found, adding...`);
+                        if (this.debug) this.log(`Sensor ${sensor.name} not found, adding...`);
                         const sensorAccessory = new MotionSensor(
                             sensor.name || 'Motion Sensor',
                             sensor.serial,
@@ -370,7 +370,7 @@ class SS3Platform {
                 let accessory = this.accessories.find(acc => acc.UUID === uuid);
 
                 if (!accessory) {
-                    this.log('Lock not found, adding...');
+                    if (this.debug) this.log('Lock not found, adding...');
                     const lockAccessory = new DoorLock(
                         lock.name || 'Smart Lock',
                         lock.serial,
@@ -403,7 +403,7 @@ class SS3Platform {
 
                     if (!cameraAccessory) {
                         // cameras are not cached by Homebridge
-                        this.log(`Initializing camera ${camera.cameraSettings.cameraName} (uuid ${uuid}).`);
+                        if (this.debug) this.log(`Initializing camera ${camera.cameraSettings.cameraName} (uuid ${uuid}).`);
                         const cameraDevice = new Camera(
                             camera.cameraSettings.cameraName || 'Camera',
                             camera.uuid,
@@ -450,7 +450,7 @@ class SS3Platform {
     }
 
     updateAccessoriesReachability() {
-        this.log('Updating reacahability');
+        if (this.debug) this.log('Updating reacahability');
         for (let accessory of this.accessories) {
             accessory.updateReachability();
         }
@@ -459,7 +459,7 @@ class SS3Platform {
     async retryBlockedAccessories() {
         try {
             await this.simplisafe.login(this.simplisafe.username, this.simplisafe.password, true);
-            this.log('Recovered from 403 rate limit!');
+            if (this.debug) this.log('Recovered from 403 rate limit!');
             await this.refreshAccessories(false);
             this.cachedAccessoryConfig = [];
             for (let accessory of this.unreachableAccessories) {

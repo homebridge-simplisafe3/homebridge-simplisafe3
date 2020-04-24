@@ -722,7 +722,7 @@ class SimpliSafe3 {
                             break;
                         default:
                             // Unknown event
-                            this.log('Unknown SimpliSafe event');
+                            if (this.debug) this.log('Unknown SimpliSafe event');
                             this.log(data);
                             callback(null, data);
                             break;

@@ -37,7 +37,7 @@ class SS3SimpliCam {
     }
 
     identify(paired, callback) {
-        this.log(`Identify request for ${this.name}, paired: ${paired}`);
+        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
         callback();
     }
 
@@ -143,17 +143,17 @@ class SS3SimpliCam {
                        }
                        break;
                    case EVENT_TYPES.DISCONNECT:
-                       this.log(`${this.name} camera real time events disconnected.`);
+                       if (this.debug) this.log(`${this.name} camera real time events disconnected.`);
                        this.startListening();
                        break;
                    default:
                        if (eventCameraId === this.id) {
-                           this.log(`${this.name} camera event received: ${event}`);
+                           if (this.debug) this.log(`${this.name} camera event received: ${event}`);
                        }
                        break;
                }
            });
-           this.log(`${this.name} camera now listening to alarm events.`);
+           if (this.debug) this.log(`${this.name} camera now listening to alarm events.`);
         } catch (err) {
             if (err instanceof RateLimitError) {
                 this.log(`${this.name} camera caught RateLimitError, waiting to retry...`);

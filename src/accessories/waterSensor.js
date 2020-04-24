@@ -16,7 +16,7 @@ class SS3WaterSensor {
     }
 
     identify(paired, callback) {
-        this.log(`Identify request for ${this.name}, paired: ${paired}`);
+        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
         callback();
     }
 
@@ -141,7 +141,7 @@ class SS3WaterSensor {
     }
 
     async refreshState() {
-        this.log('Refreshing sensor state');
+        if (this.debug) this.log('Refreshing sensor state');
         try {
             let sensor = await this.getSensorInformation();
             if (!sensor.status || !sensor.flags) {
@@ -157,7 +157,7 @@ class SS3WaterSensor {
             this.service.updateCharacteristic(this.Characteristic.LeakDetected, homekitSensorState);
             this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
 
-            this.log(`Updated current state for ${this.name}: ${leak}, ${batteryLow}`);
+            if (this.debug) this.log(`Updated current state for ${this.name}: ${leak}, ${batteryLow}`);
 
         } catch (err) {
             this.log('An error occurred while refreshing state');

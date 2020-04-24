@@ -18,7 +18,7 @@ class SS3FreezeSensor {
     }
 
     identify(paired, callback) {
-        this.log(`Identify request for ${this.name}, paired: ${paired}`);
+        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
         callback();
     }
 
