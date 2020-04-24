@@ -39,7 +39,7 @@ class SS3Platform {
             refreshInterval = config.sensorRefresh * 1000;
         }
 
-        this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, log);
+        this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, log, this.debug);
 
         if (config.subscriptionId) {
             this.log(`Specifying account number: ${config.subscriptionId}`);

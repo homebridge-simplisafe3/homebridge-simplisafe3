@@ -15,7 +15,7 @@ const eventSubscribeRetryInterval = 10000; // ms
 
 class SS3SimpliCam {
 
-    constructor(name, id, cameraDetails, cameraOptions, log, simplisafe, Service, Characteristic, UUIDGen, StreamController) {
+    constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, Service, Characteristic, UUIDGen, StreamController) {
         this.Characteristic = Characteristic;
         this.Service = Service;
         this.UUIDGen = UUIDGen;
@@ -24,6 +24,7 @@ class SS3SimpliCam {
         this.cameraDetails = cameraDetails;
         this.cameraOptions = cameraOptions;
         this.log = log;
+        this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
         this.uuid = UUIDGen.generate(id);
