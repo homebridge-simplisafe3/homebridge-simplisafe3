@@ -68,7 +68,7 @@ export const EVENT_TYPES = {
     DOORLOCK_ERROR: 'DOORLOCK_ERROR',
     DISCONNECT: 'DISCONNECT',
     RECONNECT: 'RECONNECT',
-    RECONNECT_FAILED: 'RECONNECT_FAILED'
+    CONNECTION_LOST: 'CONNECTION_LOST'
 };
 export class RateLimitError extends Error {
     constructor(...params) {
@@ -750,33 +750,40 @@ class SimpliSafe3 {
             });
 
             this.socket.on('connect', () => {
-                // this.log('Connect');
+                // this.log('Socket connect');
             });
 
             this.socket.on('connect_error', () => {
-                // this.log('Connect_error', err);
+                // this.log('Socket connect_error', err);
                 this.socket = null;
             });
 
             this.socket.on('connect_timeout', () => {
-                // this.log('Connect_timeout');
+                // this.log('Socket connect_timeout');
                 this.socket = null;
             });
 
-            this.socket.on('reconnect_failed', () => {
-                // this.log('Reconnect_failed');
+            this.socket.on('error', (err) => {
+                // this.log('Socket error: ' + err);
                 this.unsubscribeFromEvents();
+            });
+
+            this.socket.on('reconnect_failed', () => {
+                // this.log('Socket reconnect_failed');
+                this.unsubscribeFromEvents();
+            });
+
+            this.socket.on('reconnect_attempt', (attemptNumber) => {
+               // this.log(`Socket reconnect_attempt ${attemptNumber}`);
             });
         }
 
         this.socket.on('error', err => {
-            if (err === 'Not authorized') {
-                callback(EVENT_TYPES.DISCONNECT);
-            }
+            callback(EVENT_TYPES.CONNECTION_LOST);
         });
 
         this.socket.on('reconnect_failed', () => {
-            callback(EVENT_TYPES.RECONNECT_FAILED);
+            callback(EVENT_TYPES.CONNECTION_LOST);
         });
 
         this.socket.on('reconnect', () => {
@@ -784,9 +791,7 @@ class SimpliSafe3 {
         });
 
         this.socket.on('disconnect', reason => {
-            if (reason === 'transport close') {
-                callback(EVENT_TYPES.DISCONNECT);
-            }
+            callback(EVENT_TYPES.DISCONNECT);
         });
 
         this.socket.on('event', _socketCallback);

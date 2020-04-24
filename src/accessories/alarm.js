@@ -205,8 +205,8 @@ class SS3Alarm {
                         case EVENT_TYPES.RECONNECT:
                             this.log('Alarm real time events re-connected.');
                             break;
-                        case EVENT_TYPES.RECONNECT_FAILED:
-                            this.log('Alarm real time events re-connect failed. Restarting');
+                        case EVENT_TYPES.CONNECTION_LOST:
+                            this.log('Alarm real time events connection lost. Attempting to restart...');
                             this.startListening();
                             break;
                         default:
