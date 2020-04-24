@@ -755,12 +755,12 @@ class SimpliSafe3 {
 
             this.socket.on('connect_error', () => {
                 // this.log('Socket connect_error', err);
-                this.socket = null;
+                this.unsubscribeFromEvents();
             });
 
             this.socket.on('connect_timeout', () => {
                 // this.log('Socket connect_timeout');
-                this.socket = null;
+                this.unsubscribeFromEvents();
             });
 
             this.socket.on('error', (err) => {
@@ -777,6 +777,14 @@ class SimpliSafe3 {
                // this.log(`Socket reconnect_attempt ${attemptNumber}`);
             });
         }
+
+        this.socket.on('connect_error', err => {
+            callback(EVENT_TYPES.CONNECTION_LOST);
+        });
+
+        this.socket.on('connect_timeout', err => {
+            callback(EVENT_TYPES.CONNECTION_LOST);
+        });
 
         this.socket.on('error', err => {
             callback(EVENT_TYPES.CONNECTION_LOST);

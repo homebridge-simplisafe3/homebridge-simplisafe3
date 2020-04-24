@@ -174,7 +174,6 @@ class SS3Alarm {
     }
 
     async startListening() {
-        this.log('Alarm listening for real time events...');
         try {
             await this.simplisafe.subscribeToEvents(event => {
                 if (this.service) {
@@ -215,6 +214,7 @@ class SS3Alarm {
                     }
                 }
             });
+            this.log('Alarm listening for real time events...');
         } catch (err) {
             if (err instanceof RateLimitError) {
                 setTimeout(async () => {
