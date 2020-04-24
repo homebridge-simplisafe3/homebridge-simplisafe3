@@ -192,6 +192,7 @@ class SS3Alarm {
                         break;
                 }
                 if (this.service) {
+                    // this.log(`Alarm received new door lock event: ${event}`);
                     // alarm is initialzied
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:
