@@ -176,8 +176,26 @@ class SS3Alarm {
 
     async startListening() {
         try {
+            if (this.simplisafe.isSocketConnected()) this.log('Alarm listening for real time events.');
             await this.simplisafe.subscribeToEvents(event => {
+                switch (event) {
+                    // Socket events
+                    case EVENT_TYPES.CONNECTED:
+                        this.log('Alarm listening for real time events.');
+                        break;
+                    case EVENT_TYPES.DISCONNECT:
+                        this.log('Alarm real time events disconnected.');
+                        break;
+                    case EVENT_TYPES.RECONNECT:
+                        this.log('Alarm real time events re-connected.');
+                        break;
+                    case EVENT_TYPES.CONNECTION_LOST:
+                        this.log('Alarm real time events connection lost. Attempting to restart...');
+                        this.startListening();
+                        break;
+                }
                 if (this.service) {
+                    // alarm is initialzied
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:
                         case EVENT_TYPES.ALARM_CANCEL:
@@ -199,26 +217,12 @@ class SS3Alarm {
                         case EVENT_TYPES.AWAY_EXIT_DELAY:
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                             break;
-                        case EVENT_TYPES.CONNECTED:
-                            this.log('Alarm listening for real time events.');
-                            break;
-                        case EVENT_TYPES.DISCONNECT:
-                            this.log('Alarm real time events disconnected.');
-                            break;
-                        case EVENT_TYPES.RECONNECT:
-                            this.log('Alarm real time events re-connected.');
-                            break;
-                        case EVENT_TYPES.CONNECTION_LOST:
-                            this.log('Alarm real time events connection lost. Attempting to restart...');
-                            this.startListening();
-                            break;
                         default:
                             this.log(`Alarm ignoring unhandled event: ${event}`);
                             break;
                     }
                 }
             });
-            if (this.simplisafe.isSocketConnected()) this.log('Alarm listening for real time events.');
         } catch (err) {
             if (err instanceof RateLimitError) {
                 setTimeout(async () => {

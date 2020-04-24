@@ -116,49 +116,52 @@ class SS3SimpliCam {
     async startListening() {
         try {
            await this.simplisafe.subscribeToEvents((event, data) => {
-               if (!this.accessory) {
-                   // Camera is not yet initialized
-                   return;
-               }
-               let eventCameraId;
-               if (data && (data.sensorSerial || data.internal)) {
-                   eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
-               }
-
                switch (event) {
-                   case EVENT_TYPES.CAMERA_MOTION:
-                       if (eventCameraId == this.id) {
-                           this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
-                           this.cameraSource.motionIsTriggered = true;
-                           setTimeout(() => {
-                               this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
-                               this.cameraSource.motionIsTriggered = false;
-                           }, 5000);
-                       }
-                       break;
-                   case EVENT_TYPES.DOORBELL:
-                       if (eventCameraId == this.id) {
-                           this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
-                       }
-                       break;
+                  // Socket events
                    case EVENT_TYPES.CONNECTED:
                        this.log(`${this.name} camera now listening for real time events.`);
-                       break;
+                     break;
                    case EVENT_TYPES.DISCONNECT:
                        this.log(`${this.name} camera real time events disconnected.`);
-                       break;
+                     break;
                    case EVENT_TYPES.RECONNECT:
                        this.log(this.name + ' camera real time events re-connected.');
-                       break;
+                     break;
                    case EVENT_TYPES.CONNECTION_LOST:
                        this.log(this.name + ' camera real time events connection lost. Attempting to restart...');
                        this.startListening();
                        break;
-                   default:
-                       if (eventCameraId === this.id) {
-                           this.log(`${this.name} camera ignoring unhandled event: ${event}`);
-                       }
-                       break;
+               }
+
+               if (this.accessory) {
+                  // camera is initialzied
+                  let eventCameraId;
+                  if (data && (data.sensorSerial || data.internal)) {
+                      eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
+                  }
+
+                  switch (event) {
+                      case EVENT_TYPES.CAMERA_MOTION:
+                          if (eventCameraId == this.id) {
+                              this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
+                              this.cameraSource.motionIsTriggered = true;
+                              setTimeout(() => {
+                                  this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
+                                  this.cameraSource.motionIsTriggered = false;
+                              }, 5000);
+                          }
+                          break;
+                      case EVENT_TYPES.DOORBELL:
+                          if (eventCameraId == this.id) {
+                              this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
+                          }
+                          break;
+                      default:
+                          if (eventCameraId === this.id) {
+                              this.log(`${this.name} camera ignoring unhandled event: ${event}`);
+                          }
+                          break;
+                  }
                }
            });
            if (this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
