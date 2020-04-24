@@ -753,44 +753,32 @@ class SimpliSafe3 {
                 // this.log('Socket connect');
             });
 
-            this.socket.on('connect_error', () => {
-                // this.log('Socket connect_error', err);
-                this.unsubscribeFromEvents();
-            });
-
-            this.socket.on('connect_timeout', () => {
-                // this.log('Socket connect_timeout');
-                this.unsubscribeFromEvents();
-            });
-
-            this.socket.on('error', (err) => {
-                // this.log('Socket error: ' + err);
-                this.unsubscribeFromEvents();
-            });
-
-            this.socket.on('reconnect_failed', () => {
-                // this.log('Socket reconnect_failed');
-                this.unsubscribeFromEvents();
-            });
-
             this.socket.on('reconnect_attempt', (attemptNumber) => {
                // this.log(`Socket reconnect_attempt ${attemptNumber}`);
             });
         }
 
-        this.socket.on('connect_error', err => {
+        this.socket.on('connect_error', (err) => {
+            // this.log('Socket connect_error:', err);
+            this.unsubscribeFromEvents();
             callback(EVENT_TYPES.CONNECTION_LOST);
         });
 
-        this.socket.on('connect_timeout', err => {
+        this.socket.on('connect_timeout', () => {
+            // this.log('Socket connect_timeout');
+            this.unsubscribeFromEvents();
             callback(EVENT_TYPES.CONNECTION_LOST);
         });
 
-        this.socket.on('error', err => {
+        this.socket.on('error', (err) => {
+            // this.log('Socket error: ', err);
+            this.unsubscribeFromEvents();
             callback(EVENT_TYPES.CONNECTION_LOST);
         });
 
         this.socket.on('reconnect_failed', () => {
+            // this.log('Socket reconnect_failed');
+            this.unsubscribeFromEvents();
             callback(EVENT_TYPES.CONNECTION_LOST);
         });
 
@@ -798,7 +786,8 @@ class SimpliSafe3 {
             callback(EVENT_TYPES.RECONNECT);
         });
 
-        this.socket.on('disconnect', reason => {
+        this.socket.on('disconnect', (reason) => {
+            // this.log('Socket disconnect reason: ', reason);
             callback(EVENT_TYPES.DISCONNECT);
         });
 
@@ -812,6 +801,7 @@ class SimpliSafe3 {
 
     unsubscribeFromEvents() {
         if (this.socket) {
+            this.socket.off();
             this.socket.close();
             this.socket = null;
         }
