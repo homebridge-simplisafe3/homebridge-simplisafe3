@@ -186,6 +186,7 @@ class SS3DoorLock {
                }
 
                if (this.service) {
+                   // Door lock events
                    if (data && data.sensorSerial && data.sensorSerial == this.id) {
                        this.log(`${this.name} lock received new door lock event: ${event}`);
                        switch (event) {

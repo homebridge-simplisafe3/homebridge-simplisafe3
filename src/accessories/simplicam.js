@@ -134,13 +134,13 @@ class SS3SimpliCam {
                }
 
                if (this.accessory) {
-                  // camera is initialzied
                   let eventCameraId;
                   if (data && (data.sensorSerial || data.internal)) {
                       eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
                   }
 
                   if (eventCameraId == this.id) {
+                     // Camera events
                      this.log(`${this.name} camera received new event: ${event}`);
                      switch (event) {
                          case EVENT_TYPES.CAMERA_MOTION:

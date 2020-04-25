@@ -194,7 +194,7 @@ class SS3Alarm {
                         break;
                 }
                 if (this.service && data && data.sensorSerial == '' && data.sensorType == 0) {
-                    // alarm is initialzied
+                    // Alarm events
                     this.log('Alarm received new event:', event);
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:

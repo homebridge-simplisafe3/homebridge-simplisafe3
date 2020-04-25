@@ -125,6 +125,7 @@ class SS3MotionSensor {
                }
 
                if (data && this.id == data.sensorSerial) {
+                  // Motion sensor events
                   this.log(`${this.name} motion sensor received new event: ${event}`);
                   switch (event) {
                       case EVENT_TYPES.MOTION:
