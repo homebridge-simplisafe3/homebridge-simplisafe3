@@ -782,7 +782,7 @@ class SimpliSafe3 {
              });
 
              this.socket.on('disconnect', (reason) => {
-                 this.log('Socket disconnect reason: ', reason);
+                 this.log('Socket disconnect reason:', reason);
              });
         }
 

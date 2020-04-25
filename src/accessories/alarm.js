@@ -187,7 +187,7 @@ class SS3Alarm {
                         this.log('Alarm real time events disconnected.');
                         break;
                     case EVENT_TYPES.CONNECTION_LOST:
-                        this.log('Alarm real time events connection lost. Attempting to restart...');
+                        this.log('Alarm real time events connection lost. Attempting to reconnect...');
                         setTimeout(async () => {
                             await this.startListening();
                         }, SOCKET_RETRY_INTERVAL);

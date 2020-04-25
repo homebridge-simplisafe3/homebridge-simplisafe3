@@ -117,7 +117,7 @@ class SS3MotionSensor {
                      this.log(`${this.name} motion sensor real time events disconnected.`);
                      break;
                   case EVENT_TYPES.CONNECTION_LOST:
-                     this.log(`${this.name} motion sensor real time events connection lost. Attempting to restart...`);
+                     this.log(`${this.name} motion sensor real time events connection lost. Attempting to reconnect...`);
                      setTimeout(async () => {
                          await this.startListening();
                      }, SOCKET_RETRY_INTERVAL);
