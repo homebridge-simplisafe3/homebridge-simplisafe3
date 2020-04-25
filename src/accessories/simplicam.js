@@ -132,7 +132,6 @@ class SS3SimpliCam {
                }
 
                if (this.accessory) {
-                  this.log(`${this.name} camera received new event: ${event}`);
                   // camera is initialzied
                   let eventCameraId;
                   if (data && (data.sensorSerial || data.internal)) {
@@ -140,6 +139,7 @@ class SS3SimpliCam {
                   }
 
                   if (eventCameraId == this.id) {
+                     this.log(`${this.name} camera received new event: ${event}`);
                      switch (event) {
                          case EVENT_TYPES.CAMERA_MOTION:
                              this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
