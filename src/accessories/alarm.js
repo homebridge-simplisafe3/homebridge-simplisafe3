@@ -177,7 +177,7 @@ class SS3Alarm {
     async startListening() {
         try {
             if (this.simplisafe.isSocketConnected()) this.log('Alarm now listening for real time events.');
-            await this.simplisafe.subscribeToEvents(event => {
+            await this.simplisafe.subscribeToEvents((event, data) => {
                 switch (event) {
                     // Socket events
                     case EVENT_TYPES.CONNECTED:
@@ -191,8 +191,9 @@ class SS3Alarm {
                         this.startListening();
                         break;
                 }
-                if (this.service) {
-                    this.log(`Alarm received new event: ${event}`);
+                this.log('Alarm handler caught new event:', event);
+                if (this.service && data && data.sensorSerial == '' && data.sensorType == 0) {
+                    this.log('Alarm received new event:', event);
                     // alarm is initialzied
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:
