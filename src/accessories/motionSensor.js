@@ -1,4 +1,9 @@
-import { EVENT_TYPES } from '../simplisafe';
+import {
+    EVENT_TYPES,
+    RateLimitError
+} from '../simplisafe';
+
+const eventSubscribeRetryInterval = 10000; // ms
 
 class SS3MotionSensor {
 
