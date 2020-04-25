@@ -7,11 +7,11 @@ import ffmpeg from '@ffmpeg-installer/ffmpeg';
 
 import {
     EVENT_TYPES,
-    RateLimitError
+    RateLimitError,
+    SOCKET_RETRY_INTERVAL
 } from '../simplisafe';
 
 const dnsLookup = promisify(dns.lookup);
-const eventSubscribeRetryInterval = 10000; // ms
 
 class SS3SimpliCam {
 
@@ -129,7 +129,7 @@ class SS3SimpliCam {
                        this.log(`${this.name} camera real time events connection lost. Attempting to restart...`);
                        setTimeout(async () => {
                            await this.startListening();
-                       }, eventSubscribeRetryInterval);
+                       }, SOCKET_RETRY_INTERVAL);
                        break;
                }
 
@@ -166,7 +166,7 @@ class SS3SimpliCam {
                 this.log(`${this.name} camera caught RateLimitError, waiting to retry...`);
                 setTimeout(async () => {
                     await this.startListening();
-                }, eventSubscribeRetryInterval);
+                }, SOCKET_RETRY_INTERVAL);
             }
         }
     }

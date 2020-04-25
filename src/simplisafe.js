@@ -70,6 +70,7 @@ export const EVENT_TYPES = {
     DISCONNECT: 'DISCONNECT',
     CONNECTION_LOST: 'CONNECTION_LOST'
 };
+
 export class RateLimitError extends Error {
     constructor(...params) {
         super(...params);
@@ -79,7 +80,9 @@ export class RateLimitError extends Error {
         }
         this.name = 'RateLimitError';
     }
-}
+};
+
+export const SOCKET_RETRY_INTERVAL = 1000; //ms
 
 const generateSimplisafeId = () => {
     const supportedCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz0123456789';

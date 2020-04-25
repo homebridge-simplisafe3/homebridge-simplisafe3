@@ -1,9 +1,8 @@
 import {
     EVENT_TYPES,
-    RateLimitError
+    RateLimitError,
+    SOCKET_RETRY_INTERVAL
 } from '../simplisafe';
-
-const eventSubscribeRetryInterval = 10000; // ms
 
 class SS3MotionSensor {
 
@@ -121,7 +120,7 @@ class SS3MotionSensor {
                      this.log(`${this.name} motion sensor real time events connection lost. Attempting to restart...`);
                      setTimeout(async () => {
                          await this.startListening();
-                     }, eventSubscribeRetryInterval);
+                     }, SOCKET_RETRY_INTERVAL);
                   break;
                }
 
@@ -145,7 +144,7 @@ class SS3MotionSensor {
                 this.log(`${this.name} motion sensor caught RateLimitError, waiting to retry...`);
                 setTimeout(async () => {
                     await this.startListening();
-                }, eventSubscribeRetryInterval);
+                }, SOCKET_RETRY_INTERVAL);
             }
         }
         this.simplisafe.subscribeToSensor(this.id, sensor => {

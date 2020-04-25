@@ -1,9 +1,9 @@
 import {
     EVENT_TYPES,
-    RateLimitError
+    RateLimitError,
+    SOCKET_RETRY_INTERVAL
 } from '../simplisafe';
 
-const eventSubscribeRetryInterval = 10000; // ms
 const targetStateMaxRetries = 5;
 
 class SS3Alarm {
@@ -190,7 +190,7 @@ class SS3Alarm {
                         this.log('Alarm real time events connection lost. Attempting to restart...');
                         setTimeout(async () => {
                             await this.startListening();
-                        }, eventSubscribeRetryInterval);
+                        }, SOCKET_RETRY_INTERVAL);
                         break;
                 }
                 if (this.service && data && data.sensorSerial == '' && data.sensorType == 0) {
@@ -227,7 +227,7 @@ class SS3Alarm {
             if (err instanceof RateLimitError) {
                 setTimeout(async () => {
                     await this.startListening();
-                }, eventSubscribeRetryInterval);
+                }, SOCKET_RETRY_INTERVAL);
             }
         }
     }
