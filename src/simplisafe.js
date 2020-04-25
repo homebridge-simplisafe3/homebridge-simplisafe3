@@ -748,47 +748,66 @@ class SimpliSafe3 {
                 },
                 transports: ['websocket', 'polling']
             });
+
+             // for debugging, we only want one of these listeners
+             this.socket.on('connect', () => {
+                this.log('Socket connect');
+             });
+
+             this.socket.on('reconnect_attempt', (attemptNumber) => {
+                this.log(`Socket reconnect_attempt ${attemptNumber}`);
+             });
+
+             this.socket.on('reconnect', () => {
+                 this.log('Socket reconnect');
+             });
+
+             this.socket.on('connect_error', (err) => {
+                 this.log(`Socket connect_error ${err.type}: ${err.message}`);
+             });
+
+             this.socket.on('connect_timeout', () => {
+                 this.log('Socket connect_timeout');
+             });
+
+             this.socket.on('error', (err) => {
+                 this.log(`Socket error ${err.type}: ${err.message}`);
+             });
+
+             this.socket.on('reconnect_failed', () => {
+                 this.log('Socket reconnect_failed');
+             });
+
+             this.socket.on('disconnect', (reason) => {
+                 this.log('Socket disconnect reason: ', reason);
+             });
         }
 
         this.socket.on('connect', () => {
-           this.log('Socket connect');
            callback(EVENT_TYPES.CONNECTED);
         });
 
-        this.socket.on('reconnect_attempt', (attemptNumber) => {
-           this.log(`Socket reconnect_attempt ${attemptNumber}`);
-        });
-
-        this.socket.on('reconnect', () => {
-            this.log('Socket reconnect');
-        });
-
         this.socket.on('connect_error', (err) => {
-            this.log(`Socket connect_error ${err.type}: ${err.message}`);
             this.unsubscribeFromEvents();
             callback(EVENT_TYPES.CONNECTION_LOST);
         });
 
         this.socket.on('connect_timeout', () => {
-            this.log('Socket connect_timeout');
             this.unsubscribeFromEvents();
             callback(EVENT_TYPES.CONNECTION_LOST);
         });
 
         this.socket.on('error', (err) => {
-            this.log(`Socket error ${err.type}: ${err.message}`);
             this.unsubscribeFromEvents();
             callback(EVENT_TYPES.CONNECTION_LOST);
         });
 
         this.socket.on('reconnect_failed', () => {
-            this.log('Socket reconnect_failed');
             this.unsubscribeFromEvents();
             callback(EVENT_TYPES.CONNECTION_LOST);
         });
 
         this.socket.on('disconnect', (reason) => {
-            this.log('Socket disconnect reason: ', reason);
             callback(EVENT_TYPES.DISCONNECT);
         });
 
