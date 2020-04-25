@@ -164,7 +164,7 @@ class SS3Alarm {
             if (err.type == 'SettingsInProgress' && this.nRetries < targetStateMaxRetries) {
                 this.nRetries++;
                 setTimeout(async () => {
-                   // this.console.log('Retrying setTargetState...');
+                    this.console.log('Retrying setTargetState...');
                     await this.setTargetState(homekitState, callback);
                 }, 1000); // wait 1  second and try again
             } else {
@@ -192,7 +192,7 @@ class SS3Alarm {
                         break;
                 }
                 if (this.service) {
-                    // this.log(`Alarm received new event: ${event}`);
+                    this.log(`Alarm received new event: ${event}`);
                     // alarm is initialzied
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:

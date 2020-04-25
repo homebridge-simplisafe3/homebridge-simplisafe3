@@ -119,6 +119,7 @@ class SS3MotionSensor {
                }
 
                if (data && this.id == data.sensorSerial) {
+                  this.log(`${this.name} motion sensor received new event: ${event}`);
                   switch (event) {
                       case EVENT_TYPES.MOTION:
                           this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);

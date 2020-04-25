@@ -132,34 +132,30 @@ class SS3SimpliCam {
                }
 
                if (this.accessory) {
-                  // this.log(`${this.name} camera received new event: ${event}`);
+                  this.log(`${this.name} camera received new event: ${event}`);
                   // camera is initialzied
                   let eventCameraId;
                   if (data && (data.sensorSerial || data.internal)) {
                       eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
                   }
 
-                  switch (event) {
-                      case EVENT_TYPES.CAMERA_MOTION:
-                          if (eventCameraId == this.id) {
-                              this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
-                              this.cameraSource.motionIsTriggered = true;
-                              setTimeout(() => {
+                  if (eventCameraId == this.id) {
+                     switch (event) {
+                         case EVENT_TYPES.CAMERA_MOTION:
+                             this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
+                             this.cameraSource.motionIsTriggered = true;
+                             setTimeout(() => {
                                   this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
                                   this.cameraSource.motionIsTriggered = false;
-                              }, 5000);
-                          }
-                          break;
-                      case EVENT_TYPES.DOORBELL:
-                          if (eventCameraId == this.id) {
-                              this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
-                          }
-                          break;
-                      default:
-                          if (eventCameraId === this.id) {
-                              this.log(`${this.name} camera ignoring unhandled event: ${event}`);
-                          }
-                          break;
+                             }, 5000);
+                             break;
+                         case EVENT_TYPES.DOORBELL:
+                             this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
+                             break;
+                         default:
+                             this.log(`${this.name} camera ignoring unhandled event: ${event}`);
+                             break;
+                     }
                   }
                }
            });

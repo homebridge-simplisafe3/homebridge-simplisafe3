@@ -186,7 +186,7 @@ class SS3DoorLock {
 
                if (this.service) {
                    if (data && data.sensorSerial && data.sensorSerial == this.id) {
-                       // this.log(`${this.name} lock received new door lock event: ${event}`);
+                       this.log(`${this.name} lock received new door lock event: ${event}`);
                        switch (event) {
                            case EVENT_TYPES.DOORLOCK_UNLOCKED:
                                this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
