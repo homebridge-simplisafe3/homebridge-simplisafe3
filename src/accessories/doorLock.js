@@ -180,7 +180,9 @@ class SS3DoorLock {
                      break;
                    case EVENT_TYPES.CONNECTION_LOST:
                        this.log(`${this.name} lock real time events connection lost. Attempting to restart...`);
-                       this.startListening();
+                       setTimeout(async () => {
+                           await this.startListening();
+                       }, eventSubscribeRetryInterval);
                        break;
                }
 

@@ -188,13 +188,14 @@ class SS3Alarm {
                         break;
                     case EVENT_TYPES.CONNECTION_LOST:
                         this.log('Alarm real time events connection lost. Attempting to restart...');
-                        this.startListening();
+                        setTimeout(async () => {
+                            await this.startListening();
+                        }, eventSubscribeRetryInterval);
                         break;
                 }
-                this.log('Alarm handler caught new event:', event);
                 if (this.service && data && data.sensorSerial == '' && data.sensorType == 0) {
-                    this.log('Alarm received new event:', event);
                     // alarm is initialzied
+                    this.log('Alarm received new event:', event);
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:
                         case EVENT_TYPES.ALARM_CANCEL:
