@@ -764,7 +764,7 @@ class SimpliSafe3 {
         });
 
         this.socket.on('connect_error', (err) => {
-            this.log('Socket connect_error:', err);
+            this.log(`Socket connect_error ${err.type}: ${err.message}`);
             this.unsubscribeFromEvents();
             callback(EVENT_TYPES.CONNECTION_LOST);
         });
@@ -776,7 +776,7 @@ class SimpliSafe3 {
         });
 
         this.socket.on('error', (err) => {
-            this.log('Socket error: ', err);
+            this.log(`Socket error ${err.type}: ${err.message}`);
             this.unsubscribeFromEvents();
             callback(EVENT_TYPES.CONNECTION_LOST);
         });
