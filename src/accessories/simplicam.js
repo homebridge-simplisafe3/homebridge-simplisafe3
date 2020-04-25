@@ -382,7 +382,7 @@ class CameraSource {
         callback(response);
     }
 
-    handleStreamRequest = async (request) => {
+    async handleStreamRequest(request, callback) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
             return callback(new Error('Request blocked (rate limited)'));
         }
@@ -585,7 +585,7 @@ class CameraSource {
                 delete this.ongoingSessions[sessionIdentifier];
             }
         }
-    };
+    }
 
     createStreamControllers(maxStreams, options) {
         for (let i = 0; i < maxStreams; i++) {
