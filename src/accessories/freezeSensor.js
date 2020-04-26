@@ -2,12 +2,13 @@ const fahrenheitToCelsius = f => (f - 32.0) * 5.0 / 9.0;
 
 class SS3FreezeSensor {
 
-    constructor(name, id, log, simplisafe, Service, Characteristic, UUIDGen) {
+    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
 
         this.Characteristic = Characteristic;
         this.Service = Service;
         this.id = id;
         this.log = log;
+        this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
         this.uuid = UUIDGen.generate(id);
@@ -17,7 +18,7 @@ class SS3FreezeSensor {
     }
 
     identify(paired, callback) {
-        this.log(`Identify request for ${this.name}, paired: ${paired}`);
+        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
         callback();
     }
 

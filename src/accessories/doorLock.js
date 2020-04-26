@@ -2,12 +2,13 @@ import { EVENT_TYPES } from '../simplisafe';
 
 class SS3DoorLock {
 
-    constructor(name, id, log, simplisafe, Service, Characteristic, UUIDGen) {
+    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
 
         this.Characteristic = Characteristic;
         this.Service = Service;
         this.id = id;
         this.log = log;
+        this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
         this.uuid = UUIDGen.generate(id);
@@ -31,7 +32,7 @@ class SS3DoorLock {
     }
 
     identify(paired, callback) {
-        this.log(`Identify request for ${this.name}, paired: ${paired}`);
+        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
         callback();
     }
 
@@ -113,7 +114,7 @@ class SS3DoorLock {
                 homekitState = this.Characteristic.LockCurrentState.UNKNOWN;
             }
 
-            this.log(`Current lock state is: ${state}, ${homekitState}`);
+            if (this.debug) this.log(`Current lock state is: ${state}, ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the current door lock state: ${err}`));
@@ -135,7 +136,7 @@ class SS3DoorLock {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
             let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            this.log(`Target lock state is: ${state}, ${homekitState}`);
+            if (this.debug) this.log(`Target lock state is: ${state}, ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the target door lock state: ${err}`));
@@ -144,7 +145,7 @@ class SS3DoorLock {
 
     async setTargetState(homekitState, callback) {
         let state = this.TARGET_HOMEKIT_TO_SS3[homekitState];
-        this.log(`Setting target lock state to ${state}, ${homekitState}`);
+        if (this.debug) this.log(`Setting target lock state to ${state}, ${homekitState}`);
 
         if (!this.service) {
             callback(new Error('Lock not linked to Homebridge service'));
@@ -153,7 +154,7 @@ class SS3DoorLock {
 
         try {
             await this.simplisafe.setLockState(this.id, state);
-            this.log(`Updated lock state: ${state}`);
+            if (this.debug) this.log(`Updated lock state: ${state}`);
             this.service.updateCharacteristic(this.Characteristic.LockCurrentState, homekitState);
             callback(null);
         } catch (err) {
@@ -162,12 +163,12 @@ class SS3DoorLock {
     }
 
     startListening() {
-        this.log('Listening to door lock events...');
+        if (this.debug) this.log('Listening to door lock events...');
         this.simplisafe.subscribeToEvents(async (event, data) => {
 
             if (this.service) {
                 if (data && data.sensorSerial && data.sensorSerial == this.id) {
-                    this.log(`Received new door lock event: ${event}`);
+                    if (this.debug) this.log(`Received new door lock event: ${event}`);
 
                     switch (event) {
                         case EVENT_TYPES.DOORLOCK_UNLOCKED:
@@ -200,7 +201,7 @@ class SS3DoorLock {
     }
 
     async refreshState() {
-        this.log('Refreshing door lock state');
+        if (this.debug) this.log('Refreshing door lock state');
         try {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;

@@ -2,12 +2,13 @@ import { EVENT_TYPES } from '../simplisafe';
 
 class SS3MotionSensor {
 
-    constructor(name, id, log, simplisafe, Service, Characteristic, UUIDGen) {
+    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
 
         this.Characteristic = Characteristic;
         this.Service = Service;
         this.id = id;
         this.log = log;
+        this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
         this.uuid = UUIDGen.generate(id);
@@ -17,7 +18,7 @@ class SS3MotionSensor {
     }
 
     identify(paired, callback) {
-        this.log(`Identify request for ${this.name}, paired: ${paired}`);
+        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
         callback();
     }
 
@@ -112,7 +113,7 @@ class SS3MotionSensor {
                     }, 10000);
                     break;
                 default:
-                    this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
+                    if (this.debug) this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
                     break;
             }
         });

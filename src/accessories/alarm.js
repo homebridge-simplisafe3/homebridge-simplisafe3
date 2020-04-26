@@ -8,12 +8,13 @@ const targetStateMaxRetries = 5;
 
 class SS3Alarm {
 
-    constructor(name, id, log, simplisafe, Service, Characteristic, UUIDGen) {
+    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
 
         this.Characteristic = Characteristic;
         this.Service = Service;
         this.id = id;
         this.log = log;
+        this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
         this.uuid = UUIDGen.generate(id);
@@ -59,7 +60,7 @@ class SS3Alarm {
     }
 
     identify(paired, callback) {
-        this.log(`Identify request for ${this.name}, paired: ${paired}`);
+        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
         callback();
     }
 
@@ -90,7 +91,7 @@ class SS3Alarm {
             let subscription = await this.simplisafe.getSubscription();
             let connType = subscription.location.system.connType;
             this.reachable = connType == 'wifi' || connType == 'cell';
-            this.log(`Reachability updated for ${this.name}: ${this.reachable}`);
+            if (this.debug) this.log(`Reachability updated for ${this.name}: ${this.reachable}`);
         } catch (err) {
             this.log(`An error occurred while updating reachability for ${this.name}`);
             this.log(err);
@@ -110,7 +111,7 @@ class SS3Alarm {
         try {
             let state = await this.simplisafe.getAlarmState();
             let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            this.log(`Current alarm state is: ${homekitState}`);
+            if (this.debug) this.log(`Current alarm state is: ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the current alarm state: ${err}`));
@@ -130,7 +131,7 @@ class SS3Alarm {
         try {
             let state = await this.simplisafe.getAlarmState();
             let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            this.log(`Target alarm state is: ${homekitState}`);
+            if (this.debug) this.log(`Target alarm state is: ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the target alarm state: ${err}`));
@@ -139,7 +140,7 @@ class SS3Alarm {
 
     async setTargetState(homekitState, callback) {
         let state = this.TARGET_HOMEKIT_TO_SS3[homekitState];
-        this.log(`Setting target state to ${state}, ${homekitState}`);
+        if (this.debug) this.log(`Setting target state to ${state}, ${homekitState}`);
 
         if (!this.service) {
             this.log('Alarm not linked to Homebridge service');
@@ -149,7 +150,7 @@ class SS3Alarm {
 
         try {
             let data = await this.simplisafe.setAlarmState(state);
-            this.log(`Updated alarm state: ${JSON.stringify(data)}`);
+            if (this.debug) this.log(`Updated alarm state: ${JSON.stringify(data)}`);
             if (data.state == 'OFF') {
                 this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
             } else if (data.exitDelay && data.exitDelay > 0) {
@@ -174,10 +175,10 @@ class SS3Alarm {
     }
 
     async startListening() {
-        this.log('Listening to alarm events...');
+        if (this.debug) this.log('Listening to alarm events...');
         try {
             await this.simplisafe.subscribeToEvents(event => {
-                this.log(`Received new event from alarm: ${event}`);
+                if (this.debug) this.log(`Received new event from alarm: ${event}`);
                 if (this.service) {
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:
@@ -201,7 +202,7 @@ class SS3Alarm {
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                             break;
                         case EVENT_TYPES.DISCONNECT:
-                            this.log('Real time events disconnected.');
+                            if (this.debug) this.log('Real time events disconnected.');
                             this.startListening();
                             break;
                         default:
@@ -219,14 +220,14 @@ class SS3Alarm {
     }
 
     async refreshState() {
-        this.log('Refreshing alarm state');
+        if (this.debug) this.log('Refreshing alarm state');
         try {
             let state = await this.simplisafe.getAlarmState();
             let currentHomekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
             let targetHomekitState = this.TARGET_SS3_TO_HOMEKIT[state];
             this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, currentHomekitState);
             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, targetHomekitState);
-            this.log(`Updated current state for ${this.name}: ${state}`);
+            if (this.debug) this.log(`Updated current state for ${this.name}: ${state}`);
         } catch (err) {
             this.log('An error occurred while refreshing state');
             this.log(err);
