@@ -106,8 +106,8 @@ class SS3MotionSensor {
     }
 
     async startListening() {
+        if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} motion sensor now listening for real time events.`);
         try {
-            if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} motion sensor now listening for real time events.`);
             await this.simplisafe.subscribeToEvents((event, data) => {
                switch (event) {
                   // Socket events
@@ -122,7 +122,7 @@ class SS3MotionSensor {
                      setTimeout(async () => {
                          await this.startListening();
                      }, SOCKET_RETRY_INTERVAL);
-                  break;
+                     break;
                }
 
                if (data && this.id == data.sensorSerial) {

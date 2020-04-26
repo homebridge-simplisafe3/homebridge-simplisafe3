@@ -116,17 +116,17 @@ class SS3SimpliCam {
     }
 
     async startListening() {
+        if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
         try {
-           if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
            await this.simplisafe.subscribeToEvents((event, data) => {
                switch (event) {
                   // Socket events
                    case EVENT_TYPES.CONNECTED:
                        if (this.debug) this.log(`${this.name} camera now listening for real time events.`);
-                     break;
+                       break;
                    case EVENT_TYPES.DISCONNECT:
                        if (this.debug) this.log(`${this.name} camera real time events disconnected.`);
-                     break;
+                       break;
                    case EVENT_TYPES.CONNECTION_LOST:
                        if (this.debug) this.log(`${this.name} camera real time events connection lost. Attempting to reconnect...`);
                        setTimeout(async () => {

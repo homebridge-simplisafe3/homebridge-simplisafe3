@@ -176,8 +176,8 @@ class SS3Alarm {
     }
 
     async startListening() {
+        if (this.debug && this.simplisafe.isSocketConnected()) this.log('Alarm now listening for real time events.');
         try {
-            if (this.debug && this.simplisafe.isSocketConnected()) this.log('Alarm now listening for real time events.');
             await this.simplisafe.subscribeToEvents((event, data) => {
                 switch (event) {
                     // Socket events

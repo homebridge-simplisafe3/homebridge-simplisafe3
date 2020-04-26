@@ -756,19 +756,19 @@ class SimpliSafe3 {
              // for debugging, we only want one of these listeners
              if (this.debug) {
                 this.socket.on('connect', () => {
-                   this.log('Socket connect');
+                   this.log('Socket connected');
                 });
 
                 this.socket.on('reconnect_attempt', (attemptNumber) => {
-                   this.log(`Socket reconnect_attempt ${attemptNumber}`);
+                   this.log(`Socket reconnect_attempt #${attemptNumber}`);
                 });
 
                 this.socket.on('reconnect', () => {
-                    this.log('Socket reconnect');
+                    this.log('Socket reconnected');
                 });
 
                 this.socket.on('connect_error', (err) => {
-                    this.log(`Socket connect_error ${err.type}: ${err.message}`);
+                    this.log(`Socket connect_error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
                 });
 
                 this.socket.on('connect_timeout', () => {
@@ -776,7 +776,7 @@ class SimpliSafe3 {
                 });
 
                 this.socket.on('error', (err) => {
-                    this.log('Socket error', err);
+                    this.log(`Socket error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
                 });
 
                 this.socket.on('reconnect_failed', () => {
