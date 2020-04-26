@@ -193,8 +193,8 @@ class SS3Alarm {
                         }, SOCKET_RETRY_INTERVAL);
                         break;
                 }
-                if (this.service && data && data.sensorSerial == '' && data.sensorType == 0) {
-                    // Alarm events
+                if (this.service && data && (data.sensorType == 0 || data.sensorType == 1 || data.sensorType == 2)) {
+                    // Alarm events (0 = app, 1 = keypad, 2 = fob)
                     this.log('Alarm received new event:', event);
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:
