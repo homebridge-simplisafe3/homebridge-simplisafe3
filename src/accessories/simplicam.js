@@ -321,7 +321,7 @@ class CameraSource {
             callback(error);
         });
         ffmpegCmd.on('close', () => {
-            if (this.debug) this.log(`Closed ${this.cameraConfig.cameraSettings.cameraName} camera stream with image of ${imageBuffer.length}B`);
+            if (this.debug) this.log(`Closed ${this.cameraConfig.cameraSettings.cameraName} camera stream with image of ${Math.round(imageBuffer.length/1024)}kB`);
             callback(null, imageBuffer);
         });
     }
