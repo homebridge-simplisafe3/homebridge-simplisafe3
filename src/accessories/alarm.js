@@ -196,7 +196,7 @@ class SS3Alarm {
                 }
                 if (this.service && data && (data.sensorType == 0 || data.sensorType == 1 || data.sensorType == 2)) {
                     // Alarm events (0 = app, 1 = keypad, 2 = fob)
-                    if (this.debug) this.log('Alarm received new event:', event);
+                    if (this.debug) this.log('Alarm received event:', event);
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:
                         case EVENT_TYPES.ALARM_CANCEL:
