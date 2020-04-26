@@ -776,7 +776,7 @@ class SimpliSafe3 {
                 });
 
                 this.socket.on('error', (err) => {
-                    this.log(`Socket error ${err.type}: ${err.message}`);
+                    this.log('Socket error', err);
                 });
 
                 this.socket.on('reconnect_failed', () => {
