@@ -15,7 +15,7 @@ const dnsLookup = promisify(dns.lookup);
 
 class SS3SimpliCam {
 
-    constructor(name, id, cameraDetails, cameraOptions, log, simplisafe, Service, Characteristic, UUIDGen, StreamController) {
+    constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, Service, Characteristic, UUIDGen, StreamController) {
         this.Characteristic = Characteristic;
         this.Service = Service;
         this.UUIDGen = UUIDGen;
@@ -24,6 +24,7 @@ class SS3SimpliCam {
         this.cameraDetails = cameraDetails;
         this.cameraOptions = cameraOptions;
         this.log = log;
+        this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
         this.uuid = UUIDGen.generate(id);
@@ -36,7 +37,7 @@ class SS3SimpliCam {
     }
 
     identify(paired, callback) {
-        this.log(`Identify request for ${this.name}, paired: ${paired}`);
+        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
         callback();
     }
 
@@ -80,7 +81,8 @@ class SS3SimpliCam {
             this.UUIDGen,
             this.StreamController,
             this.simplisafe,
-            this.log
+            this.log,
+            this.debug
         );
 
         this.accessory.configureCameraSource(this.cameraSource);
@@ -115,18 +117,18 @@ class SS3SimpliCam {
 
     async startListening() {
         try {
-           if (this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
+           if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
            await this.simplisafe.subscribeToEvents((event, data) => {
                switch (event) {
                   // Socket events
                    case EVENT_TYPES.CONNECTED:
-                       this.log(`${this.name} camera now listening for real time events.`);
+                       if (this.debug) this.log(`${this.name} camera now listening for real time events.`);
                      break;
                    case EVENT_TYPES.DISCONNECT:
-                       this.log(`${this.name} camera real time events disconnected.`);
+                       if (this.debug) this.log(`${this.name} camera real time events disconnected.`);
                      break;
                    case EVENT_TYPES.CONNECTION_LOST:
-                       this.log(`${this.name} camera real time events connection lost. Attempting to reconnect...`);
+                       if (this.debug) this.log(`${this.name} camera real time events connection lost. Attempting to reconnect...`);
                        setTimeout(async () => {
                            await this.startListening();
                        }, SOCKET_RETRY_INTERVAL);
@@ -141,7 +143,7 @@ class SS3SimpliCam {
 
                   if (eventCameraId == this.id) {
                      // Camera events
-                     this.log(`${this.name} camera received new event: ${event}`);
+                     if (this.debug) this.log(`${this.name} camera received new event: ${event}`);
                      switch (event) {
                          case EVENT_TYPES.CAMERA_MOTION:
                              this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
@@ -155,7 +157,7 @@ class SS3SimpliCam {
                              this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
                              break;
                          default:
-                             this.log(`${this.name} camera ignoring unhandled event: ${event}`);
+                             if (this.debug) this.log(`${this.name} camera ignoring unhandled event: ${event}`);
                              break;
                      }
                   }
@@ -175,7 +177,7 @@ class SS3SimpliCam {
 
 class CameraSource {
 
-    constructor(cameraConfig, cameraOptions, Service, Characteristic, UUIDGen, StreamController, simplisafe, log) {
+    constructor(cameraConfig, cameraOptions, Service, Characteristic, UUIDGen, StreamController, simplisafe, log, debug) {
         this.cameraConfig = cameraConfig;
         this.cameraOptions = cameraOptions;
         this.serverIpAddress = null;
@@ -185,6 +187,7 @@ class CameraSource {
         this.StreamController = StreamController;
         this.simplisafe = simplisafe;
         this.log = log;
+        this.debug = debug;
 
         this.services = [];
         this.streamControllers = [];
@@ -246,7 +249,7 @@ class CameraSource {
             ffmpegPath = this.cameraOptions.ffmpegPath;
         }
         let resolution = `${request.width}x${request.height}`;
-        this.log(`Handling snapshot for ${this.cameraConfig.cameraSettings.cameraName} at ${resolution}`);
+        if (this.debug) this.log(`Handling snapshot for ${this.cameraConfig.cameraSettings.cameraName} at ${resolution}`);
 
         if (!this.motionIsTriggered && this.cameraConfig.model == 'SS001') { // Model(s) with privacy shutter
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
@@ -254,7 +257,7 @@ class CameraSource {
             switch (alarmState) {
                 case 'OFF':
                     if (this.cameraConfig.cameraSettings.shutterOff !== 'open') {
-                        this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
+                        if (this.debug) this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -262,7 +265,7 @@ class CameraSource {
 
                 case 'HOME':
                     if (this.cameraConfig.cameraSettings.shutterHome !== 'open') {
-                        this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
+                        if (this.debug) this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -270,7 +273,7 @@ class CameraSource {
 
                 case 'AWAY':
                     if (this.cameraConfig.cameraSettings.shutterAway !== 'open') {
-                        this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
+                        if (this.debug) this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -306,7 +309,7 @@ class CameraSource {
         ], {
             env: process.env
         });
-        this.log(ffmpegPath + source);
+        if (this.debug) this.log(ffmpegPath + source);
 
         let imageBuffer = Buffer.alloc(0);
 
@@ -318,7 +321,7 @@ class CameraSource {
             callback(error);
         });
         ffmpegCmd.on('close', () => {
-            this.log(`Closed ${this.cameraConfig.cameraSettings.cameraName} camera stream with image of ${imageBuffer.length}B`);
+            if (this.debug) this.log(`Closed ${this.cameraConfig.cameraSettings.cameraName} camera stream with image of ${imageBuffer.length}B`);
             callback(null, imageBuffer);
         });
     }
@@ -544,11 +547,13 @@ class CameraSource {
                         env: process.env
                     });
 
-                    this.log(`Start streaming video from ${this.cameraConfig.cameraSettings.cameraName}`);
+                    if (this.debug) this.log(`Start streaming video from ${this.cameraConfig.cameraSettings.cameraName}`);
 
-                    cmd.stderr.on('data', data => {
-                        this.log(data.toString());
-                    });
+                    if (this.debug) {
+                       cmd.stderr.on('data', data => {
+                           this.log(data.toString());
+                       });
+                    }
 
                     cmd.on('error', err => {
                         this.log('An error occurred while making stream request');
@@ -560,7 +565,7 @@ class CameraSource {
                             case null:
                             case 0:
                             case 255:
-                                this.log('Stopped streaming');
+                                if (this.debug) this.log('Stopped streaming');
                                 break;
                             default:
                                 this.log(`Error: FFmpeg exited with code ${code}`);

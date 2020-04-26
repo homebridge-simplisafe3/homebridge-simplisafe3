@@ -121,9 +121,10 @@ class SimpliSafe3 {
     nextAttempt = 0;
     loginAttempt;
 
-    constructor(sensorRefreshTime = 15000, resetConfig = false, log) {
+    constructor(sensorRefreshTime = 15000, resetConfig = false, log, debug) {
         this.sensorRefreshTime = sensorRefreshTime;
         this.log = log || console.log;
+        this.debug = debug;
 
         if (fs.existsSync(internalConfigFile) && resetConfig) {
             fs.unlinkSync(internalConfigFile);
@@ -726,7 +727,7 @@ class SimpliSafe3 {
                             break;
                         default:
                             // Unknown event
-                            this.log('Unknown SimpliSafe event');
+                            if (this.debug) this.log('Unknown SimpliSafe event');
                             this.log(data);
                             callback(null, data);
                             break;

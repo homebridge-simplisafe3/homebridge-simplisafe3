@@ -6,12 +6,13 @@ import {
 
 class SS3MotionSensor {
 
-    constructor(name, id, log, simplisafe, Service, Characteristic, UUIDGen) {
+    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
 
         this.Characteristic = Characteristic;
         this.Service = Service;
         this.id = id;
         this.log = log;
+        this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
         this.uuid = UUIDGen.generate(id);
@@ -21,7 +22,7 @@ class SS3MotionSensor {
     }
 
     identify(paired, callback) {
-        this.log(`Identify request for ${this.name}, paired: ${paired}`);
+        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
         callback();
     }
 
@@ -106,18 +107,18 @@ class SS3MotionSensor {
 
     async startListening() {
         try {
-            if (this.simplisafe.isSocketConnected()) this.log(`${this.name} motion sensor now listening for real time events.`);
+            if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} motion sensor now listening for real time events.`);
             await this.simplisafe.subscribeToEvents((event, data) => {
                switch (event) {
                   // Socket events
                   case EVENT_TYPES.CONNECTED:
-                     this.log(`${this.name} motion sensor now listening for real time events.`);
+                     if (this.debug) this.log(`${this.name} motion sensor now listening for real time events.`);
                      break;
                   case EVENT_TYPES.DISCONNECT:
-                     this.log(`${this.name} motion sensor real time events disconnected.`);
+                     if (this.debug) this.log(`${this.name} motion sensor real time events disconnected.`);
                      break;
                   case EVENT_TYPES.CONNECTION_LOST:
-                     this.log(`${this.name} motion sensor real time events connection lost. Attempting to reconnect...`);
+                     if (this.debug) this.log(`${this.name} motion sensor real time events connection lost. Attempting to reconnect...`);
                      setTimeout(async () => {
                          await this.startListening();
                      }, SOCKET_RETRY_INTERVAL);
@@ -126,7 +127,7 @@ class SS3MotionSensor {
 
                if (data && this.id == data.sensorSerial) {
                   // Motion sensor events
-                  this.log(`${this.name} motion sensor received new event: ${event}`);
+                  if (this.debug) this.log(`${this.name} motion sensor received new event: ${event}`);
                   switch (event) {
                       case EVENT_TYPES.MOTION:
                           this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
@@ -135,7 +136,7 @@ class SS3MotionSensor {
                           }, 10000);
                           break;
                       default:
-                          this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
+                          if (this.debug) this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
                           break;
                   }
                }
