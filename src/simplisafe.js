@@ -804,7 +804,13 @@ class SimpliSafe3 {
         });
 
         this.socket.on('disconnect', (reason) => {
-            callback(EVENT_TYPES.DISCONNECT);
+            if (reason === 'io server disconnect') {
+               // the disconnection was initiated by the server, you need to reconnect manually
+               this.unsubscribeFromEvents();
+               callback(EVENT_TYPES.CONNECTION_LOST);
+            } else {
+               callback(EVENT_TYPES.DISCONNECT);
+            }
         });
 
         this.socket.on('event', _socketCallback);
