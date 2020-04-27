@@ -165,7 +165,7 @@ class SS3Alarm {
                 if (this.debug) this.log(`SettingsInProgress error while setting alarm state. nRetries: ${this.nRetries}`);
                 this.nRetries++;
                 setTimeout(async () => {
-                    if (this.debug) this.console.log('Retrying setTargetState...');
+                    if (this.debug) this.log('Retrying setTargetState...');
                     await this.setTargetState(homekitState, callback);
                 }, 1000); // wait 1  second and try again
             } else {
