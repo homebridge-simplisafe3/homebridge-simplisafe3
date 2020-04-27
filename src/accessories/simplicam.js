@@ -118,52 +118,52 @@ class SS3SimpliCam {
     async startListening() {
         if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
         try {
-           await this.simplisafe.subscribeToEvents((event, data) => {
-               switch (event) {
-                  // Socket events
-                   case EVENT_TYPES.CONNECTED:
-                       if (this.debug) this.log(`${this.name} camera now listening for real time events.`);
-                       this.nSocketConnectFailures = 0;
-                       break;
-                   case EVENT_TYPES.DISCONNECT:
-                       if (this.debug) this.log(`${this.name} camera real time events disconnected.`);
-                       break;
-                   case EVENT_TYPES.CONNECTION_LOST:
-                       if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} camera real time events connection lost. Attempting to reconnect...`);
-                       setTimeout(async () => {
-                           await this.startListening();
-                       }, SOCKET_RETRY_INTERVAL);
-                       break;
-               }
+            await this.simplisafe.subscribeToEvents((event, data) => {
+                switch (event) {
+                    // Socket events
+                    case EVENT_TYPES.CONNECTED:
+                        if (this.debug) this.log(`${this.name} camera now listening for real time events.`);
+                        this.nSocketConnectFailures = 0;
+                        break;
+                    case EVENT_TYPES.DISCONNECT:
+                        if (this.debug) this.log(`${this.name} camera real time events disconnected.`);
+                        break;
+                    case EVENT_TYPES.CONNECTION_LOST:
+                        if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} camera real time events connection lost. Attempting to reconnect...`);
+                        setTimeout(async () => {
+                            await this.startListening();
+                        }, SOCKET_RETRY_INTERVAL);
+                        break;
+                }
 
-               if (this.accessory) {
-                  let eventCameraId;
-                  if (data && (data.sensorSerial || data.internal)) {
-                      eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
-                  }
+                if (this.accessory) {
+                    let eventCameraId;
+                    if (data && (data.sensorSerial || data.internal)) {
+                        eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
+                    }
 
-                  if (eventCameraId == this.id) {
-                     // Camera events
-                     if (this.debug) this.log(`${this.name} camera received event: ${event}`);
-                     switch (event) {
-                         case EVENT_TYPES.CAMERA_MOTION:
-                             this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
-                             this.cameraSource.motionIsTriggered = true;
-                             setTimeout(() => {
-                                  this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
-                                  this.cameraSource.motionIsTriggered = false;
-                             }, 5000);
-                             break;
-                         case EVENT_TYPES.DOORBELL:
-                             this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
-                             break;
-                         default:
-                             if (this.debug) this.log(`${this.name} camera ignoring unhandled event: ${event}`);
-                             break;
-                     }
-                  }
-               }
-           });
+                    if (eventCameraId == this.id) {
+                        // Camera events
+                        if (this.debug) this.log(`${this.name} camera received event: ${event}`);
+                        switch (event) {
+                            case EVENT_TYPES.CAMERA_MOTION:
+                                this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
+                                this.cameraSource.motionIsTriggered = true;
+                                setTimeout(() => {
+                                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
+                                    this.cameraSource.motionIsTriggered = false;
+                                }, 5000);
+                                break;
+                            case EVENT_TYPES.DOORBELL:
+                                this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
+                                break;
+                            default:
+                                if (this.debug) this.log(`${this.name} camera ignoring unhandled event: ${event}`);
+                                break;
+                        }
+                    }
+                }
+            });
         } catch (err) {
             if (err instanceof RateLimitError) {
                 let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
@@ -485,7 +485,7 @@ class CameraSource {
 
                         if (this.cameraOptions.sourceOptions) {
                             let options = (typeof this.cameraOptions.sourceOptions === 'string') ? this.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
-                                                                                                 : this.cameraOptions.sourceOptions; // support old config schema
+                                : this.cameraOptions.sourceOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = sourceArgs.find(arg => arg[0] === key);
@@ -503,7 +503,7 @@ class CameraSource {
 
                         if (this.cameraOptions.videoOptions) {
                             let options = (typeof this.cameraOptions.videoOptions === 'string') ? this.cameraOptions.videoOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
-                                                                                                : this.cameraOptions.videoOptions; // support old config schema
+                                : this.cameraOptions.videoOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = videoArgs.find(arg => arg[0] === key);
@@ -521,7 +521,7 @@ class CameraSource {
 
                         if (this.cameraOptions.audioOptions) {
                             let options = (typeof this.cameraOptions.audioOptions === 'string') ? this.cameraOptions.audioOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
-                                                                                                : this.cameraOptions.audioOptions; // support old config schema
+                                : this.cameraOptions.audioOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = audioArgs.find(arg => arg[0] === key);
@@ -553,9 +553,9 @@ class CameraSource {
                     if (this.debug) this.log(`Start streaming video from ${this.cameraConfig.cameraSettings.cameraName}`);
 
                     if (this.debug) {
-                       cmd.stderr.on('data', data => {
-                           this.log(data.toString());
-                       });
+                        cmd.stderr.on('data', data => {
+                            this.log(data.toString());
+                        });
                     }
 
                     cmd.on('error', err => {

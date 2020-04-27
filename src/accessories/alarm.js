@@ -161,7 +161,7 @@ class SS3Alarm {
             this.nRetries = 0;
             callback(null);
         } catch (err) {
-            this.log(`Error while setting alarm state:`, err, 'nRetries:', this.nRetries);
+            this.log('Error while setting alarm state:', err, 'nRetries:', this.nRetries);
             if (err.type == 'SettingsInProgress' && this.nRetries < targetStateMaxRetries) {
                 this.nRetries++;
                 setTimeout(async () => {

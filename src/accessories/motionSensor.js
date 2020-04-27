@@ -109,38 +109,38 @@ class SS3MotionSensor {
         if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} motion sensor now listening for real time events.`);
         try {
             await this.simplisafe.subscribeToEvents((event, data) => {
-               switch (event) {
-                  // Socket events
-                  case EVENT_TYPES.CONNECTED:
-                     if (this.debug) this.log(`${this.name} motion sensor now listening for real time events.`);
-                     this.nSocketConnectFailures = 0;
-                     break;
-                  case EVENT_TYPES.DISCONNECT:
-                     if (this.debug) this.log(`${this.name} motion sensor real time events disconnected.`);
-                     break;
-                  case EVENT_TYPES.CONNECTION_LOST:
-                     if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} motion sensor real time events connection lost. Attempting to reconnect...`);
-                     setTimeout(async () => {
-                         await this.startListening();
-                     }, SOCKET_RETRY_INTERVAL);
-                     break;
-               }
+                switch (event) {
+                    // Socket events
+                    case EVENT_TYPES.CONNECTED:
+                        if (this.debug) this.log(`${this.name} motion sensor now listening for real time events.`);
+                        this.nSocketConnectFailures = 0;
+                        break;
+                    case EVENT_TYPES.DISCONNECT:
+                        if (this.debug) this.log(`${this.name} motion sensor real time events disconnected.`);
+                        break;
+                    case EVENT_TYPES.CONNECTION_LOST:
+                        if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} motion sensor real time events connection lost. Attempting to reconnect...`);
+                        setTimeout(async () => {
+                            await this.startListening();
+                        }, SOCKET_RETRY_INTERVAL);
+                        break;
+                }
 
-               if (data && this.id == data.sensorSerial) {
-                  // Motion sensor events
-                  if (this.debug) this.log(`${this.name} motion sensor received event: ${event}`);
-                  switch (event) {
-                      case EVENT_TYPES.MOTION:
-                          this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
-                          setTimeout(() => {
-                              this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
-                          }, 10000);
-                          break;
-                      default:
-                          if (this.debug) this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
-                          break;
-                  }
-               }
+                if (data && this.id == data.sensorSerial) {
+                    // Motion sensor events
+                    if (this.debug) this.log(`${this.name} motion sensor received event: ${event}`);
+                    switch (event) {
+                        case EVENT_TYPES.MOTION:
+                            this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
+                            setTimeout(() => {
+                                this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
+                            }, 10000);
+                            break;
+                        default:
+                            if (this.debug) this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
+                            break;
+                    }
+                }
             });
         } catch (err) {
             if (err instanceof RateLimitError) {

@@ -80,7 +80,7 @@ export class RateLimitError extends Error {
         }
         this.name = 'RateLimitError';
     }
-};
+}
 
 export const SOCKET_RETRY_INTERVAL = 1000; //ms
 
@@ -753,14 +753,14 @@ class SimpliSafe3 {
                 transports: ['websocket', 'polling']
             });
 
-             // for debugging, we only want one of these listeners
-             if (this.debug) {
+            // for debugging, we only want one of these listeners
+            if (this.debug) {
                 this.socket.on('connect', () => {
-                   this.log('Socket connected');
+                    this.log('Socket connected');
                 });
 
                 this.socket.on('reconnect_attempt', (attemptNumber) => {
-                   this.log(`Socket reconnect_attempt #${attemptNumber}`);
+                    this.log(`Socket reconnect_attempt #${attemptNumber}`);
                 });
 
                 this.socket.on('reconnect', () => {
@@ -786,16 +786,18 @@ class SimpliSafe3 {
                 this.socket.on('disconnect', (reason) => {
                     this.log('Socket disconnect reason:', reason);
                 });
-             }
+            }
         }
 
         this.socket.on('connect', () => {
-           callback(EVENT_TYPES.CONNECTED);
+            callback(EVENT_TYPES.CONNECTED);
         });
 
         this.socket.on('error', (err) => {
-            this.unsubscribeFromEvents();
-            callback(EVENT_TYPES.CONNECTION_LOST);
+            if (err) {
+                this.unsubscribeFromEvents();
+                callback(EVENT_TYPES.CONNECTION_LOST);
+            }
         });
 
         this.socket.on('reconnect_failed', () => {
@@ -805,11 +807,11 @@ class SimpliSafe3 {
 
         this.socket.on('disconnect', (reason) => {
             if (reason === 'io server disconnect') {
-               // the disconnection was initiated by the server, you need to reconnect manually
-               this.unsubscribeFromEvents();
-               callback(EVENT_TYPES.CONNECTION_LOST);
+                // the disconnection was initiated by the server, you need to reconnect manually
+                this.unsubscribeFromEvents();
+                callback(EVENT_TYPES.CONNECTION_LOST);
             } else {
-               callback(EVENT_TYPES.DISCONNECT);
+                callback(EVENT_TYPES.DISCONNECT);
             }
         });
 
@@ -845,7 +847,7 @@ class SimpliSafe3 {
                             .map(sub => sub.callback(sensor));
                     }
                 } catch (err) {
-                    if (!err instanceof RateLimitError) {
+                    if (!(err instanceof RateLimitError)) {
                         this.log(err);
                     }
                 }
