@@ -183,6 +183,7 @@ class SS3Alarm {
                     // Socket events
                     case EVENT_TYPES.CONNECTED:
                         if (this.debug) this.log('Alarm now listening for real time events.');
+                        this.nSocketConnectFailures = 0;
                         break;
                     case EVENT_TYPES.DISCONNECT:
                         if (this.debug) this.log('Alarm real time events disconnected.');
@@ -226,9 +227,12 @@ class SS3Alarm {
             });
         } catch (err) {
             if (err instanceof RateLimitError) {
+                this.nSocketConnectFailures++;
+                let retryInterval = ((SOCKET_RETRY_INTERVAL / 1000) * 2) ** this.nSocketConnectFailures; //s
+                if (this.debug) this.log(`${this.name} alarm caught RateLimitError, waiting ${retryInterval}s to retry...`);
                 setTimeout(async () => {
                     await this.startListening();
-                }, SOCKET_RETRY_INTERVAL);
+                }, retryInterval * 1000);
             }
         }
     }

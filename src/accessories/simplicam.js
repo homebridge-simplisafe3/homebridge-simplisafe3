@@ -123,6 +123,7 @@ class SS3SimpliCam {
                   // Socket events
                    case EVENT_TYPES.CONNECTED:
                        if (this.debug) this.log(`${this.name} camera now listening for real time events.`);
+                       this.nSocketConnectFailures = 0;
                        break;
                    case EVENT_TYPES.DISCONNECT:
                        if (this.debug) this.log(`${this.name} camera real time events disconnected.`);
@@ -165,10 +166,12 @@ class SS3SimpliCam {
            });
         } catch (err) {
             if (err instanceof RateLimitError) {
-                this.log(`${this.name} camera caught RateLimitError, waiting to retry...`);
+                this.nSocketConnectFailures++;
+                let retryInterval = ((SOCKET_RETRY_INTERVAL / 1000) * 2) ** this.nSocketConnectFailures; //s
+                if (this.debug) this.log(`${this.name} camera caught RateLimitError, waiting ${retryInterval}s to retry...`);
                 setTimeout(async () => {
                     await this.startListening();
-                }, SOCKET_RETRY_INTERVAL);
+                }, retryInterval * 1000);
             }
         }
     }
