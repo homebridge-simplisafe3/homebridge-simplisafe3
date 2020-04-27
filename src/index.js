@@ -421,7 +421,7 @@ class SS3Platform {
                         this.devices.push(cameraDevice);
 
                         if (addAndRemove) {
-                            cameraAccessory = new Accessory(camera.cameraSettings.cameraName || 'Camera', UUIDGen.generate(camera.uuid));
+                            cameraAccessory = new Accessory(camera.cameraSettings.cameraName || 'Camera', uuid);
                             cameraAccessory.addService(Service.CameraControl);
                             cameraAccessory.addService(Service.Microphone);
                             cameraAccessory.addService(Service.MotionSensor);
