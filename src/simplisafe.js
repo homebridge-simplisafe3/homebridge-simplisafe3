@@ -847,7 +847,7 @@ class SimpliSafe3 {
                             .map(sub => sub.callback(sensor));
                     }
                 } catch (err) {
-                    if (!(err instanceof RateLimitError)) {
+                    if (!(err instanceof RateLimitError) && err.type !== 'SettingsInProgress') { // ignore rate limits & 409 errors
                         this.log(err);
                     }
                 }
