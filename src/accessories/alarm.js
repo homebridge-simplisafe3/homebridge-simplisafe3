@@ -1,9 +1,9 @@
 import {
     EVENT_TYPES,
-    RateLimitError
+    RateLimitError,
+    SOCKET_RETRY_INTERVAL
 } from '../simplisafe';
 
-const eventSubscribeRetryInterval = 10000; // ms
 const targetStateMaxRetries = 5;
 
 class SS3Alarm {
@@ -161,10 +161,11 @@ class SS3Alarm {
             this.nRetries = 0;
             callback(null);
         } catch (err) {
-            this.log(`Error while setting alarm state:`, err);
+            this.log('Error while setting alarm state:', err, 'nRetries:', this.nRetries);
             if (err.type == 'SettingsInProgress' && this.nRetries < targetStateMaxRetries) {
                 this.nRetries++;
                 setTimeout(async () => {
+                    this.console.log('Retrying setTargetState...');
                     await this.setTargetState(homekitState, callback);
                 }, 1000); // wait 1  second and try again
             } else {
@@ -175,11 +176,28 @@ class SS3Alarm {
     }
 
     async startListening() {
-        if (this.debug) this.log('Listening to alarm events...');
+        if (this.debug && this.simplisafe.isSocketConnected()) this.log('Alarm now listening for real time events.');
         try {
-            await this.simplisafe.subscribeToEvents(event => {
-                if (this.debug) this.log(`Received new event from alarm: ${event}`);
-                if (this.service) {
+            await this.simplisafe.subscribeToEvents((event, data) => {
+                switch (event) {
+                    // Socket events
+                    case EVENT_TYPES.CONNECTED:
+                        if (this.debug) this.log('Alarm now listening for real time events.');
+                        this.nSocketConnectFailures = 0;
+                        break;
+                    case EVENT_TYPES.DISCONNECT:
+                        if (this.debug) this.log('Alarm real time events disconnected.');
+                        break;
+                    case EVENT_TYPES.CONNECTION_LOST:
+                        if (this.debug && this.nSocketConnectFailures == 0) this.log('Alarm real time events connection lost. Attempting to reconnect...');
+                        setTimeout(async () => {
+                            await this.startListening();
+                        }, SOCKET_RETRY_INTERVAL);
+                        break;
+                }
+                if (this.service && data && (data.sensorType == 0 || data.sensorType == 1 || data.sensorType == 2)) {
+                    // Alarm events (0 = app, 1 = keypad, 2 = fob)
+                    if (this.debug) this.log('Alarm received event:', event);
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:
                         case EVENT_TYPES.ALARM_CANCEL:
@@ -201,20 +219,20 @@ class SS3Alarm {
                         case EVENT_TYPES.AWAY_EXIT_DELAY:
                             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
                             break;
-                        case EVENT_TYPES.DISCONNECT:
-                            if (this.debug) this.log('Real time events disconnected.');
-                            this.startListening();
-                            break;
                         default:
+                            if (this.debug) this.log(`Alarm ignoring unhandled event: ${event}`);
                             break;
                     }
                 }
             });
         } catch (err) {
             if (err instanceof RateLimitError) {
+                let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
+                if (this.debug) this.log(`${this.name} alarm caught RateLimitError, waiting ${retryInterval/1000}s to retry...`);
                 setTimeout(async () => {
                     await this.startListening();
-                }, eventSubscribeRetryInterval);
+                }, retryInterval);
+                this.nSocketConnectFailures++;
             }
         }
     }

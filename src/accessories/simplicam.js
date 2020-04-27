@@ -7,11 +7,11 @@ import ffmpeg from '@ffmpeg-installer/ffmpeg';
 
 import {
     EVENT_TYPES,
-    RateLimitError
+    RateLimitError,
+    SOCKET_RETRY_INTERVAL
 } from '../simplisafe';
 
 const dnsLookup = promisify(dns.lookup);
-const eventSubscribeRetryInterval = 10000; // ms
 
 class SS3SimpliCam {
 
@@ -116,51 +116,62 @@ class SS3SimpliCam {
     }
 
     async startListening() {
+        if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
         try {
-           await this.simplisafe.subscribeToEvents((event, data) => {
-               if (!this.accessory) {
-                   // Camera is not yet initialized
-                   return;
-               }
-               let eventCameraId;
-               if (data && (data.sensorSerial || data.internal)) {
-                   eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
-               }
+            await this.simplisafe.subscribeToEvents((event, data) => {
+                switch (event) {
+                    // Socket events
+                    case EVENT_TYPES.CONNECTED:
+                        if (this.debug) this.log(`${this.name} camera now listening for real time events.`);
+                        this.nSocketConnectFailures = 0;
+                        break;
+                    case EVENT_TYPES.DISCONNECT:
+                        if (this.debug) this.log(`${this.name} camera real time events disconnected.`);
+                        break;
+                    case EVENT_TYPES.CONNECTION_LOST:
+                        if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} camera real time events connection lost. Attempting to reconnect...`);
+                        setTimeout(async () => {
+                            await this.startListening();
+                        }, SOCKET_RETRY_INTERVAL);
+                        break;
+                }
 
-               switch (event) {
-                   case EVENT_TYPES.CAMERA_MOTION:
-                       if (eventCameraId == this.id) {
-                           this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
-                           this.cameraSource.motionIsTriggered = true;
-                           setTimeout(() => {
-                               this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
-                               this.cameraSource.motionIsTriggered = false;
-                           }, 5000);
-                       }
-                       break;
-                   case EVENT_TYPES.DOORBELL:
-                       if (eventCameraId == this.id) {
-                           this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
-                       }
-                       break;
-                   case EVENT_TYPES.DISCONNECT:
-                       if (this.debug) this.log(`${this.name} camera real time events disconnected.`);
-                       this.startListening();
-                       break;
-                   default:
-                       if (eventCameraId === this.id) {
-                           if (this.debug) this.log(`${this.name} camera event received: ${event}`);
-                       }
-                       break;
-               }
-           });
-           if (this.debug) this.log(`${this.name} camera now listening to alarm events.`);
+                if (this.accessory) {
+                    let eventCameraId;
+                    if (data && (data.sensorSerial || data.internal)) {
+                        eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
+                    }
+
+                    if (eventCameraId == this.id) {
+                        // Camera events
+                        if (this.debug) this.log(`${this.name} camera received event: ${event}`);
+                        switch (event) {
+                            case EVENT_TYPES.CAMERA_MOTION:
+                                this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
+                                this.cameraSource.motionIsTriggered = true;
+                                setTimeout(() => {
+                                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
+                                    this.cameraSource.motionIsTriggered = false;
+                                }, 5000);
+                                break;
+                            case EVENT_TYPES.DOORBELL:
+                                this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
+                                break;
+                            default:
+                                if (this.debug) this.log(`${this.name} camera ignoring unhandled event: ${event}`);
+                                break;
+                        }
+                    }
+                }
+            });
         } catch (err) {
             if (err instanceof RateLimitError) {
-                this.log(`${this.name} camera caught RateLimitError, waiting to retry...`);
+                let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
+                if (this.debug) this.log(`${this.name} camera caught RateLimitError, waiting ${retryInterval/1000}s to retry...`);
                 setTimeout(async () => {
                     await this.startListening();
-                }, eventSubscribeRetryInterval);
+                }, retryInterval);
+                this.nSocketConnectFailures++;
             }
         }
     }
@@ -313,7 +324,7 @@ class CameraSource {
             callback(error);
         });
         ffmpegCmd.on('close', () => {
-            if (this.debug) this.log(`Close ${this.cameraConfig.cameraSettings.cameraName} stream with image of length: ${imageBuffer.length}`);
+            if (this.debug) this.log(`Closed ${this.cameraConfig.cameraSettings.cameraName} camera stream with image of ${Math.round(imageBuffer.length/1024)}kB`);
             callback(null, imageBuffer);
         });
     }
@@ -377,7 +388,7 @@ class CameraSource {
         callback(response);
     }
 
-    handleStreamRequest = async (request) => {
+    async handleStreamRequest(request, callback) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
             return new Error('Request blocked (rate limited)');
         }
@@ -474,7 +485,7 @@ class CameraSource {
 
                         if (this.cameraOptions.sourceOptions) {
                             let options = (typeof this.cameraOptions.sourceOptions === 'string') ? this.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
-                                                                                                 : this.cameraOptions.sourceOptions; // support old config schema
+                                : this.cameraOptions.sourceOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = sourceArgs.find(arg => arg[0] === key);
@@ -492,7 +503,7 @@ class CameraSource {
 
                         if (this.cameraOptions.videoOptions) {
                             let options = (typeof this.cameraOptions.videoOptions === 'string') ? this.cameraOptions.videoOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
-                                                                                                : this.cameraOptions.videoOptions; // support old config schema
+                                : this.cameraOptions.videoOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = videoArgs.find(arg => arg[0] === key);
@@ -510,7 +521,7 @@ class CameraSource {
 
                         if (this.cameraOptions.audioOptions) {
                             let options = (typeof this.cameraOptions.audioOptions === 'string') ? this.cameraOptions.audioOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
-                                                                                                : this.cameraOptions.audioOptions; // support old config schema
+                                : this.cameraOptions.audioOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = audioArgs.find(arg => arg[0] === key);
@@ -542,9 +553,9 @@ class CameraSource {
                     if (this.debug) this.log(`Start streaming video from ${this.cameraConfig.cameraSettings.cameraName}`);
 
                     if (this.debug) {
-                       cmd.stderr.on('data', data => {
-                           this.log(data.toString());
-                       });
+                        cmd.stderr.on('data', data => {
+                            this.log(data.toString());
+                        });
                     }
 
                     cmd.on('error', err => {
@@ -582,7 +593,7 @@ class CameraSource {
                 delete this.ongoingSessions[sessionIdentifier];
             }
         }
-    };
+    }
 
     createStreamControllers(maxStreams, options) {
         for (let i = 0; i < maxStreams; i++) {

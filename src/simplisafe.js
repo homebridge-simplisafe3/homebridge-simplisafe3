@@ -66,8 +66,11 @@ export const EVENT_TYPES = {
     DOORLOCK_LOCKED: 'DOORLOCK_LOCKED',
     DOORLOCK_UNLOCKED: 'DOORLOCK_UNLOCKED',
     DOORLOCK_ERROR: 'DOORLOCK_ERROR',
-    DISCONNECT: 'DISCONNECT'
+    CONNECTED: 'CONNECTED',
+    DISCONNECT: 'DISCONNECT',
+    CONNECTION_LOST: 'CONNECTION_LOST'
 };
+
 export class RateLimitError extends Error {
     constructor(...params) {
         super(...params);
@@ -78,6 +81,8 @@ export class RateLimitError extends Error {
         this.name = 'RateLimitError';
     }
 }
+
+export const SOCKET_RETRY_INTERVAL = 1000; //ms
 
 const generateSimplisafeId = () => {
     const supportedCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz0123456789';
@@ -748,42 +753,64 @@ class SimpliSafe3 {
                 transports: ['websocket', 'polling']
             });
 
-            this.socket.on('connect', () => {
-                // this.log('Connect');
-            });
+            // for debugging, we only want one of these listeners
+            if (this.debug) {
+                this.socket.on('connect', () => {
+                    this.log('Socket connected');
+                });
 
-            this.socket.on('connect_error', () => {
-                // this.log('Connect_error', err);
-                this.socket = null;
-            });
+                this.socket.on('reconnect_attempt', (attemptNumber) => {
+                    this.log(`Socket reconnect_attempt #${attemptNumber}`);
+                });
 
-            this.socket.on('connect_timeout', () => {
-                // this.log('Connect_timeout');
-                this.socket = null;
-            });
+                this.socket.on('reconnect', () => {
+                    this.log('Socket reconnected');
+                });
 
-            this.socket.on('error', () => {
-                this.socket = null;
-            });
+                this.socket.on('connect_error', (err) => {
+                    this.log(`Socket connect_error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
+                });
 
-            this.socket.on('disconnect', () => {
-                this.socket = null;
-            });
+                this.socket.on('connect_timeout', () => {
+                    this.log('Socket connect_timeout');
+                });
 
-            this.socket.on('reconnect_failed', () => {
-                // this.log('Reconnect_failed');
-                this.socket = null;
-            });
+                this.socket.on('error', (err) => {
+                    this.log(`Socket error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
+                });
+
+                this.socket.on('reconnect_failed', () => {
+                    this.log('Socket reconnect_failed');
+                });
+
+                this.socket.on('disconnect', (reason) => {
+                    this.log('Socket disconnect reason:', reason);
+                });
+            }
         }
 
-        this.socket.on('error', err => {
-            if (err === 'Not authorized') {
-                callback(EVENT_TYPES.DISCONNECT);
+        this.socket.on('connect', () => {
+            callback(EVENT_TYPES.CONNECTED);
+        });
+
+        this.socket.on('error', (err) => {
+            if (err) {
+                this.unsubscribeFromEvents();
+                callback(EVENT_TYPES.CONNECTION_LOST);
             }
         });
 
-        this.socket.on('disconnect', reason => {
-            if (reason === 'transport close') {
+        this.socket.on('reconnect_failed', () => {
+            this.unsubscribeFromEvents();
+            callback(EVENT_TYPES.CONNECTION_LOST);
+        });
+
+        this.socket.on('disconnect', (reason) => {
+            if (reason === 'io server disconnect') {
+                // the disconnection was initiated by the server, you need to reconnect manually
+                this.unsubscribeFromEvents();
+                callback(EVENT_TYPES.CONNECTION_LOST);
+            } else {
                 callback(EVENT_TYPES.DISCONNECT);
             }
         });
@@ -798,6 +825,7 @@ class SimpliSafe3 {
 
     unsubscribeFromEvents() {
         if (this.socket) {
+            this.socket.off();
             this.socket.close();
             this.socket = null;
         }
@@ -819,7 +847,7 @@ class SimpliSafe3 {
                             .map(sub => sub.callback(sensor));
                     }
                 } catch (err) {
-                    if (!err instanceof RateLimitError) {
+                    if (!(err instanceof RateLimitError) && err.type !== 'SettingsInProgress') { // ignore rate limits & 409 errors
                         this.log(err);
                     }
                 }
