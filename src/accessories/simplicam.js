@@ -388,9 +388,9 @@ class CameraSource {
         callback(response);
     }
 
-    async handleStreamRequest(request, callback) {
+    async handleStreamRequest(request) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return new Error('Request blocked (rate limited)');
+            throw new Error('Request blocked (rate limited)');
         }
 
         let sessionId = request.sessionID;
