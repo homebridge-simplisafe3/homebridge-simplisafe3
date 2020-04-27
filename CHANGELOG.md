@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.4.11
+- Bug fixes
+- Improved logging
+
 ## v1.4.10
 - Bug fixes
 
