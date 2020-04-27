@@ -552,11 +552,12 @@ class CameraSource {
 
                     if (this.debug) this.log(`Start streaming video from ${this.cameraConfig.cameraSettings.cameraName}`);
 
-                    if (this.debug) {
-                        cmd.stderr.on('data', data => {
+                    cmd.stderr.on('data', data => {
+                        // always hook stderr to prevent early stream closure
+                        if (this.debug) {
                             this.log(data.toString());
-                        });
-                    }
+                        }
+                    });
 
                     cmd.on('error', err => {
                         this.log('An error occurred while making stream request');
