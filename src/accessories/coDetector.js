@@ -15,8 +15,8 @@ class SS3CODetector {
         this.startListening();
     }
 
-    identify(paired, callback) {
-        this.log(`Identify request for ${this.name}, paired: ${paired}`);
+    identify(callback) {
+        this.log(`Identify request for ${this.name}`);
         callback();
     }
 

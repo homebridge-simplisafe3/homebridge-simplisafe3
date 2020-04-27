@@ -59,8 +59,8 @@ class SS3Alarm {
         this.startListening();
     }
 
-    identify(paired, callback) {
-        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
+    identify(callback) {
+        if (this.debug) this.log(`Identify request for ${this.name}`);
         callback();
     }
 

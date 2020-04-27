@@ -10,7 +10,7 @@ class SS3UnreachableAccessory {
         this.setAccessory(accessory);
     }
 
-    identify(paired, callback) {
+    identify(callback) {
         let err = new Error('Identify not supported');
         callback(err);
     }

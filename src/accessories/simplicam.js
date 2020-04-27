@@ -36,8 +36,8 @@ class SS3SimpliCam {
         this.startListening();
     }
 
-    identify(paired, callback) {
-        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
+    identify(callback) {
+        if (this.debug) this.log(`Identify request for ${this.name}`);
         callback();
     }
 
@@ -379,7 +379,7 @@ class CameraSource {
 
     handleStreamRequest = async (request) => {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            return new Error('Request blocked (rate limited)');
         }
 
         let sessionId = request.sessionID;
