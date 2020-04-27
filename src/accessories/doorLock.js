@@ -1,4 +1,8 @@
-import { EVENT_TYPES } from '../simplisafe';
+import {
+    EVENT_TYPES,
+    RateLimitError,
+    SOCKET_RETRY_INTERVAL
+} from '../simplisafe';
 
 class SS3DoorLock {
 
@@ -162,42 +166,70 @@ class SS3DoorLock {
         }
     }
 
-    startListening() {
-        if (this.debug) this.log('Listening to door lock events...');
-        this.simplisafe.subscribeToEvents(async (event, data) => {
+    async startListening() {
+        if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} lock now listening for real time events.`);
+        try {
+            this.simplisafe.subscribeToEvents(async (event, data) => {
+                switch (event) {
+                    // Socket events
+                    case EVENT_TYPES.CONNECTED:
+                        if (this.debug) this.log(`${this.name} lock now listening for real time events.`);
+                        this.nSocketConnectFailures = 0;
+                        break;
+                    case EVENT_TYPES.DISCONNECT:
+                        if (this.debug) this.log(`${this.name} lock real time events disconnected.`);
+                        break;
+                    case EVENT_TYPES.CONNECTION_LOST:
+                        if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} lock real time events connection lost. Attempting to reconnect...`);
+                        setTimeout(async () => {
+                            await this.startListening();
+                        }, SOCKET_RETRY_INTERVAL);
+                        break;
+                }
 
-            if (this.service) {
-                if (data && data.sensorSerial && data.sensorSerial == this.id) {
-                    if (this.debug) this.log(`Received new door lock event: ${event}`);
+                if (this.service) {
+                    // Door lock events
+                    if (data && data.sensorSerial && data.sensorSerial == this.id) {
+                        if (this.debug) this.log(`${this.name} lock received event: ${event}`);
+                        switch (event) {
+                            case EVENT_TYPES.DOORLOCK_UNLOCKED:
+                                this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
+                                this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.UNSECURED);
+                                break;
+                            case EVENT_TYPES.DOORLOCK_LOCKED:
+                                this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
+                                this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.SECURED);
+                                break;
+                            case EVENT_TYPES.DOORLOCK_ERROR:
+                                try {
+                                    let lock = await this.getLockInformation();
 
-                    switch (event) {
-                        case EVENT_TYPES.DOORLOCK_UNLOCKED:
-                            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
-                            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.UNSECURED);
-                            break;
-                        case EVENT_TYPES.DOORLOCK_LOCKED:
-                            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
-                            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.SECURED);
-                            break;
-                        case EVENT_TYPES.DOORLOCK_ERROR:
-                            try {
-                                let lock = await this.getLockInformation();
-
-                                if (lock.status.lockJamState) {
-                                    this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.JAMMED);
-                                } else if (lock.status.lockDisabled) {
-                                    this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNKNOWN);
+                                    if (lock.status.lockJamState) {
+                                        this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.JAMMED);
+                                    } else if (lock.status.lockDisabled) {
+                                        this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNKNOWN);
+                                    }
+                                } catch (err) {
+                                    this.log(`An error occurred while updating ${this.name} lock error state: ${err}`);
                                 }
-                            } catch (err) {
-                                this.log(`An error occurred while updating lock error state: ${err}`);
-                            }
-                            break;
-                        default:
-                            break;
+                                break;
+                            default:
+                                if (this.debug) this.log(`${this.name} lock ignoring unhandled event: ${event}`);
+                                break;
+                        }
                     }
                 }
+            });
+        } catch (err) {
+            if (err instanceof RateLimitError) {
+                let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
+                if (this.debug) this.log(`${this.name} lock caught RateLimitError, waiting ${retryInterval/1000}s to retry...`);
+                setTimeout(async () => {
+                    await this.startListening();
+                }, retryInterval);
+                this.nSocketConnectFailures++;
             }
-        });
+        }
     }
 
     async refreshState() {
