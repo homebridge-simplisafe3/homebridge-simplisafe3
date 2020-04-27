@@ -17,7 +17,7 @@ class SS3UnreachableAccessory {
 
     setAccessory(accessory) {
         this.accessory = accessory;
-        this.accessory.on('identify', (paired, callback) => this.identify(paired, callback));
+        this.accessory.on('identify', (callback) => this.identify(callback));
 
         for (let service of accessory.services) {
             if (service.UUID == this.Service.AccessoryInformation.UUID) {
