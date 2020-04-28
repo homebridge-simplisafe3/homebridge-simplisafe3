@@ -174,10 +174,10 @@ class SS3SimpliCam {
                         switch (event) {
                             case EVENT_TYPES.CAMERA_MOTION:
                                 this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
-                                this.cameraSource.motionIsTriggered = true;
+                                this.motionIsTriggered = true;
                                 setTimeout(() => {
                                     this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
-                                    this.cameraSource.motionIsTriggered = false;
+                                    this.motionIsTriggered = false;
                                 }, 5000);
                                 break;
                             case EVENT_TYPES.DOORBELL:
