@@ -143,7 +143,7 @@ class SimpliSafe3 {
                     ssId: this.ssId
                 }));
             } catch (err) {
-                this.log('Warning: could not save SS config file. SS-ID will vary');
+                this.log.warn('Warning: could not save SS config file. SS-ID will vary');
             }
         }
     }
@@ -186,7 +186,7 @@ class SimpliSafe3 {
 
                 if (errCode == 403 && (errData && errData.error && errData.error == 'mfa_required')) {
 
-                    this.log('Multifactor authentication required. Check your email and approve the request!');
+                    this.log.warn('Multifactor authentication required. Check your email and approve the request!');
 
                     // Multifactor Authentication required
                     let mfaToken = errData.mfa_token;
@@ -320,7 +320,7 @@ class SimpliSafe3 {
                 let errCode = err.response.status;
 
                 if (errCode == 403) {
-                    this.log('Token refresh failed, request blocked (rate limit?).');
+                    this.log.error('Token refresh failed, request blocked (rate limit?).');
                     this._setRateLimitHandler();
                 } else {
                     this.logout(this.username != null);
@@ -391,7 +391,7 @@ class SimpliSafe3 {
                         }
                     });
             } else if (statusCode == 403) {
-                this.log('Request failed, request blocked (rate limit?).');
+                this.log.error('Request failed, request blocked (rate limit?).');
                 this._setRateLimitHandler();
                 throw new RateLimitError(err.response.data);
             } else {
@@ -727,8 +727,7 @@ class SimpliSafe3 {
                             break;
                         default:
                             // Unknown event
-                            if (this.debug) this.log('Unknown SimpliSafe event');
-                            this.log(data);
+                            if (this.debug) this.log.debug('Unknown SimpliSafe event:', data);
                             callback(null, data);
                             break;
                     }
@@ -756,35 +755,35 @@ class SimpliSafe3 {
             // for debugging, we only want one of these listeners
             if (this.debug) {
                 this.socket.on('connect', () => {
-                    this.log('Socket connected');
+                    this.log.debug('Socket connected');
                 });
 
                 this.socket.on('reconnect_attempt', (attemptNumber) => {
-                    this.log(`Socket reconnect_attempt #${attemptNumber}`);
+                    this.log.debug(`Socket reconnect_attempt #${attemptNumber}`);
                 });
 
                 this.socket.on('reconnect', () => {
-                    this.log('Socket reconnected');
+                    this.log.debug('Socket reconnected');
                 });
 
                 this.socket.on('connect_error', (err) => {
-                    this.log(`Socket connect_error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
+                    this.log.debug(`Socket connect_error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
                 });
 
                 this.socket.on('connect_timeout', () => {
-                    this.log('Socket connect_timeout');
+                    this.log.debug('Socket connect_timeout');
                 });
 
                 this.socket.on('error', (err) => {
-                    this.log(`Socket error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
+                    this.log.debug(`Socket error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
                 });
 
                 this.socket.on('reconnect_failed', () => {
-                    this.log('Socket reconnect_failed');
+                    this.log.debug('Socket reconnect_failed');
                 });
 
                 this.socket.on('disconnect', (reason) => {
-                    this.log('Socket disconnect reason:', reason);
+                    this.log.debug('Socket disconnect reason:', reason);
                 });
             }
         }
@@ -848,7 +847,7 @@ class SimpliSafe3 {
                     }
                 } catch (err) {
                     if (!(err instanceof RateLimitError) && err.type !== 'SettingsInProgress') { // ignore rate limits & 409 errors
-                        this.log(err);
+                        this.log.error(err);
                     }
                 }
 
