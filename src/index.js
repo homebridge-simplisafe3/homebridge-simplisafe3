@@ -94,7 +94,7 @@ class SS3Platform {
     }
 
     configureAccessory(accessory) {
-        if (this.debug) this.log(`Configure existing accessory ${accessory.UUID} ${accessory.displayName}`);
+        if (this.debug) this.log(`Configure existing accessory '${accessory.displayName}' (uuid ${accessory.UUID})`);
 
         let config = new Promise((resolve, reject) => {
             this.initialLoad
@@ -110,11 +110,11 @@ class SS3Platform {
                     let device = this.devices.find(device => device.uuid === accessory.UUID);
 
                     if (device) {
-                        if (this.debug) this.log('Found device', device.name ? device.name : device.uuid);
+                        if (this.debug) this.log('Found device', device.name ? `'${device.name}'` : device.uuid);
                         device.setAccessory(accessory);
                         this.accessories.push(accessory);
                     } else {
-                        if (this.debug) this.log('Device not found', device.name ? device.name : device.uuid);
+                        if (this.debug) this.log('Device not found', device.name ? `'${device.name}'` : device.uuid);
                         this.removeAccessory(accessory);
                     }
 
@@ -173,9 +173,8 @@ class SS3Platform {
 
             let sensors = await this.simplisafe.getSensors();
             for (let sensor of sensors) {
-
                 if (this.debug) {
-                    this.log(`Discovered sensor: ${sensor.name}`);
+                    this.log(`Discovered sensor '${sensor.name}' from SimpliSafe.`);
                     this.log(sensor);
                 }
 
@@ -190,13 +189,13 @@ class SS3Platform {
                     // Ignore as no data is provided by SimpliSafe
                     // Door locks are configured below
                 } else if (sensor.type == SENSOR_TYPES.ENTRY_SENSOR) {
+                    let sensorName = sensor.name || `Entry Sensor ${sensor.serial}`;
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
-
                     if (!accessory) {
-                        if (this.debug) this.log(`Sensor ${sensor.name} not found, adding...`);
+                        if (this.debug) this.log(`Entry Sensor '${sensorName}' not found, adding...`);
                         const sensorAccessory = new EntrySensor(
-                            sensor.name || 'Entry Sensor',
+                            sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
@@ -209,20 +208,20 @@ class SS3Platform {
                         this.devices.push(sensorAccessory);
 
                         if (addAndRemove) {
-                            let newAccessory = new Accessory(sensor.name || 'Entry Sensor', UUIDGen.generate(sensor.serial));
+                            let newAccessory = new Accessory(sensorName, uuid);
                             newAccessory.addService(Service.ContactSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
                         }
                     }
                 } else if (sensor.type == SENSOR_TYPES.CO_SENSOR) {
+                    let sensorName = sensor.name || `CO Detector ${sensor.serial}`;
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
-
                     if (!accessory) {
-                        if (this.debug) this.log('Sensor not found, adding...');
+                        if (this.debug) this.log(`CO Detector '${sensorName}' not found, adding...`);
                         const sensorAccessory = new CODetector(
-                            sensor.name || 'CO Detector',
+                            sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
@@ -235,20 +234,20 @@ class SS3Platform {
                         this.devices.push(sensorAccessory);
 
                         if (addAndRemove) {
-                            let newAccessory = new Accessory(sensor.name || 'CO Detector', UUIDGen.generate(sensor.serial));
+                            let newAccessory = new Accessory(sensorName, uuid);
                             newAccessory.addService(Service.CarbonMonoxideSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
                         }
                     }
                 } else if (sensor.type == SENSOR_TYPES.SMOKE_SENSOR) {
+                    let sensorName = sensor.name || `Smoke Detector ${sensor.serial}`;
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
-
                     if (!accessory) {
-                        if (this.debug) this.log(`Sensor ${sensor.name} not found, adding...`);
+                        if (this.debug) this.log(`Smoke Detector '${sensorName}' not found, adding...`);
                         const sensorAccessory = new SmokeDetector(
-                            sensor.name || 'Smoke Detector',
+                            sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
@@ -261,20 +260,20 @@ class SS3Platform {
                         this.devices.push(sensorAccessory);
 
                         if (addAndRemove) {
-                            let newAccessory = new Accessory(sensor.name || 'Smoke Detector', UUIDGen.generate(sensor.serial));
+                            let newAccessory = new Accessory(sensorName, uuid);
                             newAccessory.addService(Service.SmokeSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
                         }
                     }
                 } else if (sensor.type == SENSOR_TYPES.WATER_SENSOR) {
+                    let sensorName = sensor.name || `Water Sensor ${sensor.serial}`;
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
-
                     if (!accessory) {
-                        if (this.debug) this.log(`Sensor ${sensor.name} not found, adding...`);
+                        if (this.debug) this.log(`Water Sensor '${sensorName}' not found, adding...`);
                         const sensorAccessory = new WaterSensor(
-                            sensor.name || 'Water Sensor',
+                            sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
@@ -287,20 +286,20 @@ class SS3Platform {
                         this.devices.push(sensorAccessory);
 
                         if (addAndRemove) {
-                            let newAccessory = new Accessory(sensor.name || 'Water Sensor', UUIDGen.generate(sensor.serial));
+                            let newAccessory = new Accessory(sensorName, uuid);
                             newAccessory.addService(Service.LeakSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
                         }
                     }
                 } else if (sensor.type == SENSOR_TYPES.FREEZE_SENSOR) {
+                    let sensorName = sensor.name || `Freeze Sensor ${sensor.serial}`;
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
-
                     if (!accessory) {
-                        if (this.debug) this.log(`Sensor ${sensor.name} not found, adding...`);
+                        if (this.debug) this.log(`Freeze Sensor '${sensorName}' not found, adding...`);
                         const sensorAccessory = new FreezeSensor(
-                            sensor.name || 'Freeze Sensor',
+                            sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
@@ -313,27 +312,25 @@ class SS3Platform {
                         this.devices.push(sensorAccessory);
 
                         if (addAndRemove) {
-                            let newAccessory = new Accessory(sensor.name || 'Freeze Sensor', UUIDGen.generate(sensor.serial));
+                            let newAccessory = new Accessory(sensorName, uuid);
                             newAccessory.addService(Service.TemperatureSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
                         }
                     }
                 } else if (sensor.type == SENSOR_TYPES.MOTION_SENSOR) {
-
+                    let sensorName = sensor.name || `Motion Sensor ${sensor.serial}`;
                     // Check if secret alerts are enabled
                     if (sensor.setting.off == 0 || sensor.setting.home == 0 || sensor.setting.away == 0) {
-                        this.log(`Sensor ${sensor.name} requires secret alerts to be added to Homebridge.`);
+                        this.log(`Motion Sensor '${sensorName}' requires secret alerts to be added to Homebridge.`);
                         continue;
                     }
-
                     let uuid = UUIDGen.generate(sensor.serial);
                     let accessory = this.accessories.find(acc => acc.UUID === uuid);
-
                     if (!accessory) {
-                        if (this.debug) this.log(`Sensor ${sensor.name} not found, adding...`);
+                        if (this.debug) this.log(`Motion Sensor '${sensorName}' not found, adding...`);
                         const sensorAccessory = new MotionSensor(
-                            sensor.name || 'Motion Sensor',
+                            sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
@@ -346,7 +343,7 @@ class SS3Platform {
                         this.devices.push(sensorAccessory);
 
                         if (addAndRemove) {
-                            let newAccessory = new Accessory(sensor.name || 'Motion Sensor', UUIDGen.generate(sensor.serial));
+                            let newAccessory = new Accessory(sensorName, uuid);
                             newAccessory.addService(Service.MotionSensor);
                             sensorAccessory.setAccessory(newAccessory);
                             this.addAccessory(sensorAccessory);
@@ -360,19 +357,19 @@ class SS3Platform {
 
             let locks = await this.simplisafe.getLocks();
             for (let lock of locks) {
+                let lockName = lock.name || `Smart Lock ${lock.serial}`;
+                let uuid = UUIDGen.generate(lock.serial);
 
                 if (this.debug) {
-                    this.log(`Discovered door lock: ${lock.name}`);
+                    this.log(`Discovered door lock '${lockName}' from SimpliSafe`);
                     this.log(lock);
                 }
 
-                let uuid = UUIDGen.generate(lock.serial);
                 let accessory = this.accessories.find(acc => acc.UUID === uuid);
-
                 if (!accessory) {
-                    if (this.debug) this.log('Lock not found, adding...');
+                    if (this.debug) this.log(`Lock ${lockName} not found, adding...`);
                     const lockAccessory = new DoorLock(
-                        lock.name || 'Smart Lock',
+                        lockName,
                         lock.serial,
                         this.log,
                         this.debug,
@@ -385,7 +382,7 @@ class SS3Platform {
                     this.devices.push(lockAccessory);
 
                     if (addAndRemove) {
-                        let newAccessory = new Accessory(lock.name || 'Smart Lock', UUIDGen.generate(lock.serial));
+                        let newAccessory = new Accessory(lockName, uuid);
                         newAccessory.addService(Service.LockMechanism);
                         lockAccessory.setAccessory(newAccessory);
                         this.addAccessory(lockAccessory);
@@ -396,16 +393,20 @@ class SS3Platform {
 
             if (this.enableCameras) {
                 let cameras = await this.simplisafe.getCameras();
-
                 for (let camera of cameras) {
+                    let cameraName = camera.cameraSettings.cameraName || `Camera ${camera.uuid}`;
                     let uuid = UUIDGen.generate(camera.uuid);
-                    let cameraAccessory = this.accessories.find(acc => acc.UUID === uuid);
 
+                    if (this.debug) {
+                        this.log(`Discovered camera '${cameraName}' from SimpliSafe`);
+                        this.log(camera);
+                    }
+
+                    let cameraAccessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!cameraAccessory) {
-                        // cameras are not cached by Homebridge
-                        if (this.debug) this.log(`Camera ${camera.cameraSettings.cameraName} (uuid ${uuid}) not found, adding...`);
-                        const cameraDevice = new Camera(
-                            camera.cameraSettings.cameraName || 'Camera',
+                        if (this.debug) this.log(`Camera ${cameraName} (uuid ${uuid}) not found, adding...`);
+                        const cameraAccessory = new Camera(
+                            cameraName,
                             camera.uuid,
                             camera,
                             this.cameraOptions,
@@ -418,19 +419,19 @@ class SS3Platform {
                             StreamController
                         );
 
-                        this.devices.push(cameraDevice);
+                        this.devices.push(cameraAccessory);
 
                         if (addAndRemove) {
-                            cameraAccessory = new Accessory(camera.cameraSettings.cameraName || 'Camera', uuid);
-                            cameraAccessory.addService(Service.CameraControl);
-                            cameraAccessory.addService(Service.Microphone);
-                            cameraAccessory.addService(Service.MotionSensor);
+                            let newAccessory = new Accessory(cameraName, uuid);
+                            newAccessory.addService(Service.CameraControl);
+                            newAccessory.addService(Service.Microphone);
+                            newAccessory.addService(Service.MotionSensor);
                             if (camera.model == 'SS002') { // SSO02 is doorbell cam
-                                cameraAccessory.addService(Service.Doorbell);
+                                newAccessory.addService(Service.Doorbell);
                             }
-                            cameraDevice.setAccessory(cameraAccessory);
+                            cameraAccessory.setAccessory(newAccessory);
 
-                            this.addAccessory(cameraDevice);
+                            this.addAccessory(cameraAccessory);
                         }
                     }
                 }
