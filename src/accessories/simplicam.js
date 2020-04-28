@@ -66,13 +66,6 @@ class SS3SimpliCam {
             this.services.push(doorbell);
         }
 
-        // Clear cached stream controllers
-        this.accessory.services
-            .filter(service => service.UUID === this.Service.CameraRTPStreamManagement.UUID)
-            .map(service => {
-                this.accessory.removeService(service);
-            });
-
         this.cameraSource = new CameraSource(
             this.cameraDetails,
             this.cameraOptions,
