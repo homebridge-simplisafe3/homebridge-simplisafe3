@@ -1,9 +1,7 @@
 # Homebridge Plugin for SimpliSafe 3
-Created by [Niccolò Zapponi](https://twitter.com/nzapponi)
+Created by [Niccolò Zapponi](https://twitter.com/nzapponi) and [Michael Shamoon](https://github.com/nikonratm).
 
 A complete (unofficial) Homebridge plugin to integrate the SimpliSafe 3 home security system with HomeKit.
-
-Inspired by the work by [chowielin/homebridge-simplisafe-security-system](https://github.com/chowielin/homebridge-simplisafe-security-system).
 
 ## Requirements
 You must sign up to a SimpliSafe monitoring plan that enables you to use the mobile app for this plugin to work.
