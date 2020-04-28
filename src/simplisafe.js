@@ -373,6 +373,8 @@ class SimpliSafe3 {
             if (!err.response) {
                 let err = new RateLimitError(err);
                 throw err;
+                let rateLimitError = new RateLimitError(err);
+                throw rateLimitError;
             }
 
             let statusCode = err.response.status;
