@@ -245,7 +245,7 @@ class CameraSource {
             ffmpegPath = this.cameraOptions.ffmpegPath;
         }
         let resolution = `${request.width}x${request.height}`;
-        if (this.debug) this.log.debug(`Handling cameras snapshot for '${this.cameraConfig.cameraSettings.cameraName}' at ${resolution}`);
+        if (this.debug) this.log.debug(`Handling camera snapshot for '${this.cameraConfig.cameraSettings.cameraName}' at ${resolution}`);
 
         if (!this.motionIsTriggered && this.cameraConfig.model == 'SS001') { // Model(s) with privacy shutter
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
