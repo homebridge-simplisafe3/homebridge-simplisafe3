@@ -16,14 +16,13 @@ jobs:
         with:
           node-version: 12
           registry-url: https://registry.npmjs.org/
-      - run: npm version "$GITHUB_RELEASE"
-      - run: npm ci
-      - name: Commit version
-        run: |
+      - run: |
           git config --global user.name 'Version Tracker'
           git config --global user.email 'version-tracker@users.noreply.github.com'
-          git commit -am "Updated version"
-          git push
+      - run: npm version "$GITHUB_RELEASE"
+      - run: npm ci
+      - name: Push version
+        run: git push
           
   build-publish-npm:
     needs: build-check-version
