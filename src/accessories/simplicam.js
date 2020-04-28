@@ -357,8 +357,9 @@ class SS3SimpliCam {
 
                 if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
                     delete this.pendingSessions[sessionIdentifier];
-                    this.log.error('Camera stream request blocked (rate limited)');
-                    return callback(new Error('Camera stream request blocked (rate limited)'));
+                    let err = new Error('Camera stream request blocked (rate limited)');
+                    this.log.error(err);
+                    return callback(err);
                 }
 
                 let sessionInfo = this.pendingSessions[sessionIdentifier];
@@ -392,8 +393,8 @@ class SS3SimpliCam {
                     } catch (err) {
                         if (!this.serverIpAddress) {
                             delete this.pendingSessions[sessionIdentifier];
-                            this.log.error('Camera stream request failed, could not resolve hostname for media.simplisafe.com');
-                            return callback(new Error('Camera stream request failed, could not resolve hostname for media.simplisafe.com'));
+                            this.log.error('Camera stream request failed, could not resolve hostname for media.simplisafe.com', err);
+                            return callback(err);
                         }
                     }
 
@@ -539,7 +540,7 @@ class SS3SimpliCam {
                             case null:
                             case 0:
                             case 255:
-                                if (this.debug) this.log.debug('Simplisafe camera stopped streaming');
+                                if (this.debug) this.log.debug('Camera stopped streaming');
                                 break;
                             default:
                                 if (this.debug) this.log.debug(`Error: FFmpeg exited with code ${code}`);
