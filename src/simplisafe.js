@@ -211,7 +211,7 @@ class SimpliSafe3 {
 
                 } else if (errCode == 403) {
                     this._setRateLimitHandler();
-                    let err = new RateLimitError('Login failed, request blocked (rate limit?).');
+                    let err = new RateLimitError('SSAPI login failed, request blocked (rate limit?).');
                     throw err;
                 } else {
                     this.logout(storeCredentials);
@@ -219,7 +219,7 @@ class SimpliSafe3 {
                 }
             } else {
                 this._setRateLimitHandler();
-                let err = new RateLimitError('Login failed, request blocked (connectivity?).');
+                let err = new RateLimitError('SSAPI login failed, request blocked (connectivity?).');
                 throw err;
             }
         }
@@ -320,7 +320,7 @@ class SimpliSafe3 {
                 let errCode = err.response.status;
 
                 if (errCode == 403) {
-                    this.log.error('Token refresh failed, request blocked (rate limit?).');
+                    this.log.error('SSAPI token refresh failed, request blocked (rate limit?).');
                     this._setRateLimitHandler();
                 } else {
                     this.logout(this.username != null);
@@ -328,7 +328,7 @@ class SimpliSafe3 {
                 throw err.response;
             } else {
                 this._setRateLimitHandler();
-                let err = new RateLimitError('Login failed, request blocked (connectivity?).');
+                let err = new RateLimitError('SSAPI login failed, request blocked (connectivity?).');
                 throw err;
             }
         }
@@ -371,8 +371,6 @@ class SimpliSafe3 {
             return response.data;
         } catch (err) {
             if (!err.response) {
-                let err = new RateLimitError(err);
-                throw err;
                 let rateLimitError = new RateLimitError(err);
                 throw rateLimitError;
             }
@@ -393,7 +391,7 @@ class SimpliSafe3 {
                         }
                     });
             } else if (statusCode == 403) {
-                this.log.error('Request failed, request blocked (rate limit?).');
+                this.log.error('SSAPI request failed, request blocked (rate limit?).');
                 this._setRateLimitHandler();
                 throw new RateLimitError(err.response.data);
             } else {
@@ -757,35 +755,35 @@ class SimpliSafe3 {
             // for debugging, we only want one of these listeners
             if (this.debug) {
                 this.socket.on('connect', () => {
-                    this.log.debug('Socket connected');
+                    this.log.debug('SSAPI socket connected');
                 });
 
                 this.socket.on('reconnect_attempt', (attemptNumber) => {
-                    this.log.debug(`Socket reconnect_attempt #${attemptNumber}`);
+                    this.log.debug(`SSAPI socket reconnect_attempt #${attemptNumber}`);
                 });
 
                 this.socket.on('reconnect', () => {
-                    this.log.debug('Socket reconnected');
+                    this.log.debug('SSAPI socket reconnected');
                 });
 
                 this.socket.on('connect_error', (err) => {
-                    this.log.debug(`Socket connect_error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
+                    this.log.error(`SSAPI socket connect_error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
                 });
 
                 this.socket.on('connect_timeout', () => {
-                    this.log.debug('Socket connect_timeout');
+                    this.log.debug('SSAPI socket connect_timeout');
                 });
 
                 this.socket.on('error', (err) => {
-                    this.log.debug(`Socket error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
+                    this.log.error(`SSAPI socket error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
                 });
 
                 this.socket.on('reconnect_failed', () => {
-                    this.log.debug('Socket reconnect_failed');
+                    this.log.error('SSAPI socket reconnect_failed');
                 });
 
                 this.socket.on('disconnect', (reason) => {
-                    this.log.debug('Socket disconnect reason:', reason);
+                    this.log.debug('SSAPI socket disconnect reason:', reason);
                 });
             }
         }
