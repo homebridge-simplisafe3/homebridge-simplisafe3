@@ -18,7 +18,6 @@ jobs:
           registry-url: https://registry.npmjs.org/
       - run: npm version "$GITHUB_RELEASE"
       - run: npm ci
-      - run: npm test
       - name: Commit version
         run: |
           git config --global user.name 'Version Tracker'
@@ -35,12 +34,9 @@ jobs:
         with:
           node-version: 12
           registry-url: https://registry.npmjs.org/
-      - run: npm version "$GITHUB_RELEASE"
       - run: npm ci
-      - run: npm test
-      - run: babel src -d lib && cp package.json config.schema.json README.md lib/
-      - run: npm publish
-        working-directory: ./lib
+      - run: npm run build
+      - run: npm publish lib/
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
 
