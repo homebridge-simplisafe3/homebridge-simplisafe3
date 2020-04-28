@@ -9,7 +9,6 @@ env:
 
 jobs:
   build-publish-npm:
-    needs: build-check-version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
