@@ -237,7 +237,7 @@ class CameraSource {
 
     async handleSnapshotRequest(request, callback) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            return callback(new Error('Camera snapshot request blocked (rate limited)'));
         }
 
         let ffmpegPath = ffmpeg.path;
@@ -245,7 +245,7 @@ class CameraSource {
             ffmpegPath = this.cameraOptions.ffmpegPath;
         }
         let resolution = `${request.width}x${request.height}`;
-        if (this.debug) this.log.debug(`Handling snapshot for ${this.cameraConfig.cameraSettings.cameraName} at ${resolution}`);
+        if (this.debug) this.log.debug(`Handling cameras snapshot for '${this.cameraConfig.cameraSettings.cameraName}' at ${resolution}`);
 
         if (!this.motionIsTriggered && this.cameraConfig.model == 'SS001') { // Model(s) with privacy shutter
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
@@ -253,7 +253,7 @@ class CameraSource {
             switch (alarmState) {
                 case 'OFF':
                     if (this.cameraConfig.cameraSettings.shutterOff !== 'open') {
-                        if (this.debug) this.log.debug(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
+                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraConfig.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -261,7 +261,7 @@ class CameraSource {
 
                 case 'HOME':
                     if (this.cameraConfig.cameraSettings.shutterHome !== 'open') {
-                        if (this.debug) this.log.debug(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
+                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraConfig.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -269,7 +269,7 @@ class CameraSource {
 
                 case 'AWAY':
                     if (this.cameraConfig.cameraSettings.shutterAway !== 'open') {
-                        if (this.debug) this.log.debug(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
+                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraConfig.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -317,7 +317,7 @@ class CameraSource {
             callback(error);
         });
         ffmpegCmd.on('close', () => {
-            if (this.debug) this.log.debug(`Closed ${this.cameraConfig.cameraSettings.cameraName} camera stream with image of ${Math.round(imageBuffer.length/1024)}kB`);
+            if (this.debug) this.log.debug(`Closed '${this.cameraConfig.cameraSettings.cameraName}' snapshot request with ${Math.round(imageBuffer.length/1024)}kB image`);
             callback(null, imageBuffer);
         });
     }
@@ -382,16 +382,18 @@ class CameraSource {
     }
 
     async handleStreamRequest(request) {
-        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            throw new Error('Request blocked (rate limited)');
-        }
-
         let sessionId = request.sessionID;
-
         if (sessionId) {
             let sessionIdentifier = this.UUIDGen.unparse(sessionId);
 
             if (request.type == 'start') {
+
+                if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+                    delete this.pendingSessions[sessionIdentifier];
+                    this.log.error('Camera stream request blocked (rate limited)');
+                    return false;
+                }
+
                 let sessionInfo = this.pendingSessions[sessionIdentifier];
                 if (sessionInfo) {
                     let width = 1920;
@@ -422,7 +424,9 @@ class CameraSource {
                         this.serverIpAddress = newIpAddress.address;
                     } catch (err) {
                         if (!this.serverIpAddress) {
-                            throw new Error('Could not resolve hostname for media.simplisafe.com');
+                            delete this.pendingSessions[sessionIdentifier];
+                            this.log.error('Camera stream request failed, could not resolve hostname for media.simplisafe.com');
+                            return false;
                         }
                     }
 
@@ -543,7 +547,7 @@ class CameraSource {
                         env: process.env
                     });
 
-                    if (this.debug) this.log.debug(`Start streaming video from ${this.cameraConfig.cameraSettings.cameraName}`);
+                    if (this.debug) this.log.debug(`Start streaming video for camera '${this.cameraConfig.cameraSettings.cameraName}'`);
 
                     cmd.stderr.on('data', data => {
                         // always hook stderr to prevent early stream closure
@@ -553,8 +557,7 @@ class CameraSource {
                     });
 
                     cmd.on('error', err => {
-                        this.log.error('An error occurred while making stream request');
-                        this.log.error(err);
+                        this.log.error('An error occurred while making stream request:', err);
                     });
 
                     cmd.on('close', code => {
@@ -562,7 +565,7 @@ class CameraSource {
                             case null:
                             case 0:
                             case 255:
-                                if (this.debug) this.log.debug('Stopped streaming');
+                                if (this.debug) this.log.debug('Simplisafe camera stopped streaming');
                                 break;
                             default:
                                 if (this.debug) this.log.debug(`Error: FFmpeg exited with code ${code}`);
