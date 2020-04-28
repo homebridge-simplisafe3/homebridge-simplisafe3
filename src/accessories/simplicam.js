@@ -117,7 +117,8 @@ class SS3SimpliCam {
 
     getState(callback, service, characteristic) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            callback(new Error('Request blocked (rate limited)'));
+            return;
         }
 
         let state = service.getCharacteristic(characteristic);
@@ -204,7 +205,8 @@ class SS3SimpliCam {
 
     async handleSnapshotRequest(request, callback) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Camera snapshot request blocked (rate limited)'));
+            callback(new Error('Camera snapshot request blocked (rate limited)'));
+            return;
         }
 
         let ffmpegPath = ffmpeg.path;
@@ -249,7 +251,8 @@ class SS3SimpliCam {
             this.serverIpAddress = newIpAddress.address;
         } catch (err) {
             if (!this.serverIpAddress) {
-                callback(new Error('Could not resolve hostname for media.simplisafe.com'));
+                this.log.error('Could not resolve hostname for media.simplisafe.com');
+                callback(err);
                 return;
             }
         }
@@ -359,7 +362,8 @@ class SS3SimpliCam {
                     delete this.pendingSessions[sessionIdentifier];
                     let err = new Error('Camera stream request blocked (rate limited)');
                     this.log.error(err);
-                    return callback(err);
+                    callback(err);
+                    return;
                 }
 
                 let sessionInfo = this.pendingSessions[sessionIdentifier];
@@ -394,7 +398,8 @@ class SS3SimpliCam {
                         if (!this.serverIpAddress) {
                             delete this.pendingSessions[sessionIdentifier];
                             this.log.error('Camera stream request failed, could not resolve hostname for media.simplisafe.com', err);
-                            return callback(err);
+                            callback(err);
+                            return;
                         }
                     }
 
@@ -522,7 +527,6 @@ class SS3SimpliCam {
                         if (!started) {
                             started = true;
                             if (this.debug) this.log.debug('FFMPEG received first frame');
-
                             callback(); // do not forget to execute callback once set up
                         }
                         if (this.debug) {
