@@ -16,7 +16,7 @@ import UnreachableAccessory from './accessories/unreachableAccessory';
 const PLUGIN_NAME = 'homebridge-simplisafe3';
 const PLATFORM_NAME = 'SimpliSafe 3';
 
-let Accessory, Service, Characteristic, UUIDGen, StreamController;
+let Accessory, Service, Characteristic, UUIDGen, CameraController;
 
 class SS3Platform {
 
@@ -416,15 +416,13 @@ class SS3Platform {
                             Service,
                             Characteristic,
                             UUIDGen,
-                            StreamController
+                            CameraController
                         );
 
                         this.devices.push(cameraAccessory);
 
                         if (addAndRemove) {
                             let newAccessory = new Accessory(cameraName, uuid);
-                            newAccessory.addService(Service.CameraControl);
-                            newAccessory.addService(Service.Microphone);
                             newAccessory.addService(Service.MotionSensor);
                             if (camera.model == 'SS002') { // SSO02 is doorbell cam
                                 newAccessory.addService(Service.Doorbell);
@@ -487,7 +485,7 @@ const homebridge = homebridge => {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
     UUIDGen = homebridge.hap.uuid;
-    StreamController = homebridge.hap.StreamController;
+    CameraController = homebridge.hap.CameraController;
 
     homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, SS3Platform, true);
 };
