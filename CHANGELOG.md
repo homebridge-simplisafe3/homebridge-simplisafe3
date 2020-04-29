@@ -1,6 +1,12 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.5.0
+- PLEASE NOTE: This version of the plugin requires Homebridge v.1.0.0 and includes breaking changes. Only install this update when you are ready to update Homebridge (or already have).
+- Support for Homebridge v1.0.0 including `CameraController API` support. See the updated README for more information.
+- Improved logging.
+- Minor bug fixes.
+
 ## v1.4.12
 - Minor bug fixes
 
