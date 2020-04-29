@@ -148,6 +148,7 @@ This will print the data about all the sensors found.
 
 ### Camera Support
 To enable camera support, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin).
+
 **As of version v1.5.0 (which requires Homebridge v1.0.0 or later) cameras do not need to be added separately. Bridged cameras in v1.5.0 or later will not function properly with versions of Homebridge below 1.0.0. See [Migrating External Cameras to Bridged Cameras](#migrating-external-cameras-to-bridged-cameras) below.**
 
 #### Migrating External Cameras to Bridged Cameras
