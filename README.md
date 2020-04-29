@@ -86,7 +86,7 @@ These enable camera support. See [Camera Support](#camera-support) for more deta
 #### `debug`
 Type: boolean (default `false`)
 
-Switch this on to get more details around your sensors in your Homebridge logs.
+Switch this on to get more details around your sensors in your Homebridge logs. To see all messages the Homebridge debug (`-D`) option must also be enabled.
 
 #### `subscriptionId`
 Type: string
