@@ -4,7 +4,7 @@
   "description": "A complete Homebridge plugin for the SimpliSafe 3 security system",
   "main": "index.js",
   "engines": {
-    "homebridge": ">=0.2.5"
+    "homebridge": ">=1.0.0"
   },
   "scripts": {
     "start": "nodemon --exec babel-node src/index.js",
