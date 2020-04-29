@@ -1,0 +1,28 @@
+name: Publish to NPM
+
+on:
+  release:
+    types: [published]
+    
+env:
+  GITHUB_RELEASE: ${{ github.event.release.tag_name }}
+
+jobs:
+  build-publish-npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12
+          registry-url: https://registry.npmjs.org/
+      - run: |
+          git config --global user.name 'Version Tracker'
+          git config --global user.email 'version-tracker@users.noreply.github.com'
+      - run: npm version --no-git-tag-version "$GITHUB_RELEASE"
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish lib/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
+
