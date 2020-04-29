@@ -147,12 +147,13 @@ To provide sample data, add `"debug": true` to the platform configuration inside
 This will print the data about all the sensors found.
 
 ### Camera Support
-To enable camera support, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin). As of version 1.5.0 (which requires Homebridge v1.0.0 or later) cameras do not need to be added separately. Cameras in 1.5.0 or later will not function properly with versions of Homebridge below 1.0.0. See
+To enable camera support, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin).
+**As of version v1.5.0 (which requires Homebridge v1.0.0 or later) cameras do not need to be added separately. Bridged cameras in v1.5.0 or later will not function properly with versions of Homebridge below 1.0.0. See [Migrating External Cameras to Bridged Cameras](#migrating-external-cameras-to-bridged-cameras) below.**
 
 #### Migrating External Cameras to Bridged Cameras
-After upgrading to 1.5.0, old cameras will cease to function. This also means any existing automations will need to be updated. We recommend the following:
+After upgrading to v1.5.0, old (external) cameras will cease to function. This also means any existing automations will need to be updated. We recommend the following steps to avoid losing automations:
 
-1. After updating the plugin you will see your new cameras automatically, if you are unsure which is which, click **Edit** on the camera in the Home app to view its settings and at the bottom you will see a button to **Remove Camera From Home** under an *old* camera whereas new ones will show a link to the Bridge (and no remove button).
+1. After updating the plugin you will see your new cameras automatically, if you are unsure which is which, click **Edit** on the camera in the Home app to view its settings and at the bottom you will see a button to **Remove Camera From Home** under an *old* external camera whereas new ones will show a link to the Bridge (and no remove button).
 1. Before removing the old camera, update any automations that you have to replace any relevant parts with the new camera.
 1. You can now safely remove your old camera from the Home app.
 
