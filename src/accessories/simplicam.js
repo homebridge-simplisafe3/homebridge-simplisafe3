@@ -97,9 +97,6 @@ class SS3SimpliCam {
             .setCharacteristic(this.Characteristic.SerialNumber, this.id)
             .setCharacteristic(this.Characteristic.FirmwareRevision, this.cameraDetails.cameraSettings.admin.firmwareVersion);
 
-        // this.services.push(this.accessory.getService(this.Service.CameraControl));
-        // this.services.push(this.accessory.getService(this.Service.Microphone));
-
         let motionSensor = this.accessory.getService(this.Service.MotionSensor)
             .getCharacteristic(this.Characteristic.MotionDetected)
             .on('get', callback => this.getState(callback, this.accessory.getService(this.Service.MotionSensor), this.Characteristic.MotionDetected));
