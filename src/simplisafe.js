@@ -727,7 +727,7 @@ class SimpliSafe3 {
                             break;
                         default:
                             // Unknown event
-                            if (this.debug) this.log.debug('Unknown SimpliSafe event:', data);
+                            if (this.debug) this.log.debug('Unknown SSAPI event:', data);
                             callback(null, data);
                             break;
                     }
@@ -846,8 +846,9 @@ class SimpliSafe3 {
                             .map(sub => sub.callback(sensor));
                     }
                 } catch (err) {
-                    if (!(err instanceof RateLimitError) && err.type !== 'SettingsInProgress') { // ignore rate limits & 409 errors
-                        this.log.error(err);
+                    if (!(err instanceof RateLimitError) && err.type !== 'SettingsInProgress') { // dont log rate limit & 409 errors as they are handled elsewhere
+                        this.log.error(`Sensor refresh received SSAPI ${err.type ? err.type + ' error' : 'error'}.`);
+                        if (this.debug) this.log.error(err);
                     }
                 }
 
