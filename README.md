@@ -4,8 +4,9 @@ Created by [Niccolò Zapponi](https://twitter.com/nzapponi) and [Michael Shamoon
 A complete (unofficial) Homebridge plugin to integrate the SimpliSafe 3 home security system with HomeKit.
 
 ## Requirements
-You must sign up to a SimpliSafe monitoring plan that enables you to use the mobile app for this plugin to work.
-The monitoring plan enables API access to SimpliSafe.
+You must sign up to a SimpliSafe monitoring plan that enables you to use the mobile app for this plugin to work. The monitoring plan enables API access to SimpliSafe.
+
+**NOTE:** *As of version 1.5.0 of this plugin, Homebridge v1.0.0 or greater is required. Because of [significant changes to Homebridge](https://github.com/homebridge/homebridge/releases/tag/1.0.0) the plugin may not work properly with older versions of Homebridge. The last version of this plugin to officially support Homebridge 0.4.53 was version 1.4.12 which can still be installed using a command like `sudo npm install -g --unsafe-perm homebridge-simplisafe3@1.4.12`.*
 
 ## Features
 Supercharge your SimpliSafe system and integrate with HomeKit the right way!
@@ -24,9 +25,9 @@ Here are some examples of how the set up looks like:
 
 This plugin supports installation and changing settings (for `config.js`) via the popular [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x).
 
-Ensure you are running Node v8 or higher. You can check by using `node -v`.
+Ensure you are running Node v10.17.0 or higher (this version is required by Homebridge v1.0.0). You can check by using `node -v`.
 
-Install the plugin by running:
+Either install and configure using Config UI X or you can manually install the plugin by running:
 
 ```
 npm install -g homebridge-simplisafe3
