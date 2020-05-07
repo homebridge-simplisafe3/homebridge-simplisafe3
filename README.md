@@ -4,8 +4,9 @@ Created by [Niccolò Zapponi](https://twitter.com/nzapponi) and [Michael Shamoon
 A complete (unofficial) Homebridge plugin to integrate the SimpliSafe 3 home security system with HomeKit.
 
 ## Requirements
-You must sign up to a SimpliSafe monitoring plan that enables you to use the mobile app for this plugin to work.
-The monitoring plan enables API access to SimpliSafe.
+You must sign up to a SimpliSafe monitoring plan that enables you to use the mobile app for this plugin to work. The monitoring plan enables API access to SimpliSafe.
+
+**NOTE:** *As of version 1.5.0 of this plugin, Homebridge v1.0.0 or greater is required. Because of [significant changes to Homebridge](https://github.com/homebridge/homebridge/releases/tag/1.0.0) the plugin may not work properly with older versions of Homebridge. The last version of this plugin to officially support Homebridge 0.4.53 was version 1.4.12 which can still be installed using a command like `sudo npm install -g --unsafe-perm homebridge-simplisafe3@1.4.12`.*
 
 ## Features
 Supercharge your SimpliSafe system and integrate with HomeKit the right way!
@@ -24,9 +25,9 @@ Here are some examples of how the set up looks like:
 
 This plugin supports installation and changing settings (for `config.js`) via the popular [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x).
 
-Ensure you are running Node v8 or higher. You can check by using `node -v`.
+Ensure you are running Node v10.17.0 or higher (this version is required by Homebridge v1.0.0). You can check by using `node -v`.
 
-Install the plugin by running:
+Either install and configure using Config UI X or you can manually install the plugin by running:
 
 ```
 npm install -g homebridge-simplisafe3
@@ -86,7 +87,7 @@ These enable camera support. See [Camera Support](#camera-support) for more deta
 #### `debug`
 Type: boolean (default `false`)
 
-Switch this on to get more details around your sensors in your Homebridge logs.
+Switch this on to get more details around your sensors in your Homebridge logs. To see all messages the Homebridge debug (`-D`) option must also be enabled.
 
 #### `subscriptionId`
 Type: string
@@ -147,9 +148,18 @@ To provide sample data, add `"debug": true` to the platform configuration inside
 This will print the data about all the sensors found.
 
 ### Camera Support
-Camera support is experimental and may not work. To enable it, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin).
-Once camera support is enabled in your `config.json`, add your cameras to the Home app by selecting Add Accessory - I Don't Have a Code or Cannot Scan, then select your cameras and use your Homebridge pairing code to add it.
+To enable camera support, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin).
 
+**As of version v1.5.0 (which requires Homebridge v1.0.0 or later) cameras do not need to be added separately. Bridged cameras in v1.5.0 or later will not function properly with versions of Homebridge below 1.0.0. See [Migrating External Cameras to Bridged Cameras](#migrating-external-cameras-to-bridged-cameras) below.**
+
+#### Migrating External Cameras to Bridged Cameras
+After upgrading to v1.5.0, old (external) cameras will cease to function. This also means any existing HomeKit automations containing the camera will need to be updated. We recommend the following steps to avoid losing automations:
+
+1. After updating the plugin you will see your new cameras automatically, if you are unsure which is which, click **Edit** on the camera in the Home app to view its settings and at the bottom you will see a button to **Remove Camera From Home** under an *old* external camera whereas new ones will show a link to the Bridge (and no remove button).
+1. Before removing the old camera, update any automations that you have to replace any relevant parts with the new camera.
+1. You can now safely remove your old camera from the Home app.
+
+#### Camera Options
 For advanced scenarios, you can set `"cameraOptions"` in Config UI X or manually in `config.json`\*:
 
 ```
@@ -211,12 +221,5 @@ Any feedback is appreciated.
 
 ## Help & Support
 This has been tested on Homebridge running on a Raspberry Pi 3, using both native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge).
-
-## Donations
-Want to show your support? Consider making a donation!
-- [Donate Now with PayPal](https://paypal.me/nzapponi?locale.x=en_GB)
-- Donate with Bitcoin: 3GYS4ybqjjVUEyohFXaEk5HsG8onrsQKDi
-
-![Bitcoin](/docs/bitcoin.png)
 
 Thank you very much!

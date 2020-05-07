@@ -115,7 +115,10 @@
 		"expandable": true,
 		"title": "Advanced Settings",
 		"items": [
-			"debug",
+			{
+				"key": "debug",
+				"description": "To see all messages the Homebridge debug (<code>-D</code>) option must also be enabled."
+			},
 			{
 				"key": "subscriptionId",
 				"description": "Add this parameter in case you have multiple protected locations or accounts with SimpliSafe. The subscriptionId can be found at the bottom of your base unit."

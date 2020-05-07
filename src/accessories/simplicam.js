@@ -15,11 +15,10 @@ const dnsLookup = promisify(dns.lookup);
 
 class SS3SimpliCam {
 
-    constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, Service, Characteristic, UUIDGen, StreamController) {
+    constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, Service, Characteristic, UUIDGen, CameraController) {
         this.Characteristic = Characteristic;
         this.Service = Service;
         this.UUIDGen = UUIDGen;
-        this.StreamController = StreamController;
         this.id = id;
         this.cameraDetails = cameraDetails;
         this.cameraOptions = cameraOptions;
@@ -31,174 +30,13 @@ class SS3SimpliCam {
         this.reachable = true;
 
         this.services = [];
-        this.cameraSource = null;
 
-        this.startListening();
-    }
-
-    identify(paired, callback) {
-        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
-        callback();
-    }
-
-    setAccessory(accessory) {
-        this.accessory = accessory;
-        this.accessory.on('identify', (paired, callback) => this.identify(paired, callback));
-
-        this.accessory.getService(this.Service.AccessoryInformation)
-            .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
-            .setCharacteristic(this.Characteristic.Model, this.cameraDetails.model)
-            .setCharacteristic(this.Characteristic.SerialNumber, this.id)
-            .setCharacteristic(this.Characteristic.FirmwareRevision, this.cameraDetails.cameraSettings.admin.firmwareVersion);
-
-        this.services.push(this.accessory.getService(this.Service.CameraControl));
-        this.services.push(this.accessory.getService(this.Service.Microphone));
-
-        let motionSensor = this.accessory.getService(this.Service.MotionSensor)
-            .getCharacteristic(this.Characteristic.MotionDetected)
-            .on('get', callback => this.getState(callback, this.accessory.getService(this.Service.MotionSensor), this.Characteristic.MotionDetected));
-        this.services.push(motionSensor);
-
-        if (this.accessory.getService(this.Service.Doorbell)) {
-            let doorbell = this.accessory.getService(this.Service.Doorbell)
-                .getCharacteristic(this.Characteristic.ProgrammableSwitchEvent)
-                .on('get', callback => this.getState(callback, this.accessory.getService(this.Service.Doorbell), this.Characteristic.ProgrammableSwitchEvent));
-            this.services.push(doorbell);
-        }
-
-        // Clear cached stream controllers
-        this.accessory.services
-            .filter(service => service.UUID === this.Service.CameraRTPStreamManagement.UUID)
-            .map(service => {
-                this.accessory.removeService(service);
-            });
-
-        this.cameraSource = new CameraSource(
-            this.cameraDetails,
-            this.cameraOptions,
-            this.Service,
-            this.Characteristic,
-            this.UUIDGen,
-            this.StreamController,
-            this.simplisafe,
-            this.log,
-            this.debug
-        );
-
-        this.accessory.configureCameraSource(this.cameraSource);
-        this.cameraSource.services = this.services;
-    }
-
-    getState(callback, service, characteristic) {
-        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
-        }
-
-        let state = service.getCharacteristic(characteristic);
-        callback(null, state);
-    }
-
-    async updateReachability() {
-        try {
-            let cameras = await this.simplisafe.getCameras();
-            let camera = cameras.find(cam => cam.uuid === this.id);
-            if (!camera) {
-                this.reachable = false;
-            } else {
-                this.reachable = camera.status == 'online';
-            }
-
-            return this.reachable;
-        } catch (err) {
-            this.log(`An error occurred while updating reachability for ${this.name}`);
-            this.log(err);
-        }
-    }
-
-    async startListening() {
-        if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
-        try {
-            await this.simplisafe.subscribeToEvents((event, data) => {
-                switch (event) {
-                    // Socket events
-                    case EVENT_TYPES.CONNECTED:
-                        if (this.debug) this.log(`${this.name} camera now listening for real time events.`);
-                        this.nSocketConnectFailures = 0;
-                        break;
-                    case EVENT_TYPES.DISCONNECT:
-                        if (this.debug) this.log(`${this.name} camera real time events disconnected.`);
-                        break;
-                    case EVENT_TYPES.CONNECTION_LOST:
-                        if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} camera real time events connection lost. Attempting to reconnect...`);
-                        setTimeout(async () => {
-                            await this.startListening();
-                        }, SOCKET_RETRY_INTERVAL);
-                        break;
-                }
-
-                if (this.accessory) {
-                    let eventCameraId;
-                    if (data && (data.sensorSerial || data.internal)) {
-                        eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
-                    }
-
-                    if (eventCameraId == this.id) {
-                        // Camera events
-                        if (this.debug) this.log(`${this.name} camera received event: ${event}`);
-                        switch (event) {
-                            case EVENT_TYPES.CAMERA_MOTION:
-                                this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
-                                this.cameraSource.motionIsTriggered = true;
-                                setTimeout(() => {
-                                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
-                                    this.cameraSource.motionIsTriggered = false;
-                                }, 5000);
-                                break;
-                            case EVENT_TYPES.DOORBELL:
-                                this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
-                                break;
-                            default:
-                                if (this.debug) this.log(`${this.name} camera ignoring unhandled event: ${event}`);
-                                break;
-                        }
-                    }
-                }
-            });
-        } catch (err) {
-            if (err instanceof RateLimitError) {
-                let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
-                if (this.debug) this.log(`${this.name} camera caught RateLimitError, waiting ${retryInterval/1000}s to retry...`);
-                setTimeout(async () => {
-                    await this.startListening();
-                }, retryInterval);
-                this.nSocketConnectFailures++;
-            }
-        }
-    }
-
-}
-
-class CameraSource {
-
-    constructor(cameraConfig, cameraOptions, Service, Characteristic, UUIDGen, StreamController, simplisafe, log, debug) {
-        this.cameraConfig = cameraConfig;
-        this.cameraOptions = cameraOptions;
-        this.serverIpAddress = null;
-        this.Service = Service;
-        this.Characteristic = Characteristic;
-        this.UUIDGen = UUIDGen;
-        this.StreamController = StreamController;
-        this.simplisafe = simplisafe;
-        this.log = log;
-        this.debug = debug;
-
-        this.services = [];
-        this.streamControllers = [];
+        this.controller;
         this.pendingSessions = {};
         this.ongoingSessions = {};
 
-        let fps = cameraConfig.cameraSettings.admin.fps;
-        this.options = {
+        let fps = this.cameraDetails.cameraSettings.admin.fps;
+        let streamingOptions = {
             proxy: false,
             srtp: true,
             video: {
@@ -229,22 +67,143 @@ class CameraSource {
             }
         };
 
-        let resolution = cameraConfig.cameraSettings.pictureQuality;
+        let resolution = this.cameraDetails.cameraSettings.pictureQuality;
         let maxSupportedHeight = +(resolution.split('p')[0]);
-        this.options.video.resolutions = this.options.video.resolutions.filter(r => r[1] <= maxSupportedHeight);
+        streamingOptions.video.resolutions = streamingOptions.video.resolutions.filter(r => r[1] <= maxSupportedHeight);
 
-        this.createStreamControllers(2, this.options);
+        const cameraController = new CameraController({
+            cameraStreamCount: 2,
+            delegate: this,
+            streamingOptions: streamingOptions
+        });
+
+        this.controller = cameraController;
+
+        this.startListening();
     }
 
-    handleCloseConnection(connId) {
-        this.streamControllers.forEach(controller => {
-            controller.handleCloseConnection(connId);
-        });
+    identify(callback) {
+        if (this.debug) this.log.debug(`Identify request for ${this.name}`);
+        callback();
+    }
+
+    setAccessory(accessory) {
+        this.accessory = accessory;
+        this.accessory.on('identify', (callback) => this.identify(callback));
+
+        this.accessory.getService(this.Service.AccessoryInformation)
+            .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
+            .setCharacteristic(this.Characteristic.Model, this.cameraDetails.model)
+            .setCharacteristic(this.Characteristic.SerialNumber, this.id)
+            .setCharacteristic(this.Characteristic.FirmwareRevision, this.cameraDetails.cameraSettings.admin.firmwareVersion);
+
+        let motionSensor = this.accessory.getService(this.Service.MotionSensor)
+            .getCharacteristic(this.Characteristic.MotionDetected)
+            .on('get', callback => this.getState(callback, this.accessory.getService(this.Service.MotionSensor), this.Characteristic.MotionDetected));
+        this.services.push(motionSensor);
+
+        if (this.accessory.getService(this.Service.Doorbell)) {
+            let doorbell = this.accessory.getService(this.Service.Doorbell)
+                .getCharacteristic(this.Characteristic.ProgrammableSwitchEvent)
+                .on('get', callback => this.getState(callback, this.accessory.getService(this.Service.Doorbell), this.Characteristic.ProgrammableSwitchEvent));
+            this.services.push(doorbell);
+        }
+
+        this.accessory.configureController(this.controller);
+    }
+
+    getState(callback, service, characteristic) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            callback(new Error('Request blocked (rate limited)'));
+            return;
+        }
+
+        let state = service.getCharacteristic(characteristic);
+        callback(null, state);
+    }
+
+    async updateReachability() {
+        try {
+            let cameras = await this.simplisafe.getCameras();
+            let camera = cameras.find(cam => cam.uuid === this.id);
+            if (!camera) {
+                this.reachable = false;
+            } else {
+                this.reachable = camera.status == 'online';
+            }
+
+            return this.reachable;
+        } catch (err) {
+            this.log.error(`An error occurred while updating reachability for ${this.name}`);
+            this.log.error(err);
+        }
+    }
+
+    async startListening() {
+        if (this.debug && this.simplisafe.isSocketConnected()) this.log.debug(`${this.name} camera now listening for real time events.`);
+        try {
+            await this.simplisafe.subscribeToEvents((event, data) => {
+                switch (event) {
+                    // Socket events
+                    case EVENT_TYPES.CONNECTED:
+                        if (this.debug) this.log.debug(`${this.name} camera now listening for real time events.`);
+                        this.nSocketConnectFailures = 0;
+                        break;
+                    case EVENT_TYPES.DISCONNECT:
+                        if (this.debug) this.log.debug(`${this.name} camera real time events disconnected.`);
+                        break;
+                    case EVENT_TYPES.CONNECTION_LOST:
+                        if (this.debug && this.nSocketConnectFailures == 0) this.log.debug(`${this.name} camera real time events connection lost. Attempting to reconnect...`);
+                        setTimeout(async () => {
+                            await this.startListening();
+                        }, SOCKET_RETRY_INTERVAL);
+                        break;
+                }
+
+                if (this.accessory) {
+                    let eventCameraId;
+                    if (data && (data.sensorSerial || data.internal)) {
+                        eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
+                    }
+
+                    if (eventCameraId == this.id) {
+                        // Camera events
+                        if (this.debug) this.log.debug(`${this.name} camera received event: ${event}`);
+                        switch (event) {
+                            case EVENT_TYPES.CAMERA_MOTION:
+                                this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
+                                this.motionIsTriggered = true;
+                                setTimeout(() => {
+                                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
+                                    this.motionIsTriggered = false;
+                                }, 5000);
+                                break;
+                            case EVENT_TYPES.DOORBELL:
+                                this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
+                                break;
+                            default:
+                                if (this.debug) this.log.debug(`${this.name} camera ignoring unhandled event: ${event}`);
+                                break;
+                        }
+                    }
+                }
+            });
+        } catch (err) {
+            if (err instanceof RateLimitError) {
+                let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
+                if (this.debug) this.log.debug(`${this.name} camera caught RateLimitError, waiting ${retryInterval/1000}s to retry...`);
+                setTimeout(async () => {
+                    await this.startListening();
+                }, retryInterval);
+                this.nSocketConnectFailures++;
+            }
+        }
     }
 
     async handleSnapshotRequest(request, callback) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            callback(new Error('Camera snapshot request blocked (rate limited)'));
+            return;
         }
 
         let ffmpegPath = ffmpeg.path;
@@ -252,31 +211,31 @@ class CameraSource {
             ffmpegPath = this.cameraOptions.ffmpegPath;
         }
         let resolution = `${request.width}x${request.height}`;
-        if (this.debug) this.log(`Handling snapshot for ${this.cameraConfig.cameraSettings.cameraName} at ${resolution}`);
+        if (this.debug) this.log.debug(`Handling camera snapshot for '${this.cameraDetails.cameraSettings.cameraName}' at ${resolution}`);
 
-        if (!this.motionIsTriggered && this.cameraConfig.model == 'SS001') { // Model(s) with privacy shutter
+        if (!this.motionIsTriggered && this.cameraDetails.model == 'SS001') { // Model(s) with privacy shutter
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
             let alarmState = await this.simplisafe.getAlarmState();
             switch (alarmState) {
                 case 'OFF':
-                    if (this.cameraConfig.cameraSettings.shutterOff !== 'open') {
-                        if (this.debug) this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
+                    if (this.cameraDetails.cameraSettings.shutterOff !== 'open') {
+                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
                     break;
 
                 case 'HOME':
-                    if (this.cameraConfig.cameraSettings.shutterHome !== 'open') {
-                        if (this.debug) this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
+                    if (this.cameraDetails.cameraSettings.shutterHome !== 'open') {
+                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
                     break;
 
                 case 'AWAY':
-                    if (this.cameraConfig.cameraSettings.shutterAway !== 'open') {
-                        if (this.debug) this.log(`SnapshotRequest ignored, ${this.cameraConfig.cameraSettings.cameraName} privacy shutter closed`);
+                    if (this.cameraDetails.cameraSettings.shutterAway !== 'open') {
+                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -289,7 +248,8 @@ class CameraSource {
             this.serverIpAddress = newIpAddress.address;
         } catch (err) {
             if (!this.serverIpAddress) {
-                callback(new Error('Could not resolve hostname for media.simplisafe.com'));
+                this.log.error('Could not resolve hostname for media.simplisafe.com');
+                callback(err);
                 return;
             }
         }
@@ -297,7 +257,7 @@ class CameraSource {
         let sourceArgs = [
             ['-re'],
             ['-headers', `Authorization: Bearer ${this.simplisafe.token}`],
-            ['-i', `https://${this.serverIpAddress}/v1/${this.cameraConfig.uuid}/flv?x=${request.width}`],
+            ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${request.width}`],
             ['-t', 1],
             ['-s', resolution],
             ['-f', 'image2'],
@@ -312,7 +272,7 @@ class CameraSource {
         ], {
             env: process.env
         });
-        if (this.debug) this.log(ffmpegPath + source);
+        if (this.debug) this.log.debug(ffmpegPath + source);
 
         let imageBuffer = Buffer.alloc(0);
 
@@ -320,12 +280,12 @@ class CameraSource {
             imageBuffer = Buffer.concat([imageBuffer, data]);
         });
         ffmpegCmd.on('error', error => {
-            this.log('An error occurred while making snapshot request:', error);
+            this.log.error('An error occurred while making snapshot request:', error);
             callback(error);
         });
         ffmpegCmd.on('close', () => {
-            if (this.debug) this.log(`Closed ${this.cameraConfig.cameraSettings.cameraName} camera stream with image of ${Math.round(imageBuffer.length/1024)}kB`);
-            callback(null, imageBuffer);
+            if (this.debug) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(imageBuffer.length/1024)}kB image`);
+            callback(undefined, imageBuffer);
         });
     }
 
@@ -385,26 +345,30 @@ class CameraSource {
 
         this.pendingSessions[this.UUIDGen.unparse(sessionID)] = sessionInfo;
 
-        callback(response);
+        callback(undefined, response);
     }
 
-    async handleStreamRequest(request) {
-        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            throw new Error('Request blocked (rate limited)');
-        }
-
+    async handleStreamRequest(request, callback) {
         let sessionId = request.sessionID;
-
         if (sessionId) {
             let sessionIdentifier = this.UUIDGen.unparse(sessionId);
 
             if (request.type == 'start') {
+
+                if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+                    delete this.pendingSessions[sessionIdentifier];
+                    let err = new Error('Camera stream request blocked (rate limited)');
+                    this.log.error(err);
+                    callback(err);
+                    return;
+                }
+
                 let sessionInfo = this.pendingSessions[sessionIdentifier];
                 if (sessionInfo) {
                     let width = 1920;
                     let height = 1080;
-                    let fps = this.cameraConfig.cameraSettings.admin.fps;
-                    let videoBitrate = this.cameraConfig.cameraSettings.admin.bitRate;
+                    let fps = this.cameraDetails.cameraSettings.admin.fps;
+                    let videoBitrate = this.cameraDetails.cameraSettings.admin.bitRate;
                     let audioBitrate = 32;
                     let audioSamplerate = 24;
 
@@ -429,14 +393,17 @@ class CameraSource {
                         this.serverIpAddress = newIpAddress.address;
                     } catch (err) {
                         if (!this.serverIpAddress) {
-                            throw new Error('Could not resolve hostname for media.simplisafe.com');
+                            delete this.pendingSessions[sessionIdentifier];
+                            this.log.error('Camera stream request failed, could not resolve hostname for media.simplisafe.com', err);
+                            callback(err);
+                            return;
                         }
                     }
 
                     let sourceArgs = [
                         ['-re'],
                         ['-headers', `Authorization: Bearer ${this.simplisafe.token}`],
-                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraConfig.uuid}/flv?x=${width}`]
+                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}`]
                     ];
 
                     let videoArgs = [
@@ -550,17 +517,23 @@ class CameraSource {
                         env: process.env
                     });
 
-                    if (this.debug) this.log(`Start streaming video from ${this.cameraConfig.cameraSettings.cameraName}`);
+                    if (this.debug) this.log.debug(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
 
-                    if (this.debug) {
-                        cmd.stderr.on('data', data => {
-                            this.log(data.toString());
-                        });
-                    }
+                    let started = false;
+                    cmd.stderr.on('data', data => {
+                        if (!started) {
+                            started = true;
+                            if (this.debug) this.log.debug('FFMPEG received first frame');
+                            callback(); // do not forget to execute callback once set up
+                        }
+                        if (this.debug) {
+                            this.log.debug(data.toString());
+                        }
+                    });
 
                     cmd.on('error', err => {
-                        this.log('An error occurred while making stream request');
-                        this.log(err);
+                        this.log.error('An error occurred while making stream request:', err);
+                        callback(err);
                     });
 
                     cmd.on('close', code => {
@@ -568,13 +541,15 @@ class CameraSource {
                             case null:
                             case 0:
                             case 255:
-                                if (this.debug) this.log('Stopped streaming');
+                                if (this.debug) this.log.debug('Camera stopped streaming');
                                 break;
                             default:
-                                this.log(`Error: FFmpeg exited with code ${code}`);
-                                this.streamControllers
-                                    .filter(stream => stream.sessionIdentifier === sessionId)
-                                    .map(stream => stream.forceStop());
+                                if (this.debug) this.log.debug(`Error: FFmpeg exited with code ${code}`);
+                                if (!started) {
+                                    callback(new Error(`Error: FFmpeg exited with code ${code}`));
+                                } else {
+                                    this.controller.forceStopStreamingSession(sessionId);
+                                }
                                 break;
                         }
                     });
@@ -594,15 +569,6 @@ class CameraSource {
             }
         }
     }
-
-    createStreamControllers(maxStreams, options) {
-        for (let i = 0; i < maxStreams; i++) {
-            let streamController = new this.StreamController(i, options, this);
-            this.services.push(streamController.service);
-            this.streamControllers.push(streamController);
-        }
-    }
-
 }
 
 export default SS3SimpliCam;

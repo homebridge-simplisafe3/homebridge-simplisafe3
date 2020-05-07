@@ -10,14 +10,14 @@ class SS3UnreachableAccessory {
         this.setAccessory(accessory);
     }
 
-    identify(paired, callback) {
+    identify(callback) {
         let err = new Error('Identify not supported');
         callback(err);
     }
 
     setAccessory(accessory) {
         this.accessory = accessory;
-        this.accessory.on('identify', (paired, callback) => this.identify(paired, callback));
+        this.accessory.on('identify', (callback) => this.identify(callback));
 
         for (let service of accessory.services) {
             if (service.UUID == this.Service.AccessoryInformation.UUID) {

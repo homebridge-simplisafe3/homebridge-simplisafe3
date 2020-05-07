@@ -35,14 +35,14 @@ class SS3DoorLock {
         this.startListening();
     }
 
-    identify(paired, callback) {
-        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
+    identify(callback) {
+        if (this.debug) this.log.debug(`Identify request for ${this.name}`);
         callback();
     }
 
     setAccessory(accessory) {
         this.accessory = accessory;
-        this.accessory.on('identify', (paired, callback) => this.identify(paired, callback));
+        this.accessory.on('identify', (callback) => this.identify(callback));
 
         this.accessory.getService(this.Service.AccessoryInformation)
             .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
@@ -75,8 +75,8 @@ class SS3DoorLock {
 
             return this.reachable;
         } catch (err) {
-            this.log(`An error occurred while updating reachability for ${this.name}`);
-            this.log(err);
+            this.log.error(`An error occurred while updating reachability for ${this.name}`);
+            this.log.error(err);
         }
     }
 
@@ -118,7 +118,7 @@ class SS3DoorLock {
                 homekitState = this.Characteristic.LockCurrentState.UNKNOWN;
             }
 
-            if (this.debug) this.log(`Current lock state is: ${state}, ${homekitState}`);
+            if (this.debug) this.log.debug(`Current lock state is: ${state}, ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the current door lock state: ${err}`));
@@ -140,7 +140,7 @@ class SS3DoorLock {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
             let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            if (this.debug) this.log(`Target lock state is: ${state}, ${homekitState}`);
+            if (this.debug) this.log.debug(`Target lock state is: ${state}, ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the target door lock state: ${err}`));
@@ -149,7 +149,7 @@ class SS3DoorLock {
 
     async setTargetState(homekitState, callback) {
         let state = this.TARGET_HOMEKIT_TO_SS3[homekitState];
-        if (this.debug) this.log(`Setting target lock state to ${state}, ${homekitState}`);
+        if (this.debug) this.log.debug(`Setting target lock state to ${state}, ${homekitState}`);
 
         if (!this.service) {
             callback(new Error('Lock not linked to Homebridge service'));
@@ -158,7 +158,7 @@ class SS3DoorLock {
 
         try {
             await this.simplisafe.setLockState(this.id, state);
-            if (this.debug) this.log(`Updated lock state: ${state}`);
+            if (this.debug) this.log.debug(`Updated lock state: ${state}`);
             this.service.updateCharacteristic(this.Characteristic.LockCurrentState, homekitState);
             callback(null);
         } catch (err) {
@@ -167,20 +167,20 @@ class SS3DoorLock {
     }
 
     async startListening() {
-        if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} lock now listening for real time events.`);
+        if (this.debug && this.simplisafe.isSocketConnected()) this.log.debug(`${this.name} lock now listening for real time events.`);
         try {
             this.simplisafe.subscribeToEvents(async (event, data) => {
                 switch (event) {
                     // Socket events
                     case EVENT_TYPES.CONNECTED:
-                        if (this.debug) this.log(`${this.name} lock now listening for real time events.`);
+                        if (this.debug) this.log.debug(`${this.name} lock now listening for real time events.`);
                         this.nSocketConnectFailures = 0;
                         break;
                     case EVENT_TYPES.DISCONNECT:
-                        if (this.debug) this.log(`${this.name} lock real time events disconnected.`);
+                        if (this.debug) this.log.debug(`${this.name} lock real time events disconnected.`);
                         break;
                     case EVENT_TYPES.CONNECTION_LOST:
-                        if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} lock real time events connection lost. Attempting to reconnect...`);
+                        if (this.debug && this.nSocketConnectFailures == 0) this.log.debug(`${this.name} lock real time events connection lost. Attempting to reconnect...`);
                         setTimeout(async () => {
                             await this.startListening();
                         }, SOCKET_RETRY_INTERVAL);
@@ -190,7 +190,7 @@ class SS3DoorLock {
                 if (this.service) {
                     // Door lock events
                     if (data && data.sensorSerial && data.sensorSerial == this.id) {
-                        if (this.debug) this.log(`${this.name} lock received event: ${event}`);
+                        if (this.debug) this.log.debug(`${this.name} lock received event: ${event}`);
                         switch (event) {
                             case EVENT_TYPES.DOORLOCK_UNLOCKED:
                                 this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
@@ -210,11 +210,11 @@ class SS3DoorLock {
                                         this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNKNOWN);
                                     }
                                 } catch (err) {
-                                    this.log(`An error occurred while updating ${this.name} lock error state: ${err}`);
+                                    this.log.error(`An error occurred while updating ${this.name} lock error state: ${err}`);
                                 }
                                 break;
                             default:
-                                if (this.debug) this.log(`${this.name} lock ignoring unhandled event: ${event}`);
+                                if (this.debug) this.log.debug(`${this.name} lock ignoring unhandled event: ${event}`);
                                 break;
                         }
                     }
@@ -223,7 +223,7 @@ class SS3DoorLock {
         } catch (err) {
             if (err instanceof RateLimitError) {
                 let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
-                if (this.debug) this.log(`${this.name} lock caught RateLimitError, waiting ${retryInterval/1000}s to retry...`);
+                if (this.debug) this.log.debug(`${this.name} lock caught RateLimitError, waiting ${retryInterval/1000}s to retry...`);
                 setTimeout(async () => {
                     await this.startListening();
                 }, retryInterval);
@@ -233,15 +233,15 @@ class SS3DoorLock {
     }
 
     async refreshState() {
-        if (this.debug) this.log('Refreshing door lock state');
+        if (this.debug) this.log.debug('Refreshing door lock state');
         try {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
             let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
             this.service.updateCharacteristic(this.Characteristic.LockCurrentState, homekitState);
         } catch (err) {
-            this.log('An error occurred while refreshing state');
-            this.log(err);
+            this.log.error('An error occurred while refreshing state');
+            this.log.error(err);
         }
     }
 

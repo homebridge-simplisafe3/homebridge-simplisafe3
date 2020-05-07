@@ -15,14 +15,14 @@ class SS3SmokeDetector {
         this.startListening();
     }
 
-    identify(paired, callback) {
-        if (this.debug) this.log(`Identify request for ${this.name}, paired: ${paired}`);
+    identify(callback) {
+        if (this.debug) this.log.debug(`Identify request for ${this.name}`);
         callback();
     }
 
     setAccessory(accessory) {
         this.accessory = accessory;
-        this.accessory.on('identify', (paired, callback) => this.identify(paired, callback));
+        this.accessory.on('identify', (callback) => this.identify(callback));
 
         this.accessory.getService(this.Service.AccessoryInformation)
             .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
@@ -61,8 +61,8 @@ class SS3SmokeDetector {
 
             return this.reachable;
         } catch (err) {
-            this.log(`An error occurred while updating reachability for ${this.name}`);
-            this.log(err);
+            this.log.error(`An error occurred while updating reachability for ${this.name}`);
+            this.log.error(err);
         }
     }
 
@@ -180,7 +180,7 @@ class SS3SmokeDetector {
     }
 
     async refreshState() {
-        if (this.debug) this.log('Refreshing sensor state');
+        if (this.debug) this.log.debug('Refreshing sensor state');
         try {
             let sensor = await this.getSensorInformation();
             if (!sensor.status || !sensor.flags) {
@@ -199,11 +199,11 @@ class SS3SmokeDetector {
             this.service.updateCharacteristic(this.Characteristic.StatusFault, homekitFaultState);
             this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
 
-            if (this.debug) this.log(`Updated current state for ${this.name}: ${sensor.status.triggered}, ${sensor.status.tamper}, ${sensor.status.malfunction}, ${batteryLow}`);
+            if (this.debug) this.log.debug(`Updated current state for ${this.name}: ${sensor.status.triggered}, ${sensor.status.tamper}, ${sensor.status.malfunction}, ${batteryLow}`);
 
         } catch (err) {
-            this.log('An error occurred while refreshing state');
-            this.log(err);
+            this.log.error('An error occurred while refreshing state');
+            this.log.error(err);
         }
     }
 
