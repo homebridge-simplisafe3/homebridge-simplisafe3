@@ -19,7 +19,7 @@ jobs:
       - run: |
           git config --global user.name 'Version Tracker'
           git config --global user.email 'version-tracker@users.noreply.github.com'
-      - run: npm version --no-git-tag-version "$GITHUB_RELEASE"
+      - run: npm version --allow-same-version --no-git-tag-version "$GITHUB_RELEASE"
       - run: npm ci
       - run: npm run build
       - run: npm publish lib/
