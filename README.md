@@ -222,11 +222,4 @@ Any feedback is appreciated.
 ## Help & Support
 This has been tested on Homebridge running on a Raspberry Pi 3, using both native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge).
 
-## Donations
-Want to show your support? Consider making a donation!
-- [Donate Now with PayPal](https://paypal.me/nzapponi?locale.x=en_GB)
-- Donate with Bitcoin: 3GYS4ybqjjVUEyohFXaEk5HsG8onrsQKDi
-
-![Bitcoin](/docs/bitcoin.png)
-
 Thank you very much!
