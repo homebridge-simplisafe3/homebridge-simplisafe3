@@ -30,6 +30,7 @@ class SS3Platform {
         this.resetId = config.resetSimpliSafeId || false;
         this.devices = [];
         this.accessories = [];
+        this.api = api;
 
         this.cachedAccessoryConfig = [];
         this.unreachableAccessories = [];
@@ -39,7 +40,8 @@ class SS3Platform {
             refreshInterval = config.sensorRefresh * 1000;
         }
 
-        this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, log, this.debug);
+
+        this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, this.api.user.storagePath(), log, this.debug);
 
         if (config.subscriptionId) {
             if (this.debug) this.log.debug(`Specifying account number: ${config.subscriptionId}`);
@@ -63,24 +65,21 @@ class SS3Platform {
                 }
             });
 
-        if (api) {
-            this.api = api;
-            this.api.on('didFinishLaunching', () => {
-                if (this.debug) this.log.debug(`Found ${this.cachedAccessoryConfig.length} cached accessories being configured`);
+        this.api.on('didFinishLaunching', () => {
+            if (this.debug) this.log.debug(`Found ${this.cachedAccessoryConfig.length} cached accessories being configured`);
 
-                this.initialLoad
-                    .then(() => {
-                        return Promise.all(this.cachedAccessoryConfig);
-                    })
-                    .then(() => {
-                        return this.refreshAccessories();
-                    })
-                    .catch(err => {
-                        this.log.error('SS3 refresh failed');
-                        this.log.error(err);
-                    });
-            });
-        }
+            this.initialLoad
+                .then(() => {
+                    return Promise.all(this.cachedAccessoryConfig);
+                })
+                .then(() => {
+                    return this.refreshAccessories();
+                })
+                .catch(err => {
+                    this.log.error('SS3 refresh failed');
+                    this.log.error(err);
+                });
+        });
     }
 
     addAccessory(device) {
