@@ -4,7 +4,7 @@
 import axios from 'axios';
 import io from 'socket.io-client';
 import fs from 'fs';
-import os from 'os';
+import path from 'path';
 
 // Do not touch these - they allow the client to make requests to the SimpliSafe API
 const clientUuid = '4df55627-46b2-4e2c-866b-1521b395ded2';
@@ -13,7 +13,7 @@ const clientPassword = '';
 
 const subscriptionCacheTime = 3000; // ms
 const sensorCacheTime = 3000; // ms
-const internalConfigFile = os.homedir() + '/.simplisafe3.conf';
+const internalConfigFileName = 'simplisafe3config.json';
 const mfaTimeout = 5 * 60 * 1000; // ms
 const rateLimitInitialInterval = 60000; // ms
 const rateLimitMaxInterval = 2 * 60 * 60 * 1000; // ms
@@ -121,11 +121,12 @@ class SimpliSafe3 {
     nextAttempt = 0;
     loginAttempt;
 
-    constructor(sensorRefreshTime = 15000, resetConfig = false, log, debug) {
+    constructor(sensorRefreshTime = 15000, resetConfig = false, storagePath, log, debug) {
         this.sensorRefreshTime = sensorRefreshTime;
         this.log = log || console.log;
         this.debug = debug;
 
+        let internalConfigFile = path.join(storagePath, internalConfigFileName);
         if (fs.existsSync(internalConfigFile) && resetConfig) {
             fs.unlinkSync(internalConfigFile);
         }
