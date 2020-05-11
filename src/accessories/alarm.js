@@ -161,8 +161,8 @@ class SS3Alarm {
             this.nRetries = 0;
             callback(null);
         } catch (err) {
-            if (err.type == 'SettingsInProgress' && this.nRetries < targetStateMaxRetries) {
-                if (this.debug) this.log.debug(`SettingsInProgress error while setting alarm state. nRetries: ${this.nRetries}`);
+            if ([409, 504].indexOf(parseInt(err.statusCode)) !== -1 && this.nRetries < targetStateMaxRetries) { // 409 = SettingsInProgress, 504 = GatewayTimeout
+                if (this.debug) this.log.debug(`${err.type} error while setting alarm state. nRetries: ${this.nRetries}`);
                 this.nRetries++;
                 setTimeout(async () => {
                     if (this.debug) this.log.debug('Retrying setTargetState...');
