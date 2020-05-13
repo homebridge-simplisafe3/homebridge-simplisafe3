@@ -847,8 +847,9 @@ class SimpliSafe3 {
                             .map(sub => sub.callback(sensor));
                     }
                 } catch (err) {
-                    if (!(err instanceof RateLimitError) && err.type !== 'SettingsInProgress') { // dont log rate limit & 409 errors as they are handled elsewhere
-                        this.log.error(`Sensor refresh received SSAPI ${err.type ? err.type + ' error' : 'error'}.`);
+                    if (!(err instanceof RateLimitError)) { // never log rate limit errors as they are handled elsewhere
+                        let expected = [409, 504].indexOf(parseInt(err.statusCode)) !== -1; // SettingsInProgress and GatewayTimeout errors are "expected"
+                        if (!expected || (expected && this.debug)) this.log.error(`Sensor refresh received ${expected ? '' : 'un-'}expected SSAPI ${err.type ? err.type + ' error' : 'error'}.`);
                         if (this.debug) this.log.error(err);
                     }
                 }
