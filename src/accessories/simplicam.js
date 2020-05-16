@@ -451,7 +451,7 @@ class SS3SimpliCam {
                         }
 
                         if (this.cameraOptions.sourceOptions) {
-                            let options = (typeof this.cameraOptions.sourceOptions === 'string') ? this.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
+                            let options = (typeof this.cameraOptions.sourceOptions === 'string') ? Object.fromEntries(this.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
                                 : this.cameraOptions.sourceOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
@@ -469,7 +469,7 @@ class SS3SimpliCam {
                         }
 
                         if (this.cameraOptions.videoOptions) {
-                            let options = (typeof this.cameraOptions.videoOptions === 'string') ? this.cameraOptions.videoOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
+                            let options = (typeof this.cameraOptions.videoOptions === 'string') ? Object.fromEntries(this.cameraOptions.videoOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
                                 : this.cameraOptions.videoOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
@@ -487,7 +487,7 @@ class SS3SimpliCam {
                         }
 
                         if (this.cameraOptions.audioOptions) {
-                            let options = (typeof this.cameraOptions.audioOptions === 'string') ? this.cameraOptions.audioOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x))
+                            let options = (typeof this.cameraOptions.audioOptions === 'string') ? Object.fromEntries(this.cameraOptions.audioOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
                                 : this.cameraOptions.audioOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
