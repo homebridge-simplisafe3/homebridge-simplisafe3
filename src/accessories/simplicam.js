@@ -403,7 +403,7 @@ class SS3SimpliCam {
                     let sourceArgs = [
                         ['-re'],
                         ['-headers', `Authorization: Bearer ${this.simplisafe.token}`],
-                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}`]
+                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}&audioEncoding=AAC`]
                     ];
 
                     let videoArgs = [
@@ -428,7 +428,8 @@ class SS3SimpliCam {
 
                     let audioArgs = [
                         ['-map', '0:1'],
-                        ['-acodec', 'libopus'],
+                        ['-acodec', 'libfdk_aac'],
+                        ['-profile:a', 'aac_eld'],
                         ['-flags', '+global_header'],
                         ['-f', 'null'],
                         ['-ar', `${audioSamplerate}k`],
