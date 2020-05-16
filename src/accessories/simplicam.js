@@ -3,7 +3,7 @@ import ip from 'ip';
 import dns from 'dns';
 import { promisify } from 'util';
 import { spawn } from 'child_process';
-import ffmpeg from '@ffmpeg-installer/ffmpeg';
+let ffmpegForHomebridgePath = require('ffmpeg-for-homebridge');
 
 import {
     EVENT_TYPES,
@@ -206,7 +206,7 @@ class SS3SimpliCam {
             return;
         }
 
-        let ffmpegPath = ffmpeg.path;
+        let ffmpegPath = ffmpegForHomebridgePath;
         if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
             ffmpegPath = this.cameraOptions.ffmpegPath;
         }
@@ -403,7 +403,7 @@ class SS3SimpliCam {
                     let sourceArgs = [
                         ['-re'],
                         ['-headers', `Authorization: Bearer ${this.simplisafe.token}`],
-                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}&audioEncoding=AAC`]
+                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}`]
                     ];
 
                     let videoArgs = [
@@ -443,7 +443,7 @@ class SS3SimpliCam {
                     ];
 
                     // Choose the correct ffmpeg path (default or custom provided)
-                    let ffmpegPath = ffmpeg.path;
+                    let ffmpegPath = ffmpegForHomebridgePath;
 
                     if (this.cameraOptions) {
                         if (this.cameraOptions.ffmpegPath) {
