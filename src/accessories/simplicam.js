@@ -561,8 +561,13 @@ class SS3SimpliCam {
 
             } else if (request.type == 'stop') {
                 let cmd = this.ongoingSessions[sessionIdentifier];
-                if (cmd) {
-                    cmd.kill('SIGTERM');
+                try {
+                    if (cmd) {
+                        cmd.kill('SIGKILL');
+                    }
+                } catch (e) {
+                    this.log.error('Error occurred terminating the video process!');
+                    if (this.debug) this.log.error(e);
                 }
 
                 delete this.ongoingSessions[sessionIdentifier];
