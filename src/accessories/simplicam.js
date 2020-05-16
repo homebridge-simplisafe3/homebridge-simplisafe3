@@ -516,8 +516,10 @@ class SS3SimpliCam {
                     ], {
                         env: process.env
                     });
-
-                    if (this.debug) this.log.debug(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
+                    if (this.debug) {
+                        this.log.debug(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
+                        this.log.debug(ffmpegPath + source + video + audio);
+                    }
 
                     let started = false;
                     cmd.stderr.on('data', data => {
