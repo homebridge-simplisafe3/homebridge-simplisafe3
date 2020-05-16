@@ -1,6 +1,11 @@
 # Change Log
 All notable changes are documented here.
 
+##1.5.3
+- Fixed incorrect parsing of ffmpeg arguments (issue #111).
+- Fixed an issue that could cause the plugin to fail to set alarm state after first starting (issue #108).
+- Other minor bug fixes.
+
 ## v1.5.0
 - PLEASE NOTE: This version of the plugin requires Homebridge v1.0.0 or later and includes breaking changes. Only install this update when you are ready to update Homebridge (or already have).
 - Support for Homebridge v1.0.0 including `CameraController API` support. See the [updated README](https://github.com/nzapponi/homebridge-simplisafe3#migrating-external-cameras-to-bridged-cameras) for more information.
