@@ -566,6 +566,7 @@ class SS3SimpliCam {
                 }
 
                 delete this.ongoingSessions[sessionIdentifier];
+                callback();
             }
         }
     }
