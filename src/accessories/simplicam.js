@@ -403,7 +403,7 @@ class SS3SimpliCam {
                     let sourceArgs = [
                         ['-re'],
                         ['-headers', `Authorization: Bearer ${this.simplisafe.token}`],
-                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}`]
+                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}&audioEncoding=AAC`]
                     ];
 
                     let videoArgs = [
