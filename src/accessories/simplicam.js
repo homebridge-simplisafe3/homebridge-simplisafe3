@@ -566,7 +566,7 @@ class SS3SimpliCam {
             } else if (request.type == 'stop') {
                 let cmd = this.ongoingSessions[sessionIdentifier];
                 if (cmd) {
-                    cmd.kill('SIGTERM');
+                    cmd.kill('SIGKILL');
                 }
 
                 delete this.ongoingSessions[sessionIdentifier];
