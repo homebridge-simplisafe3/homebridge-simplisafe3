@@ -446,7 +446,6 @@ class SS3SimpliCam {
                         [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=1316`]
                     ];
 
-                    this.log(isDocker(), this.cameraOptions, (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)));
                     if (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
                         // use AAC streaming
                         if (this.debug) this.log.debug('Detected running docker with bundled binary, switching to AAC stream');
