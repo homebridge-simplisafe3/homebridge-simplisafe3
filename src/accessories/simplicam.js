@@ -448,6 +448,7 @@ class SS3SimpliCam {
 
                     if (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
                         // use AAC streaming
+                        if (this.debug) this.log.debug('Detected running docker, switching to AAC stream');
                         let iArg = sourceArgs.find(arg => arg[0] == '-i');
                         iArg[1] = iArg[1] + '&audioEncoding=AAC';
                         let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
