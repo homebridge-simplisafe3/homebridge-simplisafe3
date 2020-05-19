@@ -4,6 +4,7 @@ import dns from 'dns';
 import { promisify } from 'util';
 import { spawn } from 'child_process';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
+import isDocker from 'is-docker';
 
 import {
     EVENT_TYPES,
@@ -206,7 +207,7 @@ class SS3SimpliCam {
             return;
         }
 
-        let ffmpegPath = ffmpeg.path;
+        let ffmpegPath = isDocker() ? 'ffmpeg' : ffmpeg.path;
         if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
             ffmpegPath = this.cameraOptions.ffmpegPath;
         }
@@ -272,7 +273,7 @@ class SS3SimpliCam {
         ], {
             env: process.env
         });
-        if (this.debug) this.log.debug(ffmpegPath + source);
+        if (this.debug) this.log.debug(ffmpegPath + ' ' + source);
 
         let imageBuffer = Buffer.alloc(0);
 
@@ -290,7 +291,7 @@ class SS3SimpliCam {
     }
 
     prepareStream(request, callback) {
-        this.log('Stream request:', request);
+        if (this.debug) this.log.debug('Prepare stream with request:', request);
         let response = {};
         let sessionInfo = {
             address: request.targetAddress
@@ -443,8 +444,13 @@ class SS3SimpliCam {
                         [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=1316`]
                     ];
 
-                    // Choose the correct ffmpeg path (default or custom provided)
-                    let ffmpegPath = ffmpeg.path;
+                    let ffmpegPath = isDocker() ? 'ffmpeg' : ffmpeg.path;
+
+                    if (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
+                        // use AAC streaming
+                        sourceArgs['-i'] = sourceArgs['-i'] + '&audioEncoding=AAC';
+                        audioArgs['-acodec'] = 'libfdk_aac';
+                    }
 
                     if (this.cameraOptions) {
                         if (this.cameraOptions.ffmpegPath) {
