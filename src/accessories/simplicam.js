@@ -290,6 +290,7 @@ class SS3SimpliCam {
     }
 
     prepareStream(request, callback) {
+        this.log('Stream request:', request);
         let response = {};
         let sessionInfo = {
             address: request.targetAddress
@@ -517,7 +518,10 @@ class SS3SimpliCam {
                         env: process.env
                     });
 
-                    if (this.debug) this.log.debug(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
+                    if (this.debug) {
+                        this.log.debug(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
+                        this.log.debug([ffmpegPath, source.join(' '), video.join(' '), audio.join(' ')].join(' '));
+                    }
 
                     let started = false;
                     cmd.stderr.on('data', data => {
