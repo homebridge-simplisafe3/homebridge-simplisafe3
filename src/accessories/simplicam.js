@@ -444,11 +444,12 @@ class SS3SimpliCam {
                         [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=1316`]
                     ];
 
+                    if (this.debug && isDocker()) this.log.debug('Detected running in docker');
                     let ffmpegPath = isDocker() ? 'ffmpeg' : ffmpeg.path;
 
                     if (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
                         // use AAC streaming
-                        if (this.debug) this.log.debug('Detected running docker, switching to AAC stream');
+                        if (this.debug) this.log.debug('Detected running docker with bundled binary, switching to AAC stream');
                         let iArg = sourceArgs.find(arg => arg[0] == '-i');
                         iArg[1] = iArg[1] + '&audioEncoding=AAC';
                         let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
