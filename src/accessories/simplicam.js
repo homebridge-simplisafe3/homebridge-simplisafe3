@@ -448,8 +448,10 @@ class SS3SimpliCam {
 
                     if (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
                         // use AAC streaming
-                        sourceArgs[['-i']] = sourceArgs['-i'] + '&audioEncoding=AAC';
-                        audioArgs[['-acodec']] = 'libfdk_aac';
+                        let iArg = sourceArgs.find(arg => arg[0] == '-i');
+                        iArg[1] = iArg[1] + '&audioEncoding=AAC';
+                        let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
+                        aCodecArg[1] = 'libfdk_aac';
                     }
 
                     if (this.cameraOptions) {
