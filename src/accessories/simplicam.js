@@ -3,7 +3,7 @@ import ip from 'ip';
 import dns from 'dns';
 import { promisify } from 'util';
 import { spawn } from 'child_process';
-let ffmpegForHomebridgePath = require('ffmpeg-for-homebridge');
+import ffmpegPath from 'ffmpeg-for-homebridge';
 
 import {
     EVENT_TYPES,
@@ -34,6 +34,11 @@ class SS3SimpliCam {
         this.controller;
         this.pendingSessions = {};
         this.ongoingSessions = {};
+
+        this.ffmpegPath = ffmpegPath;
+        if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
+            this.ffmpegPath = this.cameraOptions.ffmpegPath;
+        }
 
         let fps = this.cameraDetails.cameraSettings.admin.fps;
         let streamingOptions = {
@@ -206,10 +211,6 @@ class SS3SimpliCam {
             return;
         }
 
-        let ffmpegPath = ffmpegForHomebridgePath;
-        if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
-            ffmpegPath = this.cameraOptions.ffmpegPath;
-        }
         let resolution = `${request.width}x${request.height}`;
         if (this.debug) this.log.debug(`Handling camera snapshot for '${this.cameraDetails.cameraSettings.cameraName}' at ${resolution}`);
 
@@ -267,12 +268,12 @@ class SS3SimpliCam {
 
         let source = [].concat(...sourceArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
 
-        let ffmpegCmd = spawn(ffmpegPath, [
+        let ffmpegCmd = spawn(this.ffmpegPath, [
             ...source,
         ], {
             env: process.env
         });
-        if (this.debug) this.log.debug(ffmpegPath + source);
+        if (this.debug) this.log.debug(this.ffmpegPath + ' ' + source);
 
         let imageBuffer = Buffer.alloc(0);
 
@@ -443,14 +444,7 @@ class SS3SimpliCam {
                         [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=1316`]
                     ];
 
-                    // Choose the correct ffmpeg path (default or custom provided)
-                    let ffmpegPath = ffmpegForHomebridgePath;
-
                     if (this.cameraOptions) {
-                        if (this.cameraOptions.ffmpegPath) {
-                            ffmpegPath = this.cameraOptions.ffmpegPath;
-                        }
-
                         if (this.cameraOptions.sourceOptions) {
                             let options = (typeof this.cameraOptions.sourceOptions === 'string') ? Object.fromEntries(this.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
                                 : this.cameraOptions.sourceOptions; // support old config schema
@@ -510,7 +504,7 @@ class SS3SimpliCam {
                     let video = [].concat(...videoArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
                     let audio = [].concat(...audioArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
 
-                    let cmd = spawn(ffmpegPath, [
+                    let cmd = spawn(this.ffmpegPath, [
                         ...source,
                         ...video,
                         ...audio
@@ -519,7 +513,7 @@ class SS3SimpliCam {
                     });
                     if (this.debug) {
                         this.log.debug(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
-                        this.log.debug(ffmpegPath + source + video + audio);
+                        this.log.debug([this.ffmpegPath, source.join(' '), video.join(' '), audio.join(' ')].join(' '));
                     }
 
                     let started = false;

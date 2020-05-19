@@ -30,11 +30,6 @@ Ensure you are running Node v10.17.0 or higher (this version is required by Home
 Either install and configure using Config UI X or you can manually install the plugin by running:
 
 ```
-npm install -g homebridge-simplisafe3
-```
-
-if you run into issues when starting the plugin and Homebridge displays errors, then reinstall the plugin using the following command instead:
-```
 npm install -g --unsafe-perm homebridge-simplisafe3
 ```
 
