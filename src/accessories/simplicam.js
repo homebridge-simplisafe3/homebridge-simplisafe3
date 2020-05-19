@@ -30,6 +30,12 @@ class SS3SimpliCam {
         this.uuid = UUIDGen.generate(id);
         this.reachable = true;
 
+        this.ffmpegPath = isDocker() ? 'ffmpeg' : ffmpeg.path;
+        if (this.debug && isDocker()) this.log.debug('Detected running in docker');
+        if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
+            this.ffmpegPath = this.cameraOptions.ffmpegPath;
+        }
+
         this.services = [];
 
         this.controller;
@@ -207,10 +213,6 @@ class SS3SimpliCam {
             return;
         }
 
-        let ffmpegPath = isDocker() ? 'ffmpeg' : ffmpeg.path;
-        if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
-            ffmpegPath = this.cameraOptions.ffmpegPath;
-        }
         let resolution = `${request.width}x${request.height}`;
         if (this.debug) this.log.debug(`Handling camera snapshot for '${this.cameraDetails.cameraSettings.cameraName}' at ${resolution}`);
 
@@ -268,12 +270,12 @@ class SS3SimpliCam {
 
         let source = [].concat(...sourceArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
 
-        let ffmpegCmd = spawn(ffmpegPath, [
+        let ffmpegCmd = spawn(this.ffmpegPath, [
             ...source,
         ], {
             env: process.env
         });
-        if (this.debug) this.log.debug(ffmpegPath + ' ' + source);
+        if (this.debug) this.log.debug(this.ffmpegPath + ' ' + source);
 
         let imageBuffer = Buffer.alloc(0);
 
@@ -444,9 +446,7 @@ class SS3SimpliCam {
                         [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=1316`]
                     ];
 
-                    if (this.debug && isDocker()) this.log.debug('Detected running in docker');
-                    let ffmpegPath = isDocker() ? 'ffmpeg' : ffmpeg.path;
-
+                    this.log(isDocker(), this.cameraOptions, (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)));
                     if (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
                         // use AAC streaming
                         if (this.debug) this.log.debug('Detected running docker with bundled binary, switching to AAC stream');
@@ -457,10 +457,6 @@ class SS3SimpliCam {
                     }
 
                     if (this.cameraOptions) {
-                        if (this.cameraOptions.ffmpegPath) {
-                            ffmpegPath = this.cameraOptions.ffmpegPath;
-                        }
-
                         if (this.cameraOptions.sourceOptions) {
                             let options = (typeof this.cameraOptions.sourceOptions === 'string') ? Object.fromEntries(this.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
                                 : this.cameraOptions.sourceOptions; // support old config schema
@@ -520,7 +516,7 @@ class SS3SimpliCam {
                     let video = [].concat(...videoArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
                     let audio = [].concat(...audioArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
 
-                    let cmd = spawn(ffmpegPath, [
+                    let cmd = spawn(this.ffmpegPath, [
                         ...source,
                         ...video,
                         ...audio
@@ -530,7 +526,7 @@ class SS3SimpliCam {
 
                     if (this.debug) {
                         this.log.debug(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
-                        this.log.debug([ffmpegPath, source.join(' '), video.join(' '), audio.join(' ')].join(' '));
+                        this.log.debug([this.ffmpegPath, source.join(' '), video.join(' '), audio.join(' ')].join(' '));
                     }
 
                     let started = false;
