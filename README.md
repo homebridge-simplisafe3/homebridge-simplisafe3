@@ -1,7 +1,17 @@
-# Homebridge Plugin for SimpliSafe 3
+<span align="center">
+
+<a href="https://github.com/homebridge/homebridge/wiki/Verified-Plugins"><img alt="homebridge-verified" src="https://github.com/homebridge/branding/blob/master/logos/homebridge-color-round.svg?sanitize=true" width="140px"></a>
+
+# Homebridge SimpliSafe 3
 Created by [Niccolò Zapponi](https://twitter.com/nzapponi) and [Michael Shamoon](https://github.com/nikonratm).
 
-A complete (unofficial) Homebridge plugin to integrate the SimpliSafe 3 home security system with HomeKit.
+[![npm-version](https://badgen.net/npm/v/homebridge-simplisafe3)](https://www.npmjs.com/package/homebridge-simplisafe3)
+[![npm-downloads](https://badgen.net/npm/dt/homebridge-simplisafe3)](https://www.npmjs.com/package/homebridge-simplisafe3)
+[![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+
+A complete (unofficial) [Homebridge](https://homebridge.io/) plugin to integrate the SimpliSafe 3 home security system with HomeKit.
+
+</span>
 
 ## Requirements
 You must sign up to a SimpliSafe monitoring plan that enables you to use the mobile app for this plugin to work. The monitoring plan enables API access to SimpliSafe.
