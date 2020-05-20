@@ -455,7 +455,7 @@ class SS3SimpliCam {
                         iArg[1] = iArg[1] + '&audioEncoding=AAC';
                         let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
                         aCodecArg[1] = 'libfdk_aac';
-                        audioArgs.splice(audioArgs.indexOf(aCodecArg), 0, ['-profile:a', 'aac_eld']);
+                        audioArgs.splice(audioArgs.indexOf(aCodecArg) + 1, 0, ['-profile:a', 'aac_eld']);
                     }
 
                     if (this.cameraOptions) {
