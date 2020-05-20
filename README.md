@@ -9,7 +9,7 @@ Created by [Niccolò Zapponi](https://twitter.com/nzapponi) and [Michael Shamoon
 [![npm-downloads](https://badgen.net/npm/dt/homebridge-simplisafe3)](https://www.npmjs.com/package/homebridge-simplisafe3)
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 
-A complete (unofficial) [Homebridge](https://homebridge.io/) plugin to integrate the SimpliSafe 3 home security system with HomeKit.
+A complete (unofficial) [Homebridge](https://github.com/homebridge/homebridge) plugin to integrate the SimpliSafe 3 home security system with HomeKit.
 
 </span>
 
@@ -27,8 +27,8 @@ This plugin supports
 - Battery monitoring: the Home app will notify you if the battery level of one of your sensors is low
 
 Here are some examples of how the set up looks like:
-![Sensor Status](/docs/sensors.png)
-![Arm/disarm](/docs/arm.png)
+
+<img alt="Sensors" src="https://raw.githubusercontent.com/nzapponi/homebridge-simplisafe3/master/docs/sensors.png" width="50%"><img alt="Alarm controls" src="https://raw.githubusercontent.com/nzapponi/homebridge-simplisafe3/master/docs/arm.png" width="50%">
 
 
 ## Usage
