@@ -8,22 +8,26 @@ You must sign up to a SimpliSafe monitoring plan that enables you to use the mob
 
 **NOTE:** *As of version 1.5.0 of this plugin, Homebridge v1.0.0 or greater is required. Because of [significant changes to Homebridge](https://github.com/homebridge/homebridge/releases/tag/1.0.0) the plugin may not work properly with older versions of Homebridge. The last version of this plugin to officially support Homebridge 0.4.53 was version 1.4.12 which can still be installed using a command like `sudo npm install -g --unsafe-perm homebridge-simplisafe3@1.4.12`.*
 
+- Works with native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge)
+- Compatible with the official [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x) (recommended for easiest usage)
+
 ## Features
 Supercharge your SimpliSafe system and integrate with HomeKit the right way!
-This plugin supports
-- Real time event streaming: get immediate notifications anytime the alarm is armed / disarmed / goes off.
-- Sensors: always be on top of your home with immediate access to the sensor status. Create smart automations directly from the Home app (e.g. when the front door is opened, turn the lights on).
-- Cameras: view your SimpliCams directly from the Home app.
-- Battery monitoring: the Home app will notify you if the battery level of one of your sensors is low
+This plugin supports:
+- **Real time event streaming:** get immediate notifications anytime the alarm is armed / disarmed / triggered.
+- **Sensors:** always be on top of your home with immediate access to the sensor status. Create smart automations directly from the Home app (e.g. when the front door is opened, turn the lights on).
+- **Cameras:** view your SimpliCams directly from the Home app, receive doorbell notifications and motion snapshots.
+- **Battery monitoring:** the Home app will notify you if the battery level of one of your sensors is low.
 
-Here are some examples of how the set up looks like:
+Here are some example screenshots:
+
 ![Sensor Status](/docs/sensors.png)
 ![Arm/disarm](/docs/arm.png)
 
 
 ## Usage
 
-This plugin supports installation and changing settings (for `config.js`) via the popular [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x).
+This plugin supports installation and changing settings (for `config.js`) via the popular [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x) (recommended for easiest usage).
 
 Ensure you are running Node v10.17.0 or higher (this version is required by Homebridge v1.0.0). You can check by using `node -v`.
 
@@ -99,7 +103,7 @@ Type: boolean (default `false`)
 
 Upon first start, the plugin generates an ID which it uses to identify itself with SimpliSafe. If you wish to reset it, set this to `true`.
 
-## Supported Devices
+### Supported Devices
 
 Device             | Supported          | Notes
 ------------------ | ------------------ | -------------------------------------------------
@@ -170,51 +174,16 @@ For advanced scenarios, you can set `"cameraOptions"` in Config UI X or manually
 Here, `ffmpegPath` allows to specify a specific ffmpeg binary to be used, a useful feature for the use of hardware acceleration on the Raspberry Pi, for example.
 
 Any arguments provided in `sourceOptions`, `videoOptions` and `audioOptions` will be added to the list of arguments passed to ffmpeg, or will replace the default ones if these already exist.
-To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re "`.
-To remove a default argument, define it with `false` as its value, e.g. `"-re false"`.
+To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re"`.
+To remove a default argument, define it with `false` as its value, e.g. `"-tune false"`.
 
-Here is a sample configuration to use a locally installed ffmpeg binary:
-```
-{
-    "platform": "homebridge-simplisafe3.SimpliSafe 3",
-    "name": "Home Alarm",
-    "auth": {
-        "username": "YOUR_USERNAME",
-        "password": "YOUR_PASSWORD"
-    },
-    "cameras": true,
-    "cameraOptions": {
-        "ffmpegPath": "/usr/local/bin/ffmpeg"
-    }
-}
-```
-
-And here is a sample configuration to use the Raspberry Pi H.264 hardware acceleration:
-```
-{
-    "platform": "homebridge-simplisafe3.SimpliSafe 3",
-    "name": "Home Alarm",
-    "auth": {
-        "username": "YOUR_USERNAME",
-        "password": "YOUR_PASSWORD"
-    },
-    "cameras": true,
-    "cameraOptions": {
-        "ffmpegPath": "/usr/local/bin/ffmpeg",
-        "sourceOptions": "-vcodec h264_mmal",
-        "videoOptions": "-vcodec h264_omx -tune false -preset false"
-    }
-}
-```
-See [Compiling FFmpeg and Codecs from Source Code: All-in-One Script](https://retroresolution.com/compiling-ffmpeg-from-source-code-all-in-one-script/) and [Raspberry Pi FFmpeg Hardware Acceleration](/docs/raspberry-pi-ffmpeg.md) on how to compile ffmpeg to support hardware acceleration on Raspberry Pi 3 and 4.
+Compilation of ffmpeg builds is not considered within the scope of this plugin as this plugin includes its own build script and thus works "out of the box" without requiring a custom ffmpeg build. However, for improvements such as hardware acceleration on RPi, please see: [Raspberry Pi FFmpeg Hardware Acceleration](/docs/raspberry-pi-ffmpeg.md).
 
 #### Camera Support Known Issues
 - If you are running Homebridge on Docker (for example using [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge)), a "No Response" error will appear when trying to view the camera on the local network. The cause is still unknown. Remote camera access appears to be working fine.
 - Camera support requires a considerable amount of computing power and may not work on very small machines, e.g. Raspberry Pi Zero and similar.
 
-Any feedback is appreciated.
-
 ## Help & Support
-This has been tested on Homebridge running on a Raspberry Pi 3, using both native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge).
+Any feedback is welcomed. For bugs, feature requests, etc. you may open an issue here.
 
-Thank you very much!
+The official [Homebridge Discord server](https://discord.gg/kqNCe2D) and [Reddit community](https://www.reddit.com/r/homebridge/) are another great place to ask for help.
