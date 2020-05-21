@@ -205,31 +205,14 @@ class SS3SimpliCam {
     }
 
     startSnapshots() {
+        const request = {
+            'width'         : 720,
+            'height'        : 400,
+            'localSnapshot' : true
+        };
         this.snapshotRefreshInterval = setInterval(async () => {
-            const request = {
-                'width'         : 720,
-                'height'        : 400,
-                'localSnapshot' : true
-            };
-            this.handleSnapshotRequest(request, this.saveSnapshot.bind(this));
+            this.handleSnapshotRequest(request, () => {});
         }, snapshotRefreshTime);
-    }
-
-    getLocalSnapshotFilePath() {
-        const fileName = `simplisafe3snapshot_${this.id}.jpg`;
-        return path.join(this.simplisafe.storagePath, fileName);
-    }
-
-    saveSnapshot(snapshotError, imageBuffer) {
-        if (snapshotError == undefined) {
-            try {
-                fs.writeFile(this.getLocalSnapshotFilePath(), imageBuffer, (err) => {
-                    if (err) throw err;
-                });
-            } catch (err) {
-                this.log.error(err);
-            }
-        }
     }
 
     async handleSnapshotRequest(request, callback) {
@@ -275,9 +258,10 @@ class SS3SimpliCam {
             }
         }
 
+        const snapshotFile = path.join(this.simplisafe.storagePath, `simplisafe3snapshot_${this.id}.jpg`);
+
         if (!request.localSnapshot) {
             // Check if local snapshot is recent enough
-            const snapshotFile = this.getLocalSnapshotFilePath();
             if (fs.existsSync(snapshotFile)) {
                 try {
                     const stats = fs.statSync(snapshotFile);
@@ -335,8 +319,14 @@ class SS3SimpliCam {
         });
         ffmpegCmd.on('close', () => {
             if (this.debug && !request.localSnapshot) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(imageBuffer.length/1024)}kB image`);
-            if (!request.localSnapshot) {
-                this.saveSnapshot(undefined, imageBuffer);
+            if (imageBuffer.length > 0) {
+                try {
+                    fs.writeFile(snapshotFile, imageBuffer, (err) => {
+                        if (err) throw err;
+                    });
+                } catch (err) {
+                    this.log.error(err);
+                }
             }
             callback(undefined, imageBuffer);
         });
