@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import ip from 'ip';
 import dns from 'dns';
+import fs from 'fs';
+import path from 'path';
 import { promisify } from 'util';
 import { spawn } from 'child_process';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
@@ -12,6 +14,7 @@ import {
 } from '../simplisafe';
 
 const dnsLookup = promisify(dns.lookup);
+const snapshotRefreshTime = 10000; // ms
 
 class SS3SimpliCam {
 
@@ -79,6 +82,7 @@ class SS3SimpliCam {
 
         this.controller = cameraController;
 
+        this.startSnapshots();
         this.startListening();
     }
 
@@ -200,6 +204,32 @@ class SS3SimpliCam {
         }
     }
 
+    startSnapshots() {
+        this.snapshotRefreshInterval = setInterval(async () => {
+            const request = {
+                'width'         : 720,
+                'height'        : 400,
+                'localSnapshot' : true
+            };
+            this.handleSnapshotRequest(request, (snapshotError, imageBuffer) => {
+                if (snapshotError == undefined) {
+                    try {
+                        fs.writeFile(this.getLocalSnapshotFilePath(), imageBuffer, (err) => {
+                            if (err) throw err;
+                        });
+                    } catch (err) {
+                        this.log.error(err);
+                    }
+                }
+            });
+        }, snapshotRefreshTime);
+    }
+
+    getLocalSnapshotFilePath() {
+        const fileName = `simplisafe3snapshot_${this.id}.jpg`;
+        return path.join(this.simplisafe.storagePath, fileName);
+    }
+
     async handleSnapshotRequest(request, callback) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
             callback(new Error('Camera snapshot request blocked (rate limited)'));
@@ -240,6 +270,23 @@ class SS3SimpliCam {
                         return;
                     }
                     break;
+            }
+        }
+
+        if (!request.localSnapshot) {
+            const snapshotFile = this.getLocalSnapshotFilePath();
+            if (fs.existsSync(snapshotFile)) {
+                try {
+                    const stats = fs.statSync(snapshotFile);
+                    if (Date.now() - stats.mtime < snapshotRefreshTime / 3) {
+                        const snapshotBuffer = fs.readFileSync(snapshotFile);
+                        if (this.debug) this.log.debug('Local snapshot is recent enough to use!');
+                        callback(undefined, snapshotBuffer);
+                        return;
+                    }
+                } catch (err) {
+                    this.log.error(err);
+                }
             }
         }
 
