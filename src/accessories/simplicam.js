@@ -14,7 +14,7 @@ import {
 } from '../simplisafe';
 
 const dnsLookup = promisify(dns.lookup);
-const snapshotRefreshTime = 10000; // ms
+const snapshotRefreshTime = 5000; // ms
 
 class SS3SimpliCam {
 
