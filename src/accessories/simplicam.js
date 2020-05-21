@@ -243,7 +243,7 @@ class SS3SimpliCam {
             ffmpegPath = this.cameraOptions.ffmpegPath;
         }
         let resolution = `${request.width}x${request.height}`;
-        if (this.debug) this.log.debug(`Handling camera snapshot for '${this.cameraDetails.cameraSettings.cameraName}' at ${resolution}`);
+        if (this.debug && !request.localSnapshot) this.log.debug(`Handling camera snapshot for '${this.cameraDetails.cameraSettings.cameraName}' at ${resolution}`);
 
         if (!this.motionIsTriggered && this.cameraDetails.model == 'SS001') { // Model(s) with privacy shutter
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
@@ -251,7 +251,7 @@ class SS3SimpliCam {
             switch (alarmState) {
                 case 'OFF':
                     if (this.cameraDetails.cameraSettings.shutterOff !== 'open') {
-                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
+                        if (this.debug && !request.localSnapshot) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -259,7 +259,7 @@ class SS3SimpliCam {
 
                 case 'HOME':
                     if (this.cameraDetails.cameraSettings.shutterHome !== 'open') {
-                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
+                        if (this.debug && !request.localSnapshot) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -267,7 +267,7 @@ class SS3SimpliCam {
 
                 case 'AWAY':
                     if (this.cameraDetails.cameraSettings.shutterAway !== 'open') {
-                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
+                        if (this.debug && !request.localSnapshot) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -322,7 +322,7 @@ class SS3SimpliCam {
         ], {
             env: process.env
         });
-        if (this.debug) this.log.debug(ffmpegPath + source);
+        if (this.debug && !request.localSnapshot) this.log.debug(ffmpegPath + source);
 
         let imageBuffer = Buffer.alloc(0);
 
@@ -334,7 +334,7 @@ class SS3SimpliCam {
             callback(error);
         });
         ffmpegCmd.on('close', () => {
-            if (this.debug) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(imageBuffer.length/1024)}kB image`);
+            if (this.debug && !request.localSnapshot) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(imageBuffer.length/1024)}kB image`);
             if (!request.localSnapshot) {
                 this.saveSnapshot(undefined, imageBuffer);
             }
