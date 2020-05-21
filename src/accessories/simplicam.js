@@ -211,23 +211,25 @@ class SS3SimpliCam {
                 'height'        : 400,
                 'localSnapshot' : true
             };
-            this.handleSnapshotRequest(request, (snapshotError, imageBuffer) => {
-                if (snapshotError == undefined) {
-                    try {
-                        fs.writeFile(this.getLocalSnapshotFilePath(), imageBuffer, (err) => {
-                            if (err) throw err;
-                        });
-                    } catch (err) {
-                        this.log.error(err);
-                    }
-                }
-            });
+            this.handleSnapshotRequest(request, this.saveSnapshot);
         }, snapshotRefreshTime);
     }
 
     getLocalSnapshotFilePath() {
         const fileName = `simplisafe3snapshot_${this.id}.jpg`;
         return path.join(this.simplisafe.storagePath, fileName);
+    }
+
+    saveSnapshot(snapshotError, imageBuffer) {
+        if (snapshotError == undefined) {
+            try {
+                fs.writeFile(this.getLocalSnapshotFilePath(), imageBuffer, (err) => {
+                    if (err) throw err;
+                });
+            } catch (err) {
+                this.log.error(err);
+            }
+        }
     }
 
     async handleSnapshotRequest(request, callback) {
@@ -274,13 +276,14 @@ class SS3SimpliCam {
         }
 
         if (!request.localSnapshot) {
+            // Check if local snapshot is recent enough
             const snapshotFile = this.getLocalSnapshotFilePath();
             if (fs.existsSync(snapshotFile)) {
                 try {
                     const stats = fs.statSync(snapshotFile);
                     if (Date.now() - stats.mtime < snapshotRefreshTime / 3) {
                         const snapshotBuffer = fs.readFileSync(snapshotFile);
-                        if (this.debug) this.log.debug('Local snapshot is recent enough to use!');
+                        if (this.debug) this.log.debug(`Handling snapshot request with locally-stored image from ${(Date.now() - stats.mtime) / 1000}s ago`);
                         callback(undefined, snapshotBuffer);
                         return;
                     }
@@ -332,6 +335,9 @@ class SS3SimpliCam {
         });
         ffmpegCmd.on('close', () => {
             if (this.debug) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(imageBuffer.length/1024)}kB image`);
+            if (!request.localSnapshot) {
+                this.saveSnapshot(undefined, imageBuffer);
+            }
             callback(undefined, imageBuffer);
         });
     }
