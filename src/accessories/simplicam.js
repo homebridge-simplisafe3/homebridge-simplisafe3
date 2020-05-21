@@ -267,7 +267,7 @@ class SS3SimpliCam {
                     const stats = fs.statSync(snapshotFile);
                     if (Date.now() - stats.mtime < snapshotRefreshTime) {
                         const snapshotBuffer = fs.readFileSync(snapshotFile);
-                        if (this.debug) this.log.debug(`Handling snapshot request with locally-stored image from ${(Date.now() - stats.mtime) / 1000}s ago`);
+                        if (this.debug) this.log.debug(`Handling snapshot request with cached image from ${(Date.now() - stats.mtime) / 1000}s ago`);
                         callback(undefined, snapshotBuffer);
                         return;
                     }
