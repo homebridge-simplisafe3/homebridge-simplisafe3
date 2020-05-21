@@ -367,7 +367,6 @@ class SS3SimpliCam {
                 let sessionInfo = this.pendingSessions[sessionIdentifier];
                 if (sessionInfo) {
                     let width = 1920;
-                    let height = 1080;
                     let fps = this.cameraDetails.cameraSettings.admin.fps;
                     let videoBitrate = this.cameraDetails.cameraSettings.admin.bitRate;
                     let audioBitrate = 32;
@@ -375,7 +374,6 @@ class SS3SimpliCam {
 
                     if (request.video) {
                         width = request.video.width;
-                        height = request.video.height;
                         if (request.video.fps < fps) {
                             fps = request.video.fps;
                         }
@@ -415,7 +413,7 @@ class SS3SimpliCam {
                         ['-pix_fmt', 'yuv420p'],
                         ['-r', fps],
                         ['-f', 'rawvideo'],
-                        ['-vf', `scale=${width}:${height}`],
+                        ['-vf', `scale=${width}:-1`],
                         ['-b:v', `${videoBitrate}k`],
                         ['-bufsize', `${2*videoBitrate}k`],
                         ['-maxrate', `${videoBitrate}k`],
@@ -510,7 +508,7 @@ class SS3SimpliCam {
                     ], {
                         env: process.env
                     });
-                    
+
                     if (this.debug) {
                         this.log.debug(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
                         this.log.debug([this.ffmpegPath, source.join(' '), video.join(' '), audio.join(' ')].join(' '));
