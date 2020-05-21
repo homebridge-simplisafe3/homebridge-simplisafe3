@@ -211,7 +211,7 @@ class SS3SimpliCam {
                 'height'        : 400,
                 'localSnapshot' : true
             };
-            this.handleSnapshotRequest(request, this.saveSnapshot);
+            this.handleSnapshotRequest(request, this.saveSnapshot.bind(this));
         }, snapshotRefreshTime);
     }
 
