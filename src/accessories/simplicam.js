@@ -510,6 +510,7 @@ class SS3SimpliCam {
                     ], {
                         env: process.env
                     });
+                    
                     if (this.debug) {
                         this.log.debug(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
                         this.log.debug([this.ffmpegPath, source.join(' '), video.join(' '), audio.join(' ')].join(' '));
