@@ -44,7 +44,7 @@
   "dependencies": {
     "axios": "^0.19.2",
     "core-js": "^3.6.5",
-    "ffmpeg-for-homebridge": "^0.0.4",
+    "ffmpeg-for-homebridge": "^0.0.5",
     "ip": "^1.1.5",
     "socket.io-client": "^2.3.0"
   },
