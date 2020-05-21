@@ -69,6 +69,10 @@ class SS3SimpliCam {
                     {
                         type: 'OPUS',
                         samplerate: 16
+                    },
+                    {
+                        type: 'AAC-eld',
+                        samplerate: 16
                     }
                 ]
             }
