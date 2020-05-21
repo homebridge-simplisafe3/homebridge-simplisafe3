@@ -281,7 +281,7 @@ class SS3SimpliCam {
             if (fs.existsSync(snapshotFile)) {
                 try {
                     const stats = fs.statSync(snapshotFile);
-                    if (Date.now() - stats.mtime < snapshotRefreshTime / 3) {
+                    if (Date.now() - stats.mtime < 3) { // within the last 3 seconds
                         const snapshotBuffer = fs.readFileSync(snapshotFile);
                         if (this.debug) this.log.debug(`Handling snapshot request with locally-stored image from ${(Date.now() - stats.mtime) / 1000}s ago`);
                         callback(undefined, snapshotBuffer);
