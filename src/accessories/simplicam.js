@@ -267,7 +267,7 @@ class SS3SimpliCam {
                     const stats = fs.statSync(snapshotFile);
                     if (Date.now() - stats.mtime < snapshotRefreshTime) {
                         const snapshotBuffer = fs.readFileSync(snapshotFile);
-                        if (this.debug) this.log.debug(`Handling snapshot request with cached image from ${(Date.now() - stats.mtime) / 1000}s ago`);
+                        if (this.debug) this.log.debug(`Handling snapshot request with cached ${Math.round(stats.size/1000)}kB image from ${(Date.now() - stats.mtime) / 1000}s ago`);
                         callback(undefined, snapshotBuffer);
                         return;
                     }
@@ -318,7 +318,7 @@ class SS3SimpliCam {
             callback(error);
         });
         ffmpegCmd.on('close', () => {
-            if (this.debug && !request.localSnapshot) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(imageBuffer.length/1024)}kB image`);
+            if (this.debug && !request.localSnapshot) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(imageBuffer.length/1000)}kB image`);
             if (imageBuffer.length > 0) {
                 try {
                     fs.writeFile(snapshotFile, imageBuffer, (err) => {
