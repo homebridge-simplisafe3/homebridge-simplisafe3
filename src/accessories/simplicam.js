@@ -14,7 +14,7 @@ import {
 } from '../simplisafe';
 
 const dnsLookup = promisify(dns.lookup);
-const snapshotRefreshTime = 5000; // ms
+const snapshotRefreshTime = 3000; // ms
 
 class SS3SimpliCam {
 
@@ -281,7 +281,7 @@ class SS3SimpliCam {
             if (fs.existsSync(snapshotFile)) {
                 try {
                     const stats = fs.statSync(snapshotFile);
-                    if (Date.now() - stats.mtime < 3) { // within the last 3 seconds
+                    if (Date.now() - stats.mtime < snapshotRefreshTime) {
                         const snapshotBuffer = fs.readFileSync(snapshotFile);
                         if (this.debug) this.log.debug(`Handling snapshot request with locally-stored image from ${(Date.now() - stats.mtime) / 1000}s ago`);
                         callback(undefined, snapshotBuffer);
