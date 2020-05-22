@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+##1.6.0
+- Feature: camera snapshots now appear much faster!
+
 ##1.5.3
 - Fixed incorrect parsing of ffmpeg arguments (issue #111).
 - Fixed an issue that could cause the plugin to fail to set alarm state after first starting (issue #108).
