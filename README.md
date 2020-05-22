@@ -159,7 +159,9 @@ After upgrading to v1.5.0, old (external) cameras will cease to function. This a
 1. You can now safely remove your old camera from the Home app.
 
 #### Camera Options
-For advanced scenarios, you can set `"cameraOptions"` in Config UI X or manually in `config.json`\*:
+This plugin includes [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) to automatically compile a compatible build of ffmpeg and thus the plugin works "out of the box" without requiring a custom ffmpeg build.
+
+For advanced scenarios including specifying a custom ffmpeg build or command line arguments, you can set them via plugin settings in Config UI X or manually in `config.json`\*:
 
 ```
 "cameraOptions": {
@@ -169,15 +171,16 @@ For advanced scenarios, you can set `"cameraOptions"` in Config UI X or manually
     "audioOptions": "-ar 256k ... (any other ffmpeg argument)"
 }
 ```
-\* *Note that the format of `"cameraOptions"` changed as of version 1.4.3. Old config files should continue work but your settings may need to be re-entered if you are switching to using Config UI X*
-
-Here, `ffmpegPath` allows to specify a specific ffmpeg binary to be used, a useful feature for the use of hardware acceleration on the Raspberry Pi, for example.
+\* *Note that the format of `"cameraOptions"` changed as of v1.4.3. Old config files should continue work but your settings may need to be re-entered if you are switching to using Config UI X*
 
 Any arguments provided in `sourceOptions`, `videoOptions` and `audioOptions` will be added to the list of arguments passed to ffmpeg, or will replace the default ones if these already exist.
 To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re"`.
 To remove a default argument, define it with `false` as its value, e.g. `"-tune false"`.
 
-Compilation of ffmpeg builds is not considered within the scope of this plugin as this plugin includes its own build script and thus works "out of the box" without requiring a custom ffmpeg build. However, for improvements such as hardware acceleration on RPi, please see: [Raspberry Pi FFmpeg Hardware Acceleration](/docs/raspberry-pi-ffmpeg.md).
+#### Hardware Acceleration
+ The bundled build of ffmpeg *includes* hardware acceleration on supported Raspberry Pi models but in order to enable this you must check the setting **Advanced Camera Settings** > **Enable Hardware Acceleration for Raspberry Pi** (or set `"enableHwaccelRpi"` under `"cameraOptions"` to `true` in `config.json`).
+
+*Note that enabling this option assumes you are using the built-in ffmpeg build. Compilation of ffmpeg builds is not considered within the scope of this plugin.*
 
 #### Camera Support Known Issues
 - If you are running Homebridge on Docker (for example using [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge)), a "No Response" error will appear when trying to view the camera on the local network. The cause is still unknown. Remote camera access appears to be working fine.

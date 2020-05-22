@@ -443,6 +443,15 @@ class SS3SimpliCam {
                     ];
 
                     if (this.cameraOptions) {
+                        if (this.cameraOptions.enableHwaccelRpi) {
+                            let iArg = sourceArgs.find(arg => arg[0] == '-i');
+                            sourceArgs.splice(sourceArgs.indexOf(iArg), 0, ['-vcodec', 'h264_mmal']);
+                            let vCodecArg = videoArgs.find(arg => arg[0] == '-vcodec');
+                            vCodecArg[1] = 'h264_omx';
+                            videoArgs = videoArgs.filter(arg => arg[0] !== '-tune');
+                            videoArgs = videoArgs.filter(arg => arg[0] !== '-preset');
+                        }
+
                         if (this.cameraOptions.sourceOptions) {
                             let options = (typeof this.cameraOptions.sourceOptions === 'string') ? Object.fromEntries(this.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
                                 : this.cameraOptions.sourceOptions; // support old config schema
