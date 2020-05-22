@@ -251,7 +251,8 @@ class SS3SimpliCam {
                 if (this.debug) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(img.length/1000)}kB image`);
                 callback(undefined, img);
             } else {
-                this.log.error('An error occurred while making snapshot request:', err);
+                this.log.error('An error occurred while making snapshot request:', err.statusCode ? err.statusCode : '', err.statusMessage ? err.statusMessage : '');
+                if (this.debug) this.log.error(err);
                 callback(err);
             }
         });
