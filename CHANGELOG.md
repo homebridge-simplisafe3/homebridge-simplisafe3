@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+##1.6.0
+- Fixed a long-standing issue where cameras did not stream on docker installs (issue #110). The fix for this requires limiting cameras to 960px wide.
+
 ##1.5.3
 - Fixed incorrect parsing of ffmpeg arguments (issue #111).
 - Fixed an issue that could cause the plugin to fail to set alarm state after first starting (issue #108).
