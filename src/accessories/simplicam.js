@@ -374,7 +374,6 @@ class SS3SimpliCam {
                 let sessionInfo = this.pendingSessions[sessionIdentifier];
                 if (sessionInfo) {
                     let width = 1920;
-                    let height = 1080;
                     let fps = this.cameraDetails.cameraSettings.admin.fps;
                     let videoBitrate = this.cameraDetails.cameraSettings.admin.bitRate;
                     let audioBitrate = 32;
@@ -382,7 +381,6 @@ class SS3SimpliCam {
 
                     if (request.video) {
                         width = request.video.width;
-                        height = request.video.height;
                         if (request.video.fps < fps) {
                             fps = request.video.fps;
                         }
@@ -422,7 +420,7 @@ class SS3SimpliCam {
                         ['-pix_fmt', 'yuv420p'],
                         ['-r', fps],
                         ['-f', 'rawvideo'],
-                        ['-vf', `scale=${width}:${height}`],
+                        ['-vf', `scale=${width}:-1`],
                         ['-b:v', `${videoBitrate}k`],
                         ['-bufsize', `${videoBitrate}k`],
                         ['-maxrate', `${videoBitrate}k`],
@@ -451,9 +449,10 @@ class SS3SimpliCam {
                     ];
 
                     if (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
-                        if (this.debug) this.log.debug('Detected running in docker container with bundled binary, changing to 960px wide');
+                        if (this.debug) this.log.debug('Detected running in docker container with bundled binary, limiting to 960px wide');
+                        width = Math.min(width, 960);
                         let vFilterArg = videoArgs.find(arg => arg[0] == '-vf');
-                        vFilterArg[1] = 'scale=960:530';
+                        vFilterArg[1] = `scale=${width}:-1`;
                         // TODO: someday AAC?
                         // let iArg = sourceArgs.find(arg => arg[0] == '-i');
                         // iArg[1] = iArg[1] + '&audioEncoding=AAC';
