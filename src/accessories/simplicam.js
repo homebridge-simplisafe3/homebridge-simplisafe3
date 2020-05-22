@@ -451,9 +451,9 @@ class SS3SimpliCam {
                     ];
 
                     if (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
-                        if (this.debug) this.log.debug('Detected running in docker container with bundled binary, changing to 720p');
+                        if (this.debug) this.log.debug('Detected running in docker container with bundled binary, changing to 960px wide');
                         let vFilterArg = videoArgs.find(arg => arg[0] == '-vf');
-                        vFilterArg[1] = 'scale=720:400';
+                        vFilterArg[1] = 'scale=960:530';
                         // TODO: someday AAC?
                         // let iArg = sourceArgs.find(arg => arg[0] == '-i');
                         // iArg[1] = iArg[1] + '&audioEncoding=AAC';
