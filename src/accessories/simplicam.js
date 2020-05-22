@@ -1,8 +1,6 @@
 import crypto from 'crypto';
 import ip from 'ip';
 import dns from 'dns';
-import fs from 'fs';
-import path from 'path';
 import { promisify } from 'util';
 import { spawn } from 'child_process';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
@@ -14,7 +12,6 @@ import {
 } from '../simplisafe';
 
 const dnsLookup = promisify(dns.lookup);
-const snapshotRefreshTime = 3000; // ms
 
 class SS3SimpliCam {
 
@@ -82,7 +79,6 @@ class SS3SimpliCam {
 
         this.controller = cameraController;
 
-        this.startSnapshots();
         this.startListening();
     }
 
@@ -204,17 +200,6 @@ class SS3SimpliCam {
         }
     }
 
-    startSnapshots() {
-        const request = {
-            'width'         : 720,
-            'height'        : 400,
-            'localSnapshot' : true
-        };
-        this.snapshotRefreshInterval = setInterval(async () => {
-            this.handleSnapshotRequest(request, () => {});
-        }, snapshotRefreshTime);
-    }
-
     async handleSnapshotRequest(request, callback) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
             callback(new Error('Camera snapshot request blocked (rate limited)'));
@@ -226,7 +211,7 @@ class SS3SimpliCam {
             ffmpegPath = this.cameraOptions.ffmpegPath;
         }
         let resolution = `${request.width}x${request.height}`;
-        if (this.debug && !request.localSnapshot) this.log.debug(`Handling camera snapshot for '${this.cameraDetails.cameraSettings.cameraName}' at ${resolution}`);
+        if (this.debug) this.log.debug(`Handling camera snapshot for '${this.cameraDetails.cameraSettings.cameraName}' at ${resolution}`);
 
         if (!this.motionIsTriggered && this.cameraDetails.model == 'SS001') { // Model(s) with privacy shutter
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
@@ -234,7 +219,7 @@ class SS3SimpliCam {
             switch (alarmState) {
                 case 'OFF':
                     if (this.cameraDetails.cameraSettings.shutterOff !== 'open') {
-                        if (this.debug && !request.localSnapshot) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
+                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -242,7 +227,7 @@ class SS3SimpliCam {
 
                 case 'HOME':
                     if (this.cameraDetails.cameraSettings.shutterHome !== 'open') {
-                        if (this.debug && !request.localSnapshot) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
+                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
@@ -250,30 +235,11 @@ class SS3SimpliCam {
 
                 case 'AWAY':
                     if (this.cameraDetails.cameraSettings.shutterAway !== 'open') {
-                        if (this.debug && !request.localSnapshot) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
+                        if (this.debug) this.log.debug(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
                         callback(new Error('Privacy shutter closed'));
                         return;
                     }
                     break;
-            }
-        }
-
-        const snapshotFile = path.join(this.simplisafe.storagePath, `simplisafe3snapshot_${this.id}.jpg`);
-
-        if (!request.localSnapshot) {
-            // Check if local snapshot is recent enough
-            if (fs.existsSync(snapshotFile)) {
-                try {
-                    const stats = fs.statSync(snapshotFile);
-                    if (Date.now() - stats.mtime < snapshotRefreshTime) {
-                        const snapshotBuffer = fs.readFileSync(snapshotFile);
-                        if (this.debug) this.log.debug(`Handling snapshot request with cached ${Math.round(stats.size/1000)}kB image from ${(Date.now() - stats.mtime) / 1000}s ago`);
-                        callback(undefined, snapshotBuffer);
-                        return;
-                    }
-                } catch (err) {
-                    this.log.error(err);
-                }
             }
         }
 
@@ -306,7 +272,7 @@ class SS3SimpliCam {
         ], {
             env: process.env
         });
-        if (this.debug && !request.localSnapshot) this.log.debug(ffmpegPath + source);
+        if (this.debug) this.log.debug(ffmpegPath + source);
 
         let imageBuffer = Buffer.alloc(0);
 
@@ -318,16 +284,7 @@ class SS3SimpliCam {
             callback(error);
         });
         ffmpegCmd.on('close', () => {
-            if (this.debug && !request.localSnapshot) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(imageBuffer.length/1000)}kB image`);
-            if (imageBuffer.length > 0) {
-                try {
-                    fs.writeFile(snapshotFile, imageBuffer, (err) => {
-                        if (err) throw err;
-                    });
-                } catch (err) {
-                    this.log.error(err);
-                }
-            }
+            if (this.debug) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(imageBuffer.length/1000)}kB image`);
             callback(undefined, imageBuffer);
         });
     }
