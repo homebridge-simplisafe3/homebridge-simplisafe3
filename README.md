@@ -177,7 +177,7 @@ Any arguments provided in `sourceOptions`, `videoOptions` and `audioOptions` wil
 To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re"`.
 To remove a default argument, define it with `false` as its value, e.g. `"-tune false"`.
 
-#### Hardware Acceleration
+#### FFMPEG Hardware Acceleration
  The bundled build of ffmpeg *includes* hardware acceleration on supported Raspberry Pi models but in order to enable this you must check the setting **Advanced Camera Settings** > **Enable Hardware Acceleration for Raspberry Pi** (or set `"enableHwaccelRpi"` under `"cameraOptions"` to `true` in `config.json`).
 
 *Note that enabling this option assumes you are using the built-in ffmpeg build. Compilation of ffmpeg builds is not considered within the scope of this plugin.*
