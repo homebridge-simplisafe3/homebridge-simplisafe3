@@ -1,13 +1,13 @@
 # Change Log
 All notable changes are documented here.
 
-##1.6.0 (2020-05-22)
+## 1.6.0 (2020-05-22)
 - Feature: The plugin now includes [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) which includes hardware acceleration on supported RPi models. See the [updated README](https://github.com/nzapponi/homebridge-simplisafe3#ffmpeg-hardware-acceleration) for more information on how to enable this.
 - Camera settings have been separated in the config UI
 - Feature: camera snapshots now appear faster
 - Fixed a long-standing issue where cameras did not stream on docker installs (issue #118). The fix for this requires limiting cameras to 720px wide.
 
-##1.5.3 (2020-05-17)
+## 1.5.3 (2020-05-17)
 - Fixed incorrect parsing of ffmpeg arguments (issue #111).
 - Fixed an issue that could cause the plugin to fail to set alarm state after first starting (issue #108).
 - Other minor bug fixes.
