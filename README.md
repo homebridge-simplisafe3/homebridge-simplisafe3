@@ -214,7 +214,7 @@ And here is a sample configuration to use the Raspberry Pi H.264 hardware accele
 See [Compiling FFmpeg and Codecs from Source Code: All-in-One Script](https://retroresolution.com/compiling-ffmpeg-from-source-code-all-in-one-script/) and [Raspberry Pi FFmpeg Hardware Acceleration](/docs/raspberry-pi-ffmpeg.md) on how to compile ffmpeg to support hardware acceleration on Raspberry Pi 3 and 4.
 
 #### Known Issues
-- If you are running Homebridge [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge) camera streaming is limited to 960px wide.
+- If you are running Homebridge [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge) camera streaming is limited to 720px wide.
 
 Any feedback is appreciated.
 
