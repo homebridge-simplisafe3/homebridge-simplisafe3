@@ -18,32 +18,31 @@ You must sign up to a SimpliSafe monitoring plan that enables you to use the mob
 
 **NOTE:** *As of version 1.5.0 of this plugin, Homebridge v1.0.0 or greater is required. Because of [significant changes to Homebridge](https://github.com/homebridge/homebridge/releases/tag/1.0.0) the plugin may not work properly with older versions of Homebridge. The last version of this plugin to officially support Homebridge 0.4.53 was version 1.4.12 which can still be installed using a command like `sudo npm install -g --unsafe-perm homebridge-simplisafe3@1.4.12`.*
 
+- Works with native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge)
+- Compatible with the official [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x) (recommended for easiest usage)
+
 ## Features
 Supercharge your SimpliSafe system and integrate with HomeKit the right way!
-This plugin supports
-- Real time event streaming: get immediate notifications anytime the alarm is armed / disarmed / goes off.
-- Sensors: always be on top of your home with immediate access to the sensor status. Create smart automations directly from the Home app (e.g. when the front door is opened, turn the lights on).
-- Cameras: view your SimpliCams directly from the Home app.
-- Battery monitoring: the Home app will notify you if the battery level of one of your sensors is low
+This plugin supports:
+- **Real time event streaming:** get immediate notifications anytime the alarm is armed / disarmed / triggered.
+- **Sensors:** always be on top of your home with immediate access to the sensor status. Create smart automations directly from the Home app (e.g. when the front door is opened, turn the lights on).
+- **Cameras:** view your SimpliCams directly from the Home app, receive doorbell notifications and motion snapshots.
+- **Battery monitoring:** the Home app will notify you if the battery level of one of your sensors is low.
+
+Here are some example screenshots:
 
 Here are some examples of how the set up looks like:
 
 <img alt="Sensors" src="https://raw.githubusercontent.com/nzapponi/homebridge-simplisafe3/master/docs/sensors.png" width="50%"><img alt="Alarm controls" src="https://raw.githubusercontent.com/nzapponi/homebridge-simplisafe3/master/docs/arm.png" width="50%">
 
-
 ## Usage
 
-This plugin supports installation and changing settings (for `config.js`) via the popular [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x).
+This plugin supports installation and changing settings (for `config.js`) via the popular [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x) (recommended for easiest usage).
 
 Ensure you are running Node v10.17.0 or higher (this version is required by Homebridge v1.0.0). You can check by using `node -v`.
 
 Either install and configure using Config UI X or you can manually install the plugin by running:
 
-```
-npm install -g homebridge-simplisafe3
-```
-
-if you run into issues when starting the plugin and Homebridge displays errors, then reinstall the plugin using the following command instead:
 ```
 npm install -g --unsafe-perm homebridge-simplisafe3
 ```
@@ -114,7 +113,7 @@ Type: boolean (default `false`)
 
 Upon first start, the plugin generates an ID which it uses to identify itself with SimpliSafe. If you wish to reset it, set this to `true`.
 
-## Supported Devices
+### Supported Devices
 
 Device             | Supported          | Notes
 ------------------ | ------------------ | -------------------------------------------------
@@ -170,7 +169,9 @@ After upgrading to v1.5.0, old (external) cameras will cease to function. This a
 1. You can now safely remove your old camera from the Home app.
 
 #### Camera Options
-For advanced scenarios, you can set `"cameraOptions"` in Config UI X or manually in `config.json`\*:
+This plugin includes [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) to automatically compile a compatible build of ffmpeg and thus the plugin works "out of the box" without requiring a custom ffmpeg build.
+
+For advanced scenarios including specifying a custom ffmpeg build or command line arguments, you can set them via plugin settings in Config UI X or manually in `config.json`\*:
 
 ```
 "cameraOptions": {
@@ -180,55 +181,21 @@ For advanced scenarios, you can set `"cameraOptions"` in Config UI X or manually
     "audioOptions": "-ar 256k ... (any other ffmpeg argument)"
 }
 ```
-\* *Note that the format of `"cameraOptions"` changed as of version 1.4.3. Old config files should continue work but your settings may need to be re-entered if you are switching to using Config UI X*
-
-Here, `ffmpegPath` allows to specify a specific ffmpeg binary to be used, a useful feature for the use of hardware acceleration on the Raspberry Pi, for example.
+\* *Note that the format of `"cameraOptions"` changed as of v1.4.3. Old config files should continue work but your settings may need to be re-entered if you are switching to using Config UI X*
 
 Any arguments provided in `sourceOptions`, `videoOptions` and `audioOptions` will be added to the list of arguments passed to ffmpeg, or will replace the default ones if these already exist.
-To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re "`.
-To remove a default argument, define it with `false` as its value, e.g. `"-re false"`.
+To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re"`.
+To remove a default argument, define it with `false` as its value, e.g. `"-tune false"`.
 
-Here is a sample configuration to use a locally installed ffmpeg binary:
-```
-{
-    "platform": "homebridge-simplisafe3.SimpliSafe 3",
-    "name": "Home Alarm",
-    "auth": {
-        "username": "YOUR_USERNAME",
-        "password": "YOUR_PASSWORD"
-    },
-    "cameras": true,
-    "cameraOptions": {
-        "ffmpegPath": "/usr/local/bin/ffmpeg"
-    }
-}
-```
+#### FFMPEG Hardware Acceleration
+ The bundled build of ffmpeg *includes* hardware acceleration on supported Raspberry Pi models but in order to enable this you must check the setting **Advanced Camera Settings** > **Enable Hardware Acceleration for Raspberry Pi** (or set `"enableHwaccelRpi"` under `"cameraOptions"` to `true` in `config.json`).
 
-And here is a sample configuration to use the Raspberry Pi H.264 hardware acceleration:
-```
-{
-    "platform": "homebridge-simplisafe3.SimpliSafe 3",
-    "name": "Home Alarm",
-    "auth": {
-        "username": "YOUR_USERNAME",
-        "password": "YOUR_PASSWORD"
-    },
-    "cameras": true,
-    "cameraOptions": {
-        "ffmpegPath": "/usr/local/bin/ffmpeg",
-        "sourceOptions": "-vcodec h264_mmal",
-        "videoOptions": "-vcodec h264_omx -tune false -preset false"
-    }
-}
-```
-See [Compiling FFmpeg and Codecs from Source Code: All-in-One Script](https://retroresolution.com/compiling-ffmpeg-from-source-code-all-in-one-script/) and [Raspberry Pi FFmpeg Hardware Acceleration](/docs/raspberry-pi-ffmpeg.md) on how to compile ffmpeg to support hardware acceleration on Raspberry Pi 3 and 4.
+*Note that enabling this option assumes you are using the built-in ffmpeg build. Compilation of ffmpeg builds is not considered within the scope of this plugin.*
 
 #### Known Issues
 - If you are running Homebridge [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge) camera streaming is limited to 720px wide.
 
-Any feedback is appreciated.
-
 ## Help & Support
-This has been tested on Homebridge running on a Raspberry Pi 3, using both native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge).
+Any feedback is welcomed. For bugs, feature requests, etc. you may open an issue here.
 
-Thank you very much!
+The official [Homebridge Discord server](https://discord.gg/kqNCe2D) and [Reddit community](https://www.reddit.com/r/homebridge/) are another great place to ask for help.

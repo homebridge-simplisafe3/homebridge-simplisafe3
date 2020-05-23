@@ -3,7 +3,7 @@ import ip from 'ip';
 import dns from 'dns';
 import { promisify } from 'util';
 import { spawn } from 'child_process';
-import ffmpeg from '@ffmpeg-installer/ffmpeg';
+import ffmpegPath from 'ffmpeg-for-homebridge';
 import isDocker from 'is-docker';
 import jpegExtract from 'jpeg-extract';
 
@@ -31,8 +31,8 @@ class SS3SimpliCam {
         this.uuid = UUIDGen.generate(id);
         this.reachable = true;
 
-        this.ffmpegPath = isDocker() ? 'ffmpeg' : ffmpeg.path;
-        if (this.debug && isDocker()) this.log.debug('Detected running in docker');
+        this.ffmpegPath = isDocker() ? 'ffmpeg' : ffmpegPath;
+        if (this.debug && isDocker()) this.log.debug('Detected running in docker, initializing with docker-bundled ffmpeg');
         if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
             this.ffmpegPath = this.cameraOptions.ffmpegPath;
         }
@@ -405,7 +405,7 @@ class SS3SimpliCam {
                         ['-f', 'rawvideo'],
                         ['-vf', `scale=${width}:-1`],
                         ['-b:v', `${videoBitrate}k`],
-                        ['-bufsize', `${videoBitrate}k`],
+                        ['-bufsize', `${2*videoBitrate}k`],
                         ['-maxrate', `${videoBitrate}k`],
                         ['-payload_type', 99],
                         ['-ssrc', sessionInfo.video_ssrc],
@@ -419,10 +419,11 @@ class SS3SimpliCam {
                         ['-map', '0:1'],
                         ['-acodec', 'libopus'],
                         ['-flags', '+global_header'],
-                        ['-f', 'null'],
+                        ['-ac', '1'],
+                        ['-filter:a', 'volume=20.0'],
                         ['-ar', `${audioSamplerate}k`],
                         ['-b:a', `${audioBitrate}k`],
-                        ['-bufsize', `${audioBitrate}k`],
+                        ['-bufsize', `${2*audioBitrate}k`],
                         ['-payload_type', 110],
                         ['-ssrc', sessionInfo.audio_ssrc],
                         ['-f', 'rtp'],
@@ -445,6 +446,15 @@ class SS3SimpliCam {
                     }
 
                     if (this.cameraOptions) {
+                        if (this.cameraOptions.enableHwaccelRpi) {
+                            let iArg = sourceArgs.find(arg => arg[0] == '-i');
+                            sourceArgs.splice(sourceArgs.indexOf(iArg), 0, ['-vcodec', 'h264_mmal']);
+                            let vCodecArg = videoArgs.find(arg => arg[0] == '-vcodec');
+                            vCodecArg[1] = 'h264_omx';
+                            videoArgs = videoArgs.filter(arg => arg[0] !== '-tune');
+                            videoArgs = videoArgs.filter(arg => arg[0] !== '-preset');
+                        }
+
                         if (this.cameraOptions.sourceOptions) {
                             let options = (typeof this.cameraOptions.sourceOptions === 'string') ? Object.fromEntries(this.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
                                 : this.cameraOptions.sourceOptions; // support old config schema
@@ -559,8 +569,13 @@ class SS3SimpliCam {
 
             } else if (request.type == 'stop') {
                 let cmd = this.ongoingSessions[sessionIdentifier];
-                if (cmd) {
-                    cmd.kill('SIGKILL');
+                try {
+                    if (cmd) {
+                        cmd.kill('SIGKILL');
+                    }
+                } catch (e) {
+                    this.log.error('Error occurred terminating the video process!');
+                    if (this.debug) this.log.error(e);
                 }
 
                 delete this.ongoingSessions[sessionIdentifier];
