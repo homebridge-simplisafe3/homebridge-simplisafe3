@@ -246,6 +246,8 @@ class SS3SimpliCam {
         } catch (err) {
             if (!this.serverIpAddress) {
                 this.log.error('Could not resolve hostname for media.simplisafe.com');
+                callback(err);
+                return;
             }
         }
 
