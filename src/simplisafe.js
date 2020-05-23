@@ -115,6 +115,7 @@ class SimpliSafe3 {
     sensorRefreshTime;
     sensorSubscriptions = [];
     ssId;
+    storagePath;
 
     isBlocked;
     nextBlockInterval = rateLimitInitialInterval;
@@ -125,8 +126,9 @@ class SimpliSafe3 {
         this.sensorRefreshTime = sensorRefreshTime;
         this.log = log || console.log;
         this.debug = debug;
+        this.storagePath = storagePath;
 
-        let internalConfigFile = path.join(storagePath, internalConfigFileName);
+        let internalConfigFile = path.join(this.storagePath, internalConfigFileName);
         if (fs.existsSync(internalConfigFile) && resetConfig) {
             fs.unlinkSync(internalConfigFile);
         }

@@ -4,6 +4,7 @@ import dns from 'dns';
 import { promisify } from 'util';
 import { spawn } from 'child_process';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
+import jpegExtract from 'jpeg-extract';
 
 import {
     EVENT_TYPES,
@@ -206,10 +207,6 @@ class SS3SimpliCam {
             return;
         }
 
-        let ffmpegPath = ffmpeg.path;
-        if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
-            ffmpegPath = this.cameraOptions.ffmpegPath;
-        }
         let resolution = `${request.width}x${request.height}`;
         if (this.debug) this.log.debug(`Handling camera snapshot for '${this.cameraDetails.cameraSettings.cameraName}' at ${resolution}`);
 
@@ -249,43 +246,25 @@ class SS3SimpliCam {
         } catch (err) {
             if (!this.serverIpAddress) {
                 this.log.error('Could not resolve hostname for media.simplisafe.com');
-                callback(err);
-                return;
             }
         }
 
-        let sourceArgs = [
-            ['-re'],
-            ['-headers', `Authorization: Bearer ${this.simplisafe.token}`],
-            ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${request.width}`],
-            ['-t', 1],
-            ['-s', resolution],
-            ['-f', 'image2'],
-            ['-vframes', 1],
-            ['-']
-        ];
-
-        let source = [].concat(...sourceArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
-
-        let ffmpegCmd = spawn(ffmpegPath, [
-            ...source,
-        ], {
-            env: process.env
-        });
-        if (this.debug) this.log.debug(ffmpegPath + source);
-
-        let imageBuffer = Buffer.alloc(0);
-
-        ffmpegCmd.stdout.on('data', data => {
-            imageBuffer = Buffer.concat([imageBuffer, data]);
-        });
-        ffmpegCmd.on('error', error => {
-            this.log.error('An error occurred while making snapshot request:', error);
-            callback(error);
-        });
-        ffmpegCmd.on('close', () => {
-            if (this.debug) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(imageBuffer.length/1024)}kB image`);
-            callback(undefined, imageBuffer);
+        const url = {
+            url: `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/mjpg?x=${request.width}&fr=1`,
+            headers: {
+                'Authorization': `Bearer ${this.simplisafe.token}`
+            },
+            rejectUnauthorized: false // OK because we are using IP and just polled DNS
+        };
+        jpegExtract(url, (err, img) => {
+            if (!err) {
+                if (this.debug) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(img.length/1000)}kB image`);
+                callback(undefined, img);
+            } else {
+                this.log.error('An error occurred while making snapshot request:', err.statusCode ? err.statusCode : '', err.statusMessage ? err.statusMessage : '');
+                if (this.debug) this.log.error(err);
+                callback(err);
+            }
         });
     }
 
