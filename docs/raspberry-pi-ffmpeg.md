@@ -1,4 +1,4 @@
-# Raspberry Pi FFmpeg Hardware Acceleration
+# Raspberry Pi FFmpeg Build From Source
 
 ## Option 1
 
