@@ -31,8 +31,8 @@ class SS3SimpliCam {
         this.uuid = UUIDGen.generate(id);
         this.reachable = true;
 
-        this.ffmpegPath = isDocker() ? 'ffmpeg' : ffmpeg.path;
-        if (this.debug && isDocker()) this.log.debug('Detected running in docker');
+        this.ffmpegPath = isDocker() ? 'ffmpeg' : ffmpegPath;
+        if (this.debug && isDocker()) this.log.debug('Detected running in docker, initializing with docker-bundled ffmpeg');
         if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
             this.ffmpegPath = this.cameraOptions.ffmpegPath;
         }
@@ -42,11 +42,6 @@ class SS3SimpliCam {
         this.controller;
         this.pendingSessions = {};
         this.ongoingSessions = {};
-
-        this.ffmpegPath = ffmpegPath;
-        if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
-            this.ffmpegPath = this.cameraOptions.ffmpegPath;
-        }
 
         let fps = this.cameraDetails.cameraSettings.admin.fps;
         let streamingOptions = {
