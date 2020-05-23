@@ -240,11 +240,21 @@ class SS3SimpliCam {
             }
         }
 
+        try {
+            let newIpAddress = await dnsLookup('media.simplisafe.com');
+            this.serverIpAddress = newIpAddress.address;
+        } catch (err) {
+            if (!this.serverIpAddress) {
+                this.log.error('Could not resolve hostname for media.simplisafe.com');
+            }
+        }
+
         const url = {
-            url: `https://media.simplisafe.com/v1/${this.cameraDetails.uuid}/mjpg?x=${request.width}&fr=1`,
+            url: `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/mjpg?x=${request.width}&fr=1`,
             headers: {
                 'Authorization': `Bearer ${this.simplisafe.token}`
-            }
+            },
+            rejectUnauthorized: false // OK because we are using IP and just polled DNS
         };
         jpegExtract(url, (err, img) => {
             if (!err) {
