@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Support
+    url: https://github.com/nzapponi/homebridge-simplisafe3#known-issues
+    about: Known issues with the plugin.
+  - name: Homebridge Reddit
+    url: https://www.reddit.com/r/homebridge/
+    about: A place to discuss Homebridge, get help with it, ask questions about it, post plugins, and more.
+  - name: Homebridge Discord Community
+    url: https://discord.gg/kqNCe2D
+    about: A place to discuss and collaborate with other Homebridge users and developers.

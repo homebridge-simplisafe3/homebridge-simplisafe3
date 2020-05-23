@@ -2,14 +2,15 @@
 All notable changes are documented here.
 
 ##1.6.0
-- Fixed a long-standing issue where cameras did not stream on docker installs (issue #110). The fix for this requires limiting cameras to 960px wide.
+- Feature: camera snapshots now appear faster
+- Fixed a long-standing issue where cameras did not stream on docker installs (issue #118). The fix for this requires limiting cameras to 960px wide.
 
-##1.5.3
+##1.5.3 (2020-05-17)
 - Fixed incorrect parsing of ffmpeg arguments (issue #111).
 - Fixed an issue that could cause the plugin to fail to set alarm state after first starting (issue #108).
 - Other minor bug fixes.
 
-## v1.5.0
+## v1.5.0 (2020-05-06)
 - PLEASE NOTE: This version of the plugin requires Homebridge v1.0.0 or later and includes breaking changes. Only install this update when you are ready to update Homebridge (or already have).
 - Support for Homebridge v1.0.0 including `CameraController API` support. See the [updated README](https://github.com/nzapponi/homebridge-simplisafe3#migrating-external-cameras-to-bridged-cameras) for more information.
 - Improved logging.

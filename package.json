@@ -46,8 +46,9 @@
     "axios": "^0.19.2",
     "core-js": "^3.6.5",
     "ip": "^1.1.5",
-    "socket.io-client": "^2.3.0",
     "is-docker": "^2.0.0"
+    "jpeg-extract": "^3.0.1",
+    "socket.io-client": "^2.3.0"
   },
   "eslintConfig": {
     "env": {
