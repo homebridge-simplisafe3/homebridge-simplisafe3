@@ -403,7 +403,7 @@ class SS3SimpliCam {
                         ['-pix_fmt', 'yuv420p'],
                         ['-r', fps],
                         ['-f', 'rawvideo'],
-                        ['-vf', `scale=${width}:-1`],
+                        ['-vf', `scale=${width}:-2`],
                         ['-b:v', `${videoBitrate}k`],
                         ['-bufsize', `${2*videoBitrate}k`],
                         ['-maxrate', `${videoBitrate}k`],
@@ -436,7 +436,7 @@ class SS3SimpliCam {
                         if (this.debug) this.log.debug('Detected running in docker container with bundled binary, limiting to 720px wide');
                         width = Math.min(width, 720);
                         let vFilterArg = videoArgs.find(arg => arg[0] == '-vf');
-                        vFilterArg[1] = `scale=${width}:-1`;
+                        vFilterArg[1] = `scale=${width}:-2`;
                         // TODO: someday AAC?
                         // let iArg = sourceArgs.find(arg => arg[0] == '-i');
                         // iArg[1] = iArg[1] + '&audioEncoding=AAC';
