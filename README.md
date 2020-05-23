@@ -1,7 +1,17 @@
-# Homebridge Plugin for SimpliSafe 3
+<span align="center">
+
+<a href="https://github.com/homebridge/homebridge/wiki/Verified-Plugins"><img alt="homebridge-verified" src="https://github.com/homebridge/branding/blob/master/logos/homebridge-color-round.svg?sanitize=true" width="140px"></a>
+
+# Homebridge SimpliSafe 3
 Created by [Niccolò Zapponi](https://twitter.com/nzapponi) and [Michael Shamoon](https://github.com/nikonratm).
 
-A complete (unofficial) Homebridge plugin to integrate the SimpliSafe 3 home security system with HomeKit.
+[![npm-version](https://badgen.net/npm/v/homebridge-simplisafe3)](https://www.npmjs.com/package/homebridge-simplisafe3)
+[![npm-downloads](https://badgen.net/npm/dt/homebridge-simplisafe3)](https://www.npmjs.com/package/homebridge-simplisafe3)
+[![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+
+A complete (unofficial) [Homebridge](https://github.com/homebridge/homebridge) plugin to integrate the SimpliSafe 3 home security system with HomeKit.
+
+</span>
 
 ## Requirements
 You must sign up to a SimpliSafe monitoring plan that enables you to use the mobile app for this plugin to work. The monitoring plan enables API access to SimpliSafe.
@@ -21,9 +31,9 @@ This plugin supports:
 
 Here are some example screenshots:
 
-![Sensor Status](/docs/sensors.png)
-![Arm/disarm](/docs/arm.png)
+Here are some examples of how the set up looks like:
 
+<img alt="Sensors" src="https://raw.githubusercontent.com/nzapponi/homebridge-simplisafe3/master/docs/sensors.png" width="50%"><img alt="Alarm controls" src="https://raw.githubusercontent.com/nzapponi/homebridge-simplisafe3/master/docs/arm.png" width="50%">
 
 ## Usage
 
@@ -182,9 +192,8 @@ To remove a default argument, define it with `false` as its value, e.g. `"-tune 
 
 *Note that enabling this option assumes you are using the built-in ffmpeg build. Compilation of ffmpeg builds is not considered within the scope of this plugin.*
 
-#### Camera Support Known Issues
-- If you are running Homebridge on Docker (for example using [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge)), a "No Response" error will appear when trying to view the camera on the local network. The cause is still unknown. Remote camera access appears to be working fine.
-- Camera support requires a considerable amount of computing power and may not work on very small machines, e.g. Raspberry Pi Zero and similar.
+#### Known Issues
+- If you are running Homebridge [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge) camera streaming is limited to 720px wide.
 
 ## Help & Support
 Any feedback is welcomed. For bugs, feature requests, etc. you may open an issue here.
