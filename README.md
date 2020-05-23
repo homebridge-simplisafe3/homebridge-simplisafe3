@@ -192,7 +192,7 @@ To remove a default argument, define it with `false` as its value, e.g. `"-tune 
 
 *Note that enabling this option assumes you are using the built-in ffmpeg build. Compilation of ffmpeg builds is not considered within the scope of this plugin.*
 
-#### Known Issues
+## Known Issues
 - If you are running Homebridge [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge) camera streaming is limited to 720px wide.
 
 ## Help & Support
