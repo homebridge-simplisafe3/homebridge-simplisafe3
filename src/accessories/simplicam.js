@@ -4,6 +4,7 @@ import dns from 'dns';
 import { promisify } from 'util';
 import { spawn } from 'child_process';
 import ffmpeg from '@ffmpeg-installer/ffmpeg';
+import isDocker from 'is-docker';
 import jpegExtract from 'jpeg-extract';
 
 import {
@@ -29,6 +30,12 @@ class SS3SimpliCam {
         this.simplisafe = simplisafe;
         this.uuid = UUIDGen.generate(id);
         this.reachable = true;
+
+        this.ffmpegPath = isDocker() ? 'ffmpeg' : ffmpeg.path;
+        if (this.debug && isDocker()) this.log.debug('Detected running in docker');
+        if (this.cameraOptions && this.cameraOptions.ffmpegPath) {
+            this.ffmpegPath = this.cameraOptions.ffmpegPath;
+        }
 
         this.services = [];
 
@@ -62,6 +69,10 @@ class SS3SimpliCam {
                 codecs: [
                     {
                         type: 'OPUS',
+                        samplerate: 16
+                    },
+                    {
+                        type: 'AAC-eld',
                         samplerate: 16
                     }
                 ]
@@ -269,6 +280,7 @@ class SS3SimpliCam {
     }
 
     prepareStream(request, callback) {
+        if (this.debug) this.log.debug('Prepare stream with request:', request);
         let response = {};
         let sessionInfo = {
             address: request.targetAddress
@@ -345,7 +357,6 @@ class SS3SimpliCam {
                 let sessionInfo = this.pendingSessions[sessionIdentifier];
                 if (sessionInfo) {
                     let width = 1920;
-                    let height = 1080;
                     let fps = this.cameraDetails.cameraSettings.admin.fps;
                     let videoBitrate = this.cameraDetails.cameraSettings.admin.bitRate;
                     let audioBitrate = 32;
@@ -353,7 +364,6 @@ class SS3SimpliCam {
 
                     if (request.video) {
                         width = request.video.width;
-                        height = request.video.height;
                         if (request.video.fps < fps) {
                             fps = request.video.fps;
                         }
@@ -393,7 +403,7 @@ class SS3SimpliCam {
                         ['-pix_fmt', 'yuv420p'],
                         ['-r', fps],
                         ['-f', 'rawvideo'],
-                        ['-vf', `scale=${width}:${height}`],
+                        ['-vf', `scale=${width}:-1`],
                         ['-b:v', `${videoBitrate}k`],
                         ['-bufsize', `${videoBitrate}k`],
                         ['-maxrate', `${videoBitrate}k`],
@@ -421,14 +431,20 @@ class SS3SimpliCam {
                         [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=1316`]
                     ];
 
-                    // Choose the correct ffmpeg path (default or custom provided)
-                    let ffmpegPath = ffmpeg.path;
+                    if (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
+                        if (this.debug) this.log.debug('Detected running in docker container with bundled binary, limiting to 720px wide');
+                        width = Math.min(width, 720);
+                        let vFilterArg = videoArgs.find(arg => arg[0] == '-vf');
+                        vFilterArg[1] = `scale=${width}:-1`;
+                        // TODO: someday AAC?
+                        // let iArg = sourceArgs.find(arg => arg[0] == '-i');
+                        // iArg[1] = iArg[1] + '&audioEncoding=AAC';
+                        // let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
+                        // aCodecArg[1] = 'libfdk_aac';
+                        // audioArgs.splice(audioArgs.indexOf(aCodecArg) + 1, 0, ['-profile:a', 'aac_eld']);
+                    }
 
                     if (this.cameraOptions) {
-                        if (this.cameraOptions.ffmpegPath) {
-                            ffmpegPath = this.cameraOptions.ffmpegPath;
-                        }
-
                         if (this.cameraOptions.sourceOptions) {
                             let options = (typeof this.cameraOptions.sourceOptions === 'string') ? Object.fromEntries(this.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
                                 : this.cameraOptions.sourceOptions; // support old config schema
@@ -488,7 +504,7 @@ class SS3SimpliCam {
                     let video = [].concat(...videoArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
                     let audio = [].concat(...audioArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
 
-                    let cmd = spawn(ffmpegPath, [
+                    let cmd = spawn(this.ffmpegPath, [
                         ...source,
                         ...video,
                         ...audio
@@ -496,7 +512,10 @@ class SS3SimpliCam {
                         env: process.env
                     });
 
-                    if (this.debug) this.log.debug(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
+                    if (this.debug) {
+                        this.log.debug(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
+                        this.log.debug([this.ffmpegPath, source.join(' '), video.join(' '), audio.join(' ')].join(' '));
+                    }
 
                     let started = false;
                     cmd.stderr.on('data', data => {
@@ -541,10 +560,11 @@ class SS3SimpliCam {
             } else if (request.type == 'stop') {
                 let cmd = this.ongoingSessions[sessionIdentifier];
                 if (cmd) {
-                    cmd.kill('SIGTERM');
+                    cmd.kill('SIGKILL');
                 }
 
                 delete this.ongoingSessions[sessionIdentifier];
+                callback();
             }
         }
     }

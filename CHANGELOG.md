@@ -3,6 +3,7 @@ All notable changes are documented here.
 
 ##1.6.0
 - Feature: camera snapshots now appear faster
+- Fixed a long-standing issue where cameras did not stream on docker installs (issue #118). The fix for this requires limiting cameras to 960px wide.
 
 ##1.5.3 (2020-05-17)
 - Fixed incorrect parsing of ffmpeg arguments (issue #111).

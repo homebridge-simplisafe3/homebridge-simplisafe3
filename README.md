@@ -223,9 +223,8 @@ And here is a sample configuration to use the Raspberry Pi H.264 hardware accele
 ```
 See [Compiling FFmpeg and Codecs from Source Code: All-in-One Script](https://retroresolution.com/compiling-ffmpeg-from-source-code-all-in-one-script/) and [Raspberry Pi FFmpeg Hardware Acceleration](/docs/raspberry-pi-ffmpeg.md) on how to compile ffmpeg to support hardware acceleration on Raspberry Pi 3 and 4.
 
-#### Camera Support Known Issues
-- If you are running Homebridge on Docker (for example using [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge)), a "No Response" error will appear when trying to view the camera on the local network. The cause is still unknown. Remote camera access appears to be working fine.
-- Camera support requires a considerable amount of computing power and may not work on very small machines, e.g. Raspberry Pi Zero and similar.
+#### Known Issues
+- If you are running Homebridge [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge) camera streaming is limited to 720px wide.
 
 Any feedback is appreciated.
 
