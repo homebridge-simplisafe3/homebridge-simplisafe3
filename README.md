@@ -31,8 +31,6 @@ This plugin supports:
 
 Here are some example screenshots:
 
-Here are some examples of how the set up looks like:
-
 <img alt="Sensors" src="https://raw.githubusercontent.com/nzapponi/homebridge-simplisafe3/master/docs/sensors.png" width="50%"><img alt="Alarm controls" src="https://raw.githubusercontent.com/nzapponi/homebridge-simplisafe3/master/docs/arm.png" width="50%">
 
 ## Usage
@@ -57,32 +55,7 @@ Then, add the following configuration to the `platforms` array in your Homebridg
     "auth": {
         "username": "YOUR_USERNAME",
         "password": "YOUR_PASSWORD"
-    },
-    "cameras": false
-}
-```
-
-Here is an example:
-```
-{
-    "bridge": {
-        "name": "Homebridge",
-        "username": "CC:22:3D:E3:CE:30",
-        "port": 51826,
-        "pin": "031-45-154"
-    },
-    "accessories": [],
-    "platforms": [
-        {
-            "platform": "homebridge-simplisafe3.SimpliSafe 3",
-            "name": "Home Alarm",
-            "auth": {
-                "username": "YOUR_USERNAME",
-                "password": "YOUR_PASSWORD"
-            },
-            "cameras": false
-        }
-    ]
+    }
 }
 ```
 
@@ -96,7 +69,7 @@ These enable camera support. See [Camera Support](#camera-support) for more deta
 #### `debug`
 Type: boolean (default `false`)
 
-Switch this on to get more details around your sensors in your Homebridge logs. To see all messages the Homebridge debug (`-D`) option must also be enabled.
+Switch this on to get more details about your sensors and plugin behavior in your Homebridge logs. This can be useful if you are having trouble or need to report an issue. To see all messages the Homebridge debug (`-D`) option must also be enabled.
 
 #### `subscriptionId`
 Type: string
@@ -138,23 +111,6 @@ For example, setting the motion sensor to Secret Alert in Off and Home mode and 
 Using the "Secret Alert" setting will allow for motion events at all times but note that [this will also record a video clip](https://simplisafe.com/forum/customer-support-forum/installing-and-using-simplisafe/secret-alert-triggers-camera) when motion events are triggered.
 
 All devices also support low battery warnings.
-
-To provide sample data, add `"debug": true` to the platform configuration inside `config.json`, for example:
-```
-{
-    "platform": "homebridge-simplisafe3.SimpliSafe 3",
-    "name": "Home Alarm",
-    "auth": {
-        "username": "YOUR_USERNAME",
-        "password": "YOUR_PASSWORD"
-    },
-    "cameras": false,
-    "sensorRefresh" : 15,
-    "debug": true
-}
-```
-
-This will print the data about all the sensors found.
 
 ### Camera Support
 To enable camera support, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin).
