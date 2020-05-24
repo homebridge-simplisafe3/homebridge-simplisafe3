@@ -1,6 +1,6 @@
 <span align="center">
 
-<a href="https://github.com/homebridge/homebridge/wiki/Verified-Plugins"><img alt="homebridge-verified" src="https://github.com/homebridge/branding/blob/master/logos/homebridge-color-round.svg?sanitize=true" width="140px"></a>
+<a href="https://github.com/homebridge/homebridge/wiki/Verified-Plugins"><img alt="homebridge-verified" src="https://github.com/homebridge/branding/blob/master/logos/homebridge-color-round.png" width="140px"></a>
 
 # Homebridge SimpliSafe 3
 Created by [Niccolò Zapponi](https://twitter.com/nzapponi) and [Michael Shamoon](https://github.com/nikonratm).
