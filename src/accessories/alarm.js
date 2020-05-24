@@ -19,6 +19,7 @@ class SS3Alarm {
         this.simplisafe = simplisafe;
         this.uuid = UUIDGen.generate(id);
         this.nRetries = 0;
+        this.nSocketConnectFailures = 0;
 
         this.CURRENT_SS3_TO_HOMEKIT = {
             'OFF': Characteristic.SecuritySystemCurrentState.DISARMED,
