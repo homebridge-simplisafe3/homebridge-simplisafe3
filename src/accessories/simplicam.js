@@ -101,7 +101,7 @@ class SS3SimpliCam {
 
     setAccessory(accessory) {
         this.accessory = accessory;
-        this.accessory.on('identify', (callback) => this.identify(callback));
+        this.accessory.on('identify', (paired, callback) => this.identify(callback));
 
         this.accessory.getService(this.Service.AccessoryInformation)
             .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
