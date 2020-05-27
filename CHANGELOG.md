@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.2 (2020-05-27)
+- Fixes a bug that could cause Homebridge to crash when setting up the system (issue #123).
+
 ## 1.6.1 (2020-05-22)
 - Feature: The plugin now includes [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) which includes hardware acceleration on supported RPi models. See the [updated README](https://github.com/nzapponi/homebridge-simplisafe3#ffmpeg-hardware-acceleration) for more information on how to enable this.
 - Camera settings have been separated in the config UI
