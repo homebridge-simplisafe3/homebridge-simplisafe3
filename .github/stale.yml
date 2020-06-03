@@ -1,13 +1,11 @@
 # Number of days of inactivity before an issue becomes stale
-daysUntilStale: 90
+daysUntilStale: 30
 # Number of days of inactivity before a stale issue is closed
 daysUntilClose: 7
 # Issues with these labels will never be considered stale
 exemptLabels:
   - pinned
   - security
-  - enhancement
-  - bug
 # Label to use when marking an issue as stale
 staleLabel: wontfix
 # Comment to post when marking an issue as stale. Set to `false` to disable
