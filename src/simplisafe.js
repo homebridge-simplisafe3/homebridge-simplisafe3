@@ -34,6 +34,7 @@ const validLockStates = [
 ];
 
 export const SENSOR_TYPES = {
+    'APP': 0,
     'KEYPAD': 1,
     'KEYCHAIN': 2,
     'PANIC_BUTTON': 3,
