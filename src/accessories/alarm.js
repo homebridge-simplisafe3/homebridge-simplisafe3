@@ -1,5 +1,6 @@
 import {
     EVENT_TYPES,
+    SENSOR_TYPES,
     RateLimitError,
     SOCKET_RETRY_INTERVAL
 } from '../simplisafe';
@@ -198,8 +199,7 @@ class SS3Alarm {
                         }, SOCKET_RETRY_INTERVAL);
                         break;
                 }
-                if (this.service && data && (data.sensorType == 0 || data.sensorType == 1 || data.sensorType == 2)) {
-                    // Alarm events (0 = app, 1 = keypad, 2 = fob)
+                if (this.service && data && (data.sensorType == SENSOR_TYPES.APP || data.sensorType == SENSOR_TYPES.KEYPAD || data.sensorType == SENSOR_TYPES.KEYCHAIN || data.sensorType == SENSOR_TYPES.DOORLOCK)) {
                     if (this.debug) this.log.debug('Alarm received event:', event);
                     switch (event) {
                         case EVENT_TYPES.ALARM_DISARM:
