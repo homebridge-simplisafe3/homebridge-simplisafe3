@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.3 (2020-06-03)
+- Fixes an issue that could cause HomeKit to show an incorrect alarm status if alarm is disarmed using a door lock (issue #128).
+
 ## 1.6.2 (2020-05-27)
 - Fixes a bug that could cause Homebridge to crash when setting up the system (issue #123).
 
