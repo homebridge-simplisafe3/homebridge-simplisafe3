@@ -125,7 +125,7 @@ After upgrading to v1.5.0, old (external) cameras will cease to function. This a
 1. You can now safely remove your old camera from the Home app.
 
 #### Camera Options
-This plugin includes [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) to automatically compile a compatible build of ffmpeg and thus the plugin works "out of the box" without requiring a custom ffmpeg build.
+This plugin includes [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) to automatically include a compatible build of ffmpeg and thus the plugin works "out of the box" without requiring a custom ffmpeg build.
 
 For advanced scenarios including specifying a custom ffmpeg build or command line arguments, you can set them via plugin settings in Config UI X or manually in `config.json`\*:
 
