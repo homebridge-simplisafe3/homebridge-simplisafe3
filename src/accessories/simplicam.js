@@ -359,8 +359,8 @@ class SS3SimpliCam {
                     let width = 1920;
                     let fps = this.cameraDetails.cameraSettings.admin.fps;
                     let videoBitrate = this.cameraDetails.cameraSettings.admin.bitRate;
-                    let audioBitrate = 32;
-                    let audioSamplerate = 24;
+                    let audioBitrate = 96;
+                    let audioSamplerate = 16;
 
                     if (request.video) {
                         width = request.video.width;
