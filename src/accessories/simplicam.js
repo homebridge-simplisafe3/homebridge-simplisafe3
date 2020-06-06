@@ -392,7 +392,7 @@ class SS3SimpliCam {
                     let sourceArgs = [
                         ['-re'],
                         ['-headers', `Authorization: Bearer ${this.simplisafe.token}`],
-                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}`]
+                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}&audioEncoding=AAC`]
                     ];
 
                     let videoArgs = [
@@ -417,10 +417,11 @@ class SS3SimpliCam {
 
                     let audioArgs = [
                         ['-map', '0:1'],
-                        ['-acodec', 'libopus'],
+                        ['-acodec', 'libfdk_aac'],
                         ['-flags', '+global_header'],
+                        ['-profile:a', 'aac_eld'],
                         ['-ac', '1'],
-                        ['-filter:a', 'volume=20.0'],
+                        ['-filter:a', 'volume=10.0'],
                         ['-ar', `${audioSamplerate}k`],
                         ['-b:a', `${audioBitrate}k`],
                         ['-bufsize', `${2*audioBitrate}k`],
@@ -437,12 +438,6 @@ class SS3SimpliCam {
                         width = Math.min(width, 720);
                         let vFilterArg = videoArgs.find(arg => arg[0] == '-vf');
                         vFilterArg[1] = `scale=${width}:-2`;
-                        // TODO: someday AAC?
-                        // let iArg = sourceArgs.find(arg => arg[0] == '-i');
-                        // iArg[1] = iArg[1] + '&audioEncoding=AAC';
-                        // let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
-                        // aCodecArg[1] = 'libfdk_aac';
-                        // audioArgs.splice(audioArgs.indexOf(aCodecArg) + 1, 0, ['-profile:a', 'aac_eld']);
                     }
 
                     if (this.cameraOptions) {
