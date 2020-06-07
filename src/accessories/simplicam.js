@@ -421,7 +421,6 @@ class SS3SimpliCam {
                         ['-flags', '+global_header'],
                         ['-profile:a', 'aac_eld'],
                         ['-ac', '1'],
-                        ['-filter:a', 'volume=10.0'],
                         ['-ar', `${audioSamplerate}k`],
                         ['-b:a', `${audioBitrate}k`],
                         ['-bufsize', `${2*audioBitrate}k`],
