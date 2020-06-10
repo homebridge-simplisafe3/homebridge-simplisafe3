@@ -172,13 +172,11 @@ class SS3SimpliCam {
                         break;
                 }
 
-                if (this.accessory) {
-                    let eventCameraId;
-                    if (data && (data.sensorSerial || data.internal)) {
-                        eventCameraId = data.sensorSerial ? data.sensorSerial : data.internal.mainCamera;
-                    }
+                if (this.accessory && data) {
+                    let eventCameraIds = [data.sensorSerial];
+                    if (data.internal) eventCameraIds.push(data.internal.mainCamera);
 
-                    if (eventCameraId == this.id) {
+                    if (eventCameraIds.indexOf(this.id) > -1) {
                         // Camera events
                         if (this.debug) this.log.debug(`${this.name} camera received event: ${event}`);
                         switch (event) {
