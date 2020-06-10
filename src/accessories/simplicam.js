@@ -429,7 +429,7 @@ class SS3SimpliCam {
                         ['-f', 'rtp'],
                         ['-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80'],
                         ['-srtp_out_params', sessionInfo.audio_srtp.toString('base64')],
-                        [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=1316`]
+                        [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=188`]
                     ];
 
                     if (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
