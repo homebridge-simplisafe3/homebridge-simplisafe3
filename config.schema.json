@@ -62,7 +62,7 @@
         "properties": {
           "enableHwaccelRpi": {
             "title": " Enable Hardware Acceleration for Raspberry Pi",
-            "description": "This may not work if you are set the path to use a custom build of ffmpeg",
+            "description": "This may not work if you set the path to use a custom build of ffmpeg",
             "type": "boolean",
             "default": false
           },
