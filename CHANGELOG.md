@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.4 (2020-06-10)
+- Fixes an issue where motion alerts stopped working due to a SS API change (issue #130).
+
 ## 1.6.3 (2020-06-03)
 - Fixes an issue that could cause HomeKit to show an incorrect alarm status if alarm is disarmed using a door lock (issue #128).
 
