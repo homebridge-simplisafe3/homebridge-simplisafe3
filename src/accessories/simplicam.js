@@ -442,6 +442,13 @@ class SS3SimpliCam {
                     if (this.cameraOptions) {
                         if (this.cameraOptions.enableHwaccelRpi) {
                             let iArg = sourceArgs.find(arg => arg[0] == '-i');
+                            // RPi doesnt like AAC?
+                            iArg[1] = iArg[1].replace('&audioEncoding=AAC', '');
+                            let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
+                            aCodecArg[1] = 'libopus';
+                            let profileArg = audioArgs.find(arg => arg[0] == '-profile:a');
+                            audioArgs.splice(audioArgs.indexOf(profileArg), 1);
+                            // use mmal / omx
                             sourceArgs.splice(sourceArgs.indexOf(iArg), 0, ['-vcodec', 'h264_mmal']);
                             let vCodecArg = videoArgs.find(arg => arg[0] == '-vcodec');
                             vCodecArg[1] = 'h264_omx';
