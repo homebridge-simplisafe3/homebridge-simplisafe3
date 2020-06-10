@@ -340,6 +340,7 @@ class SS3SimpliCam {
     }
 
     async handleStreamRequest(request, callback) {
+        if (this.debug) this.log.debug('handleStreamRequest with request:', request);
         let sessionId = request.sessionID;
         if (sessionId) {
             let sessionIdentifier = this.UUIDGen.unparse(sessionId);
