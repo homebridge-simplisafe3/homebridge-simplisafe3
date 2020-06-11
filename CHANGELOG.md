@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.5 (2020-06-11)
+- AAC audio is now supported for improved performance (issue #127). Note that you may need to disable and re-enable your cameras or re-add the system to HomeKit to use the improved codec support.
+
 ## 1.6.4 (2020-06-10)
 - Fixes an issue where motion alerts stopped working due to a SS API change (issue #130).
 
