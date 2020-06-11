@@ -353,25 +353,18 @@ class SS3SimpliCam {
 
                 let sessionInfo = this.pendingSessions[sessionIdentifier];
                 if (sessionInfo) {
-                    let width = 1920;
+                    let width = request.video.width ?? 1920;
                     let fps = this.cameraDetails.cameraSettings.admin.fps;
                     let videoBitrate = this.cameraDetails.cameraSettings.admin.bitRate;
-                    let audioBitrate = 96;
-                    let audioSamplerate = 16;
+                    let audioBitrate = request.audio.max_bit_rate ?? 96;
+                    let audioSamplerate = request.audio.sample_rate ?? 16;
+                    let mtu = request.video.mtu ?? 1316;
 
-                    if (request.video) {
-                        width = request.video.width;
-                        if (request.video.fps < fps) {
-                            fps = request.video.fps;
-                        }
-                        if (request.video.max_bit_rate < videoBitrate) {
-                            videoBitrate = request.video.max_bit_rate;
-                        }
+                    if (request.video.fps < fps) {
+                        fps = request.video.fps;
                     }
-
-                    if (request.audio) {
-                        audioBitrate = request.audio.max_bit_rate;
-                        audioSamplerate = request.audio.sample_rate;
+                    if (request.video.max_bit_rate < videoBitrate) {
+                        videoBitrate = request.video.max_bit_rate;
                     }
 
                     try {
@@ -409,7 +402,7 @@ class SS3SimpliCam {
                         ['-f', 'rtp'],
                         ['-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80'],
                         ['-srtp_out_params', sessionInfo.video_srtp.toString('base64')],
-                        [`srtp://${sessionInfo.address}:${sessionInfo.video_port}?rtcpport=${sessionInfo.video_port}&localrtcpport=${sessionInfo.video_port}&pkt_size=1316`]
+                        [`srtp://${sessionInfo.address}:${sessionInfo.video_port}?rtcpport=${sessionInfo.video_port}&localrtcpport=${sessionInfo.video_port}&pkt_size=${mtu}`]
                     ];
 
                     let audioArgs = [
