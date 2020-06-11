@@ -113,7 +113,7 @@ class SS3Platform {
                         device.setAccessory(accessory);
                         this.accessories.push(accessory);
                     } else {
-                        if (this.debug) this.log.debug('Device not found', device.name ? `'${device.name}'` : device.uuid);
+                        if (this.debug) this.log.debug('Device not found', accessory.UUID);
                         this.removeAccessory(accessory);
                     }
 

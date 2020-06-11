@@ -68,10 +68,6 @@ class SS3SimpliCam {
             audio: {
                 codecs: [
                     {
-                        type: 'OPUS',
-                        samplerate: 16
-                    },
-                    {
                         type: 'AAC-eld',
                         samplerate: 16
                     }
@@ -338,6 +334,7 @@ class SS3SimpliCam {
     }
 
     async handleStreamRequest(request, callback) {
+        if (this.debug) this.log.debug('handleStreamRequest with request:', request);
         let sessionId = request.sessionID;
         if (sessionId) {
             let sessionIdentifier = this.UUIDGen.unparse(sessionId);
@@ -354,25 +351,18 @@ class SS3SimpliCam {
 
                 let sessionInfo = this.pendingSessions[sessionIdentifier];
                 if (sessionInfo) {
-                    let width = 1920;
+                    let width = request.video.width ?? 1920;
                     let fps = this.cameraDetails.cameraSettings.admin.fps;
                     let videoBitrate = this.cameraDetails.cameraSettings.admin.bitRate;
-                    let audioBitrate = 32;
-                    let audioSamplerate = 24;
+                    let audioBitrate = request.audio.max_bit_rate ?? 96;
+                    let audioSamplerate = request.audio.sample_rate ?? 16;
+                    let mtu = request.video.mtu ?? 1316;
 
-                    if (request.video) {
-                        width = request.video.width;
-                        if (request.video.fps < fps) {
-                            fps = request.video.fps;
-                        }
-                        if (request.video.max_bit_rate < videoBitrate) {
-                            videoBitrate = request.video.max_bit_rate;
-                        }
+                    if (request.video.fps < fps) {
+                        fps = request.video.fps;
                     }
-
-                    if (request.audio) {
-                        audioBitrate = request.audio.max_bit_rate;
-                        audioSamplerate = request.audio.sample_rate;
+                    if (request.video.max_bit_rate < videoBitrate) {
+                        videoBitrate = request.video.max_bit_rate;
                     }
 
                     try {
@@ -390,7 +380,7 @@ class SS3SimpliCam {
                     let sourceArgs = [
                         ['-re'],
                         ['-headers', `Authorization: Bearer ${this.simplisafe.token}`],
-                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}`]
+                        ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}&audioEncoding=AAC`]
                     ];
 
                     let videoArgs = [
@@ -410,15 +400,15 @@ class SS3SimpliCam {
                         ['-f', 'rtp'],
                         ['-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80'],
                         ['-srtp_out_params', sessionInfo.video_srtp.toString('base64')],
-                        [`srtp://${sessionInfo.address}:${sessionInfo.video_port}?rtcpport=${sessionInfo.video_port}&localrtcpport=${sessionInfo.video_port}&pkt_size=1316`]
+                        [`srtp://${sessionInfo.address}:${sessionInfo.video_port}?rtcpport=${sessionInfo.video_port}&localrtcpport=${sessionInfo.video_port}&pkt_size=${mtu}`]
                     ];
 
                     let audioArgs = [
                         ['-map', '0:1'],
-                        ['-acodec', 'libopus'],
+                        ['-acodec', 'libfdk_aac'],
                         ['-flags', '+global_header'],
+                        ['-profile:a', 'aac_eld'],
                         ['-ac', '1'],
-                        ['-filter:a', 'volume=20.0'],
                         ['-ar', `${audioSamplerate}k`],
                         ['-b:a', `${audioBitrate}k`],
                         ['-bufsize', `${2*audioBitrate}k`],
@@ -427,7 +417,7 @@ class SS3SimpliCam {
                         ['-f', 'rtp'],
                         ['-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80'],
                         ['-srtp_out_params', sessionInfo.audio_srtp.toString('base64')],
-                        [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=1316`]
+                        [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=188`]
                     ];
 
                     if (isDocker() && (!this.cameraOptions || !this.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
@@ -435,12 +425,17 @@ class SS3SimpliCam {
                         width = Math.min(width, 720);
                         let vFilterArg = videoArgs.find(arg => arg[0] == '-vf');
                         vFilterArg[1] = `scale=${width}:-2`;
-                        // TODO: someday AAC?
-                        // let iArg = sourceArgs.find(arg => arg[0] == '-i');
-                        // iArg[1] = iArg[1] + '&audioEncoding=AAC';
-                        // let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
-                        // aCodecArg[1] = 'libfdk_aac';
-                        // audioArgs.splice(audioArgs.indexOf(aCodecArg) + 1, 0, ['-profile:a', 'aac_eld']);
+                    }
+
+                    if (request.audio && request.audio.codec == 'OPUS') {
+                        // Request is for OPUS codec, serve that & warn
+                        this.log.warn(`Camera '${this.name}' is setup with an out-dated audio codec. For improved performance you can try removing and re-adding it to HomeKit.`);
+                        let iArg = sourceArgs.find(arg => arg[0] == '-i');
+                        iArg[1] = iArg[1].replace('&audioEncoding=AAC', '');
+                        let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
+                        aCodecArg[1] = 'libopus';
+                        let profileArg = audioArgs.find(arg => arg[0] == '-profile:a');
+                        audioArgs.splice(audioArgs.indexOf(profileArg), 1);
                     }
 
                     if (this.cameraOptions) {
