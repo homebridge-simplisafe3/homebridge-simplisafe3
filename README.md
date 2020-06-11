@@ -146,7 +146,7 @@ To remove a default argument, define it with `false` as its value, e.g. `"-tune 
 #### FFMPEG Hardware Acceleration
  The bundled build of ffmpeg *includes* hardware acceleration on supported Raspberry Pi models but in order to enable this you must check the setting **Advanced Camera Settings** > **Enable Hardware Acceleration for Raspberry Pi** (or set `"enableHwaccelRpi"` under `"cameraOptions"` to `true` in `config.json`).
 
-*Note that enabling this option assumes you are using the bundled version ffmpeg and thus may not work if you specify a custom one. Compilation of ffmpeg builds is not considered within the scope of this plugin.*
+*Note that enabling this option assumes you are using the bundled version of ffmpeg and thus may not work if you specify a custom one.*
 
 ## Known Issues
 - If you are running Homebridge [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge) camera streaming is limited to 720px wide.
