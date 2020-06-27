@@ -2,7 +2,7 @@
 name: Bug Report
 about: Raise a bug related to the plugin.
 title: ''
-labels: bug
+labels: bug, unconfirmed
 assignees: ''
 
 ---
