@@ -17,6 +17,7 @@ const internalConfigFileName = 'simplisafe3config.json';
 const mfaTimeout = 5 * 60 * 1000; // ms
 const rateLimitInitialInterval = 60000; // ms
 const rateLimitMaxInterval = 2 * 60 * 60 * 1000; // ms
+const sensorRefreshLockoutDuration = 30000; // ms
 
 const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
@@ -114,6 +115,8 @@ class SimpliSafe3 {
     lastLockRequest;
     sensorRefreshInterval;
     sensorRefreshTime;
+    sensorRefreshLockoutTimeout;
+    sensorRefreshLockoutEnabled = false;
     sensorSubscriptions = [];
     ssId;
     storagePath;
@@ -339,7 +342,6 @@ class SimpliSafe3 {
     }
 
     async request(params, tokenRefreshed = false) {
-
         if (this.isBlocked && Date.now() < this.nextAttempt) {
             let err = new RateLimitError('Blocking request: rate limited');
             throw err;
@@ -537,6 +539,7 @@ class SimpliSafe3 {
             method: 'POST',
             url: `/ss3/subscriptions/${this.subId}/state/${state}`
         });
+        this.handleSensorRefreshLockout();
         return data;
     }
 
@@ -600,7 +603,7 @@ class SimpliSafe3 {
     }
 
     async getLocks(forceRefresh) {
-
+        this.sensorRefreshLockoutEnabled = true;
         if (!this.subId) {
             await this.getSubscription();
         }
@@ -673,9 +676,11 @@ class SimpliSafe3 {
                         case 1407:
                             // 1400 is disarmed with Master PIN, 1407 is disarmed with Remote
                             callback(EVENT_TYPES.ALARM_DISARM, data);
+                            this.handleSensorRefreshLockout();
                             break;
                         case 1406:
                             callback(EVENT_TYPES.ALARM_CANCEL, data);
+                            this.handleSensorRefreshLockout();
                             break;
                         case 1409:
                             callback(EVENT_TYPES.MOTION, data);
@@ -686,6 +691,7 @@ class SimpliSafe3 {
                         case 3441:
                         case 3491:
                             callback(EVENT_TYPES.HOME_ARM, data);
+                            this.handleSensorRefreshLockout();
                             break;
                         case 9401:
                         case 9407:
@@ -698,6 +704,7 @@ class SimpliSafe3 {
                         case 3481:
                             // 3401 is for Keypad, 3407 is for Remote
                             callback(EVENT_TYPES.AWAY_ARM, data);
+                            this.handleSensorRefreshLockout();
                             break;
                         case 1429:
                             callback(EVENT_TYPES.ENTRY, data);
@@ -842,6 +849,11 @@ class SimpliSafe3 {
                     return;
                 }
 
+                if (this.sensorRefreshLockoutTimeout) {
+                    if (this.debug) this.log.debug('Sensor refresh lockout in effect, refresh blocked.');
+                    return;
+                }
+
                 try {
                     let sensors = await this.getSensors(true);
                     for (let sensor of sensors) {
@@ -872,6 +884,15 @@ class SimpliSafe3 {
         if (this.sensorSubscriptions.length == 0) {
             clearInterval(this.sensorRefreshInterval);
         }
+    }
+
+    handleSensorRefreshLockout() {
+        if (!this.sensorRefreshLockoutEnabled) return;
+        // avoid "smart lock not responding" error with refresh lockout
+        clearTimeout(this.sensorRefreshLockoutTimeout);
+        this.sensorRefreshLockoutTimeout = setTimeout(() => {
+            this.sensorRefreshLockoutTimeout = undefined;
+        }, sensorRefreshLockoutDuration);
     }
 
 }
