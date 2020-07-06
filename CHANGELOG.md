@@ -1,7 +1,7 @@
 # Change Log
 All notable changes are documented here.
 
-## 1.6.6 (2020-07-06)
+## 1.6.7 (2020-07-06)
 - Fixes a SimpliSafe bug that caused the system to report smart locks are "not responding" even though they were (issue #134)
 
 ## 1.6.5 (2020-06-11)
