@@ -603,7 +603,6 @@ class SimpliSafe3 {
     }
 
     async getLocks(forceRefresh) {
-        this.sensorRefreshLockoutEnabled = true;
         if (!this.subId) {
             await this.getSubscription();
         }
@@ -627,6 +626,7 @@ class SimpliSafe3 {
         }
 
         let data = await this.lastLockRequest;
+        this.sensorRefreshLockoutEnabled = data.length > 0;
         return data;
 
     }
