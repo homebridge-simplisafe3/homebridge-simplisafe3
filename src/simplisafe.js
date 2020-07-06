@@ -17,7 +17,7 @@ const internalConfigFileName = 'simplisafe3config.json';
 const mfaTimeout = 5 * 60 * 1000; // ms
 const rateLimitInitialInterval = 60000; // ms
 const rateLimitMaxInterval = 2 * 60 * 60 * 1000; // ms
-const sensorRefreshLockoutDuration = 30000; // ms
+const sensorRefreshLockoutDuration = 15000; // ms
 
 const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
@@ -888,7 +888,7 @@ class SimpliSafe3 {
 
     handleSensorRefreshLockout() {
         if (!this.sensorRefreshLockoutEnabled) return;
-        // avoid "smart lock not responding" error with refresh lockout
+        // avoid "smart lock not responding" error with refresh lockout, see issue #134
         clearTimeout(this.sensorRefreshLockoutTimeout);
         this.sensorRefreshLockoutTimeout = setTimeout(() => {
             this.sensorRefreshLockoutTimeout = undefined;
