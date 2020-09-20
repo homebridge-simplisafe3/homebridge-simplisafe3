@@ -216,13 +216,13 @@ class SimpliSafe3 {
                         throw err.response ? err.response : err;
                     }
 
-                } else if (errCode == 403) {
+                } else if (errCode == 403 && errData.error_description !== 'INVALID_CREDENTIALS_PASSWORD') {
                     this._setRateLimitHandler();
                     let err = new RateLimitError('SSAPI login failed, request blocked (rate limit?).');
                     throw err;
                 } else {
                     this.logout(storeCredentials);
-                    throw err.response;
+                    throw errData.error_description == 'INVALID_CREDENTIALS_PASSWORD' ? errData : err.response;
                 }
             } else {
                 this._setRateLimitHandler();
