@@ -292,11 +292,11 @@ class SimpliSafe3 {
     }
 
     isLoggedIn() {
-        return this.refreshToken !== null || (this.token !== null && Date.now() < this.expiry);
+        return this.rToken !== null || (this.token !== null && Date.now() < this.expiry);
     }
 
     async refreshToken() {
-        if (!this.isLoggedIn() || !this.refreshToken) {
+        if (!this.isLoggedIn() || !this.rToken) {
             let err = new Error('User is not logged in');
             throw err;
         }
@@ -347,7 +347,7 @@ class SimpliSafe3 {
             throw err;
         }
 
-        if (!this.isLoggedIn) {
+        if (!this.isLoggedIn()) {
             if (this.isBlocked) {
                 // User is not logged in due to the last login attempt being blocked.
                 // It's now time to try logging in again.
