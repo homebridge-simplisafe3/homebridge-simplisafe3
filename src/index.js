@@ -55,12 +55,12 @@ class SS3Platform {
             })
             .catch(err => {
                 if (err instanceof RateLimitError) {
-                    this.log.error('Log in failed due to rate limiting or connectivity, trying again later');
+                    this.log.error('Login failed due to rate limiting or connectivity, trying again later');
                     setTimeout(async () => {
                         await this.retryBlockedAccessories();
                     }, this.simplisafe.nextAttempt - Date.now());
                 } else {
-                    this.log.error('SS3 init failed');
+                    this.log.error('SimpliSafe login failed');
                     this.log.error(err);
                 }
             });
@@ -73,10 +73,11 @@ class SS3Platform {
                     return Promise.all(this.cachedAccessoryConfig);
                 })
                 .then(() => {
-                    return this.refreshAccessories();
+                    if (!this.simplisafe.isLoggedIn()) throw new Error('Not logged into SimpliSafe. Check credentials in the plugin config.');
+                    else return this.refreshAccessories();
                 })
                 .catch(err => {
-                    this.log.error('SS3 refresh failed');
+                    this.log.error('Initial accessories refresh failed');
                     this.log.error(err);
                 });
         });

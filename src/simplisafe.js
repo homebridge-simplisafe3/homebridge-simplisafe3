@@ -216,13 +216,13 @@ class SimpliSafe3 {
                         throw err.response ? err.response : err;
                     }
 
-                } else if (errCode == 403) {
+                } else if (errCode == 403 && errData.error_description !== 'INVALID_CREDENTIALS_PASSWORD') {
                     this._setRateLimitHandler();
                     let err = new RateLimitError('SSAPI login failed, request blocked (rate limit?).');
                     throw err;
                 } else {
                     this.logout(storeCredentials);
-                    throw err.response;
+                    throw errData.error_description == 'INVALID_CREDENTIALS_PASSWORD' ? errData : err.response;
                 }
             } else {
                 this._setRateLimitHandler();
@@ -292,11 +292,11 @@ class SimpliSafe3 {
     }
 
     isLoggedIn() {
-        return this.refreshToken !== null || (this.token !== null && Date.now() < this.expiry);
+        return this.rToken !== null || (this.token !== null && Date.now() < this.expiry);
     }
 
     async refreshToken() {
-        if (!this.isLoggedIn() || !this.refreshToken) {
+        if (!this.isLoggedIn() || !this.rToken) {
             let err = new Error('User is not logged in');
             throw err;
         }
@@ -347,7 +347,7 @@ class SimpliSafe3 {
             throw err;
         }
 
-        if (!this.isLoggedIn) {
+        if (!this.isLoggedIn()) {
             if (this.isBlocked) {
                 // User is not logged in due to the last login attempt being blocked.
                 // It's now time to try logging in again.
