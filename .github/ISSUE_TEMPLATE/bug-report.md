@@ -20,13 +20,13 @@ assignees: ''
 **Expected behavior:**
 <!-- A clear and concise description of what you expected to happen. -->
 
-[**Logs:**]()
+**Logs:**
 <!-- Important: please enable the debug option for the plugin *and* Homebridge debug mode (https://github.com/homebridge/homebridge/wiki/Basic-Troubleshooting#debug-mode) before generating the log. -->
 <!-- Paste any relevant log output into a gist, hastebin or paste below. -->
 <!-- If using hastebin or other text sharing website please make the lifespan long. -->
 <!-- Paste the link between the two () above. -->
 <!-- Remove any sensitive information, passwords, etc. -->
-
+[Link to logs]()
 ```
 Paste Homebridge Logs here
 ```
