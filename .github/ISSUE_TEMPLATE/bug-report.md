@@ -11,16 +11,16 @@ assignees: ''
 
 <!-- Help with custom builds of ffmpeg is not within the scope of this plugin. -->
 
-**Describe The Bug:**
+### Describe The Bug:
 <!-- A clear and concise description of what the bug is. -->
 
-**To Reproduce:**
+### To Reproduce:
 <!-- Steps to reproduce the behavior. -->
 
-**Expected behavior:**
+### Expected behavior:
 <!-- A clear and concise description of what you expected to happen. -->
 
-**Logs:**
+### Logs:
 <!-- Important: please enable the debug option for the plugin *and* Homebridge debug mode (https://github.com/homebridge/homebridge/wiki/Basic-Troubleshooting#debug-mode) before generating the log. -->
 <!-- Paste any relevant log output into a gist, hastebin or paste below. -->
 <!-- If using hastebin or other text sharing website please make the lifespan long. -->
@@ -31,7 +31,7 @@ assignees: ''
 Paste Homebridge Logs here
 ```
 
-**Homebridge Config:**
+### Homebridge Config:
 <!-- Paste relevant output between the two ``` lines below -->
 <!-- Remove any sensitive information, passwords, etc. -->
 
@@ -39,10 +39,10 @@ Paste Homebridge Logs here
 Paste the relevant section of your homebridge config.json here
 ```
 
-**Screenshots:**
+### Screenshots:
 <!-- If applicable, add screenshots to help explain your problem. -->
 
-**Environment:**
+### Environment:
 
 * **Plugin version**: <!-- npm list -g homebridge-simplisafe3 -->
 * **Node.js Version**: <!-- node -v -->
