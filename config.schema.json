@@ -132,7 +132,7 @@
       "title": "Advanced Options",
       "items": [{
           "key": "debug",
-          "description": "To see all messages the Homebridge debug (<code>-D</code>) option must also be enabled."
+          "description": "To see all messages the Homebridge debug (<code>-D</code>) option must also be enabled. <small>See <a target='_blank' href='https://github.com/homebridge/homebridge-raspbian-image/wiki/How-To-Enable-Debug-or-Insecure-Mode'>https://github.com/homebridge/homebridge-raspbian-image/wiki/How-To-Enable-Debug-or-Insecure-Mode</a></small>"
         },
         {
           "key": "subscriptionId",
