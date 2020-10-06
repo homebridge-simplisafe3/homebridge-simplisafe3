@@ -69,7 +69,7 @@ These enable camera support. See [Camera Support](#camera-support) for more deta
 #### `debug`
 Type: boolean (default `false`)
 
-Switch this on to get more details about your sensors and plugin behavior in your Homebridge logs. This can be useful if you are having trouble or need to report an issue. To see all messages the Homebridge debug (`-D`) option must also be enabled.
+Switch this on to get more details about your sensors and plugin behavior in your Homebridge logs. This can be useful if you are having trouble or need to report an issue. To see all messages the [Homebridge debug (`-D`) option must also be enabled](https://github.com/homebridge/homebridge-raspbian-image/wiki/How-To-Enable-Debug-or-Insecure-Mode).
 
 #### `subscriptionId`
 Type: string
