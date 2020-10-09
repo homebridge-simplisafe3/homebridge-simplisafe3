@@ -55,13 +55,12 @@ class SS3Platform {
             })
             .catch(err => {
                 if (err instanceof RateLimitError) {
-                    this.log.error('Login failed due to rate limiting or connectivity, trying again later');
+                    this.log.error('Login or refresh failed due to rate limiting or connectivity, trying again later');
                     setTimeout(async () => {
                         await this.retryBlockedAccessories();
                     }, this.simplisafe.nextAttempt - Date.now());
                 } else {
-                    this.log.error('SimpliSafe login failed');
-                    this.log.error(err);
+                    this.log.error('SimpliSafe login failed with error:', err);
                 }
             });
 
@@ -77,8 +76,7 @@ class SS3Platform {
                     else return this.refreshAccessories();
                 })
                 .catch(err => {
-                    this.log.error('Initial accessories refresh failed');
-                    this.log.error(err);
+                    this.log.error('Initial accessories refresh failed with error:', err);
                 });
         });
     }
@@ -436,11 +434,11 @@ class SS3Platform {
             }
         } catch (err) {
             if (err instanceof RateLimitError) {
-                this.log.error('Accessory refresh failed due to rate limiting or connectivity');
+                this.log.error('Accessory refresh failed due to rate limiting or connectivity:', err);
             } else {
-                this.log.error('An error occurred while refreshing accessories');
-                this.log.error(err);
+                this.log.error('An error occurred while refreshing accessories:', err);
             }
+            throw err;
         }
 
     }
@@ -472,8 +470,7 @@ class SS3Platform {
                     await this.retryBlockedAccessories();
                 }, this.simplisafe.nextAttempt - Date.now());
             } else {
-                this.log.error('An error occurred while logging in again');
-                this.log.error(err);
+                this.log.error('An error occurred while logging in again:', err);
             }
         }
     }
