@@ -218,6 +218,7 @@ class SimpliSafe3 {
 
                 } else if (errCode == 403 && errData.error_description !== 'INVALID_CREDENTIALS_PASSWORD') {
                     this._setRateLimitHandler();
+                    if (this.debug) this.log.error('SSAPI login received a response error with code 403:', err);
                     let err = new RateLimitError('SSAPI login failed, request blocked (rate limit?).');
                     throw err;
                 } else {
@@ -398,6 +399,7 @@ class SimpliSafe3 {
                     });
             } else if (statusCode == 403) {
                 this.log.error('SSAPI request failed, request blocked (rate limit?).');
+                if (this.debug) this.log.error('SSAPI request received a response error with code 403:', err);
                 this._setRateLimitHandler();
                 throw new RateLimitError(err.response.data);
             } else {
