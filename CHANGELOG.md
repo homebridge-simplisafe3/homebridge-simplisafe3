@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.9 (2020-10-08)
+- Improved rate-limiting recovery
+- Increased verbosity of error output to help with debugging
+
 ## 1.6.8 (2020-09-21)
 - Minor improvements to error handling with incorrect login details
 
