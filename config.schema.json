@@ -2,6 +2,7 @@
   "pluginAlias": "homebridge-simplisafe3.SimpliSafe 3",
   "pluginType": "platform",
   "singular": true,
+  "headerDisplay": "*Please note this plugin requires an active SimpliSafe 'interactive' monitoring plan.*",
   "schema": {
     "type": "object",
     "properties": {
