@@ -14,12 +14,10 @@ A complete (unofficial) [Homebridge](https://github.com/homebridge/homebridge) p
 </span>
 
 ## Requirements
-You must sign up to a SimpliSafe monitoring plan that enables you to use the mobile app for this plugin to work. The monitoring plan enables API access to SimpliSafe.
-
-**NOTE:** *As of version 1.5.0 of this plugin, Homebridge v1.0.0 or greater is required. Because of [significant changes to Homebridge](https://github.com/homebridge/homebridge/releases/tag/1.0.0) the plugin may not work properly with older versions of Homebridge. The last version of this plugin to officially support Homebridge 0.4.53 was version 1.4.12 which can still be installed using a command like `sudo npm install -g --unsafe-perm homebridge-simplisafe3@1.4.12`.*
-
+- **You must be signed up for a SimpliSafe monitoring plan that enables you to use the mobile app for this plugin to work.** The monitoring plan enables API access to SimpliSafe.
+- As of version 1.5.0 of this plugin, Homebridge v1.0.0 or greater is required. Because of [significant changes to Homebridge](https://github.com/homebridge/homebridge/releases/tag/1.0.0) the plugin may not work properly with older versions of Homebridge. The last version of this plugin to officially support Homebridge 0.4.53 was version 1.4.12 which can still be installed using a command like `sudo npm install -g --unsafe-perm homebridge-simplisafe3@1.4.12`.
 - Works with native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge)
-- Compatible with the official [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x) (recommended for easiest usage)
+- Compatible with the official [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x) which is recommended for easiest usage
 
 ## Features
 Supercharge your SimpliSafe system and integrate with HomeKit the right way!
