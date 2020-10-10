@@ -435,6 +435,7 @@ class SS3Platform {
         } catch (err) {
             if (err instanceof RateLimitError) {
                 this.log.error('Accessory refresh failed due to rate limiting or connectivity:', err);
+                this.log.info('Note: this error can also occur if you are not signed up for a SimpliSafe monitoring plan.');
             } else {
                 this.log.error('An error occurred while refreshing accessories:', err);
             }
