@@ -20,16 +20,13 @@ assignees: ''
 ### Expected behavior:
 <!-- A clear and concise description of what you expected to happen. -->
 
-### Logs:
-<!-- Important: please enable the debug option for the plugin *and* Homebridge debug mode (https://github.com/homebridge/homebridge/wiki/Basic-Troubleshooting#debug-mode) before generating the log. -->
-<!-- Paste any relevant log output into a gist, hastebin or paste below. -->
-<!-- If using hastebin or other text sharing website please make the lifespan long. -->
-<!-- Paste the link between the two () above. -->
-<!-- Remove any sensitive information, passwords, etc. -->
-[Link to logs]()
-```
-Paste Homebridge Logs here
-```
+### Environment:
+
+* **Plugin version**: <!-- npm list -g homebridge-simplisafe3 -->
+* **Node.js Version**: <!-- node -v -->
+* **NPM Version**: <!-- npm -v -->
+* **Homebridge Version**: <!-- homebridge -V -->
+* **Operating System**: <!-- Raspbian / Ubuntu / Debian / Windows / macOS / Docker -->
 
 ### Homebridge Config:
 <!-- Paste relevant output between the two ``` lines below -->
@@ -40,14 +37,17 @@ Paste the relevant section of your homebridge config.json here
 ```
 
 ### Screenshots:
-<!-- If applicable, add screenshots to help explain your problem. -->
+<!-- If applicable, add screenshots to help explain your problem. If not, enter "not applicable". -->
 
-### Environment:
-
-* **Plugin version**: <!-- npm list -g homebridge-simplisafe3 -->
-* **Node.js Version**: <!-- node -v -->
-* **NPM Version**: <!-- npm -v -->
-* **Homebridge Version**: <!-- homebridge -V -->
-* **Operating System**: <!-- Raspbian / Ubuntu / Debian / Windows / macOS / Docker -->
+### Logs:
+<!-- Important: please enable the debug option for the plugin *and* Homebridge debug mode (https://github.com/homebridge/homebridge/wiki/Basic-Troubleshooting#debug-mode) before generating the log. -->
+<!-- Paste any relevant log output into a gist, hastebin or paste below. -->
+<!-- If using hastebin or other text sharing website please make the lifespan long. -->
+<!-- Paste the link between the two () above. -->
+<!-- Remove any sensitive information, passwords, etc. -->
+[Link to logs]()
+```
+Paste Homebridge Logs here
+```
 
 <!-- Click the "Preview" tab before you submit to ensure the formatting is correct. -->
