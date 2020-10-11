@@ -148,6 +148,7 @@ To remove a default argument, define it with `false` as its value, e.g. `"-tune 
 
 ## Known Issues
 - If you are running Homebridge [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge) camera streaming is limited to 720px wide.
+- Due to transcoding requirements, when using a Raspberry Pi 3b video feeds will disconnect after ~20 seconds. RPi 4 or newer is recommended. See [issue #147](https://github.com/nzapponi/homebridge-simplisafe3/issues/147)
 
 ## Help & Support
 Any feedback is welcomed. For bugs, feature requests, etc. you may open an issue here.
