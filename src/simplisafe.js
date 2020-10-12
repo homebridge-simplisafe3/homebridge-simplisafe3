@@ -237,9 +237,10 @@ class SimpliSafe3 {
         const timeLimit = Date.now() + mfaTimeout;
 
         const intervalChecker = new Promise((resolve, reject) => {
-            setInterval(async () => {
+            const mfaInterval = setInterval(async () => {
 
                 if (Date.now() > timeLimit) {
+                    clearInterval(mfaInterval);
                     reject();
                 }
 
@@ -252,6 +253,7 @@ class SimpliSafe3 {
 
                 let data = response.data;
                 if (data.access_token) {
+                    clearInterval(mfaInterval);
                     resolve(data);
                 }
 
