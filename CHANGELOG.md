@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.10 (2020-10-12)
+- Fixes an issue where initially setting up the plugin could cause the user to become blocked by SimpliSafe servers (issue #145)
+
 ## 1.6.9 (2020-10-08)
 - Improved rate-limiting recovery
 - Increased verbosity of error output to help with debugging
