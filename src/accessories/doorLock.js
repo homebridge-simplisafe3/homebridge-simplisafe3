@@ -237,8 +237,10 @@ class SS3DoorLock {
         try {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
-            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, homekitState);
+            let homekitCurrentState = this.CURRENT_SS3_TO_HOMEKIT[state];
+            let homekitTargetState = this.TARGET_SS3_TO_HOMEKIT[state];
+            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, homekitCurrentState);
+            this.service.updateCharacteristic(this.Characteristic.LockTargetState, homekitTargetState);
         } catch (err) {
             this.log.error('An error occurred while refreshing state');
             this.log.error(err);
