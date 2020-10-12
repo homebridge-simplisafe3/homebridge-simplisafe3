@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.11 (2020-10-12)
+- Fixes an issue where locks would initially show as "Unlocking..." (issue #151)
+
 ## 1.6.10 (2020-10-12)
 - Fixes an issue where initially setting up the plugin could cause the user to become blocked by SimpliSafe servers (issue #145)
 
