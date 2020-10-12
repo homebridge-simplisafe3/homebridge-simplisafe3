@@ -428,8 +428,7 @@ class SS3SimpliCam {
                     }
 
                     if (request.audio && request.audio.codec == 'OPUS') {
-                        // Request is for OPUS codec, serve that & warn
-                        this.log.warn(`Camera '${this.name}' is setup with an out-dated audio codec. For improved performance you can try removing and re-adding it to HomeKit.`);
+                        // Request is for OPUS codec, serve that
                         let iArg = sourceArgs.find(arg => arg[0] == '-i');
                         iArg[1] = iArg[1].replace('&audioEncoding=AAC', '');
                         let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
