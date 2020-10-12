@@ -74,7 +74,7 @@ Type: string
 
 Add this parameter in case you have multiple protected locations or accounts with SimpliSafe. The `subscriptionId` can be found at the bottom of your base unit.
 
-### `sensorRefresh`
+#### `sensorRefresh`
 Type: integer (default `15` seconds)
 
 The frequency with which the plugin will poll sensors (e.g. Entry sensors), since entry sensor changes (opening/closing) are not pushed from SimpliSafe. Warning: setting this value too low will likely lead to your IP address being (temporarily) blocked by SimpliSafe.
