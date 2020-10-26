@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nzapponi/homebridge-simplisafe3.git"
+    "url": "git+https://github.com/homebridge-simplisafe3/homebridge-simplisafe3.git"
   },
   "keywords": [
     "homebridge-plugin",
@@ -28,9 +28,9 @@
   "author": "Niccolò Zapponi",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/nzapponi/homebridge-simplisafe3/issues"
+    "url": "https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/issues"
   },
-  "homepage": "https://github.com/nzapponi/homebridge-simplisafe3#readme",
+  "homepage": "https://github.com/homebridge-simplisafe3/homebridge-simplisafe3#readme",
   "devDependencies": {
     "@babel/cli": "^7.10.1",
     "@babel/core": "^7.10.2",
