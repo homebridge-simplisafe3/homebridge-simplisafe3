@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.12 (2020-11-17)
+- Trial fix to improve reliability of HomeKit notifications (issue #158)
+
 ## 1.6.11 (2020-10-12)
 - Fixes an issue where locks would initially show as "Unlocking..." (issue #151)
 
