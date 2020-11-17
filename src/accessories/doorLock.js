@@ -193,12 +193,12 @@ class SS3DoorLock {
                         if (this.debug) this.log.debug(`${this.name} lock received event: ${event}`);
                         switch (event) {
                             case EVENT_TYPES.DOORLOCK_UNLOCKED:
-                                this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
                                 this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.UNSECURED);
+                                this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
                                 break;
                             case EVENT_TYPES.DOORLOCK_LOCKED:
-                                this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
                                 this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.SECURED);
+                                this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
                                 break;
                             case EVENT_TYPES.DOORLOCK_ERROR:
                                 try {
