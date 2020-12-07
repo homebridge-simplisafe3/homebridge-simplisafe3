@@ -28,6 +28,7 @@ class SS3Platform {
         this.debug = config.debug || false;
         this.persistAccessories = config.persistAccessories !== undefined ? config.persistAccessories : true;
         this.resetId = config.resetSimpliSafeId || false;
+        this.excludedDevices = config.excludedDevices || [];
         this.devices = [];
         this.accessories = [];
         this.api = api;
@@ -142,7 +143,7 @@ class SS3Platform {
         if (this.debug) this.log.debug(`Refreshing accessories (add and remove: ${addAndRemove})`);
         try {
             let subscription = await this.simplisafe.getSubscription();
-
+            if (subscription.location.system.serial == null) throw new Error('System serial not found.');
             let uuid = UUIDGen.generate(subscription.location.system.serial);
             let alarm = this.accessories.find(acc => acc.UUID === uuid);
 
@@ -174,6 +175,11 @@ class SS3Platform {
                 if (this.debug) {
                     this.log.debug(`Discovered sensor '${sensor.name}' from SimpliSafe.`);
                     this.log.debug(sensor);
+                }
+
+                if (sensor.serial && this.excludedDevices.includes(sensor.serial)) {
+                  if (this.debug) this.log.debug(`Excluding sensor with serial '${sensor.serial}'`);
+                  continue;
                 }
 
                 if (sensor.type == SENSOR_TYPES.KEYPAD ||

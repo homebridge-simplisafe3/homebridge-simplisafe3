@@ -100,6 +100,13 @@
             }
           }
         }
+      },
+      "excludedDevices": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "description": "Serial Number"
+        }
       }
     }
   },
@@ -143,6 +150,21 @@
         {
           "key": "persistAccessories",
           "description": "By default, the plugin won't remove old accessories from the Home app. This is to avoid caching issues causing you to lose all your scenes & automations configurations. If you do want to remove old accessories, set this to false."
+        },
+        {
+          "key": "excludedDevices",
+          "title": "Excluded Devices",
+          "description": "A list of devices to exclude from HomeKit. Users device serial number which can be found in the SS app.",
+          "add": "Add Another Device",
+          "type": "array",
+          "items": [
+            {
+              "type": "fieldset",
+              "items": [
+                "excludedDevices[]"
+              ]
+            }
+          ]
         }
       ]
     }

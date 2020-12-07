@@ -89,6 +89,11 @@ Type: boolean (default `false`)
 
 Upon first start, the plugin generates an ID which it uses to identify itself with SimpliSafe. If you wish to reset it, set this to `true`.
 
+#### `excludedDevices`
+Type: array
+
+Accepts a list of SimpliSafe device serial numbers (which can be found in the SS app) and excludes these sensors from HomeKit.
+
 ### Supported Devices
 
 Device             | Supported          | Notes
