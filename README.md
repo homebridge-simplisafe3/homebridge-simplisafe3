@@ -80,9 +80,9 @@ Type: integer (default `15` seconds)
 The frequency with which the plugin will poll sensors (e.g. Entry sensors), since entry sensor changes (opening/closing) are not pushed from SimpliSafe. Warning: setting this value too low will likely lead to your IP address being (temporarily) blocked by SimpliSafe.
 
 #### `persistAccessories`
-Type: boolean (default `false`)
+Type: boolean (default `true`)
 
-By default, the plugin will remove old accessories that no longer exist in SimpliSafe from the Home app. If you are running into issues with your accessories randomly disappearing from Home, and you don't want to remove old accessories, set this to `true`.
+By default, the plugin will persist accessories to avoid losing automations etc. Set this to `false` to remove old accessories that no longer exist in SimpliSafe from HomeKit.
 
 #### `resetSimpliSafeId`
 Type: boolean (default `false`)

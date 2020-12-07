@@ -51,7 +51,7 @@
       "persistAccessories": {
         "title": " Persist Accessories",
         "type": "boolean",
-        "default": false
+        "default": true
       },
       "resetSimpliSafeId": {
         "title": " Reset Generated SimpliSafe ID",

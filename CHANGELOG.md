@@ -3,6 +3,7 @@ All notable changes are documented here.
 
 ## 1.6.13 (2020-12-06)
 - Allow for excluding devices from HomeKit (issue #161 and #79)
+- Made persistAccessories default to true
 
 ## 1.6.12 (2020-11-17)
 - Improves reliability of HomeKit notifications (issue #158)
