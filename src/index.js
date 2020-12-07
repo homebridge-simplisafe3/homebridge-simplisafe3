@@ -178,7 +178,7 @@ class SS3Platform {
                 }
 
                 if (sensor.serial && this.excludedDevices.includes(sensor.serial)) {
-                  if (this.debug) this.log.debug(`Excluding sensor with serial '${sensor.serial}'`);
+                  this.log.info(`Excluding sensor with serial '${sensor.serial}'`);
                   continue;
                 }
 
