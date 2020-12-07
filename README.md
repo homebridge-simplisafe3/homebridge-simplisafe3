@@ -92,7 +92,7 @@ Upon first start, the plugin generates an ID which it uses to identify itself wi
 #### `excludedDevices`
 Type: array
 
-Accepts a list of SimpliSafe device serial numbers (which can be found in the SS app) and excludes these sensors from HomeKit.
+Accepts a list of SimpliSafe device serial numbers (which can be found in the SS app) and excludes these devices from HomeKit.
 
 ### Supported Devices
 
