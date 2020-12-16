@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.14 (2020-12-15)
+- Clearer language for error logging (issue #163)
+- Fixes an authentication failure edge case
+
 ## 1.6.13 (2020-12-06)
 - Allow for excluding devices from HomeKit (issue #161 and #79)
 - Made persistAccessories default to true
