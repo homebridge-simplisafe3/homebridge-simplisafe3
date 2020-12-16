@@ -790,6 +790,9 @@ class SimpliSafe3 {
                 });
 
                 this.socket.on('error', (err) => {
+                    if (err.message == 'Not authorized') { //edge case
+                      this.isBlocked = true;
+                    }
                     this.log.error(`SSAPI socket error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
                 });
 
@@ -868,7 +871,7 @@ class SimpliSafe3 {
                 } catch (err) {
                     if (!(err instanceof RateLimitError)) { // never log rate limit errors as they are handled elsewhere
                         let expected = [409, 504].indexOf(parseInt(err.statusCode)) !== -1; // SettingsInProgress and GatewayTimeout errors are "expected"
-                        if (!expected || (expected && this.debug)) this.log.error(`Sensor refresh received ${expected ? '' : 'un-'}expected SSAPI ${err.type ? err.type + ' error' : 'error'}.`);
+                        if (!expected || (expected && this.debug)) this.log.error(`Sensor refresh received an error${err.statusCode ? ' code ' + err.statusCode : ''} from the SimpliSafe API: "${err.type ?? 'Unknown Error Type'}": ${err.message ?? 'No message provided'}`);
                         if (this.debug) this.log.error(err);
                     }
                 }
