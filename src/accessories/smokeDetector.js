@@ -87,19 +87,19 @@ class SS3SmokeDetector {
         }
 
         if (!forceRefresh) {
-            let state = null;
+            let characteristic = null;
 
             if (parameter == 'triggered') {
-                state = this.service.getCharacteristic(this.Characteristic.SmokeDetected);
+                characteristic = this.service.getCharacteristic(this.Characteristic.SmokeDetected);
             } else if (parameter == 'tamper') {
-                state = this.service.getCharacteristic(this.Characteristic.StatusTampered);
+                characteristic = this.service.getCharacteristic(this.Characteristic.StatusTampered);
             } else if (parameter == 'malfunction') {
-                state = this.service.getCharacteristic(this.Characteristic.StatusFault);
+                characteristic = this.service.getCharacteristic(this.Characteristic.StatusFault);
             } else {
                 throw new Error('Requested data type not understood');
             }
 
-            return callback(null, state);
+            return callback(null, characteristic.value);
         }
 
         try {

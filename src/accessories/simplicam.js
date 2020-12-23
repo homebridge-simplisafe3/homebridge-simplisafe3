@@ -120,14 +120,13 @@ class SS3SimpliCam {
         this.accessory.configureController(this.controller);
     }
 
-    getState(callback, service, characteristic) {
+    getState(callback, service, characteristicType) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
             callback(new Error('Request blocked (rate limited)'));
             return;
         }
-
-        let state = service.getCharacteristic(characteristic);
-        callback(null, state);
+        let characteristic = service.getCharacteristic(characteristicType);
+        callback(null, characteristic.value);
     }
 
     async updateReachability() {

@@ -83,8 +83,8 @@ class SS3FreezeSensor {
         }
 
         if (!forceRefresh) {
-            let state = this.service.getCharacteristic(this.Characteristic.CurrentTemperature);
-            return callback(null, state);
+            let characteristic = this.service.getCharacteristic(this.Characteristic.CurrentTemperature);
+            return callback(null, characteristic.value);
         }
 
         try {

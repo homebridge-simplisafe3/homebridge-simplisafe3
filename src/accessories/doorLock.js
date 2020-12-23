@@ -101,8 +101,8 @@ class SS3DoorLock {
         }
 
         if (!forceRefresh) {
-            let state = this.service.getCharacteristic(this.Characteristic.LockCurrentState);
-            return callback(null, state);
+            let characteristic = this.service.getCharacteristic(this.Characteristic.LockCurrentState);
+            return callback(null, characteristic.value);
         }
 
         try {
@@ -132,8 +132,8 @@ class SS3DoorLock {
         }
 
         if (!forceRefresh) {
-            let state = this.service.getCharacteristic(this.Characteristic.LockTargetState);
-            return callback(null, state);
+            let characteristic = this.service.getCharacteristic(this.Characteristic.LockTargetState);
+            return callback(null, characteristic.value);
         }
 
         try {

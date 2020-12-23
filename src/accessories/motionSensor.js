@@ -84,8 +84,8 @@ class SS3MotionSensor {
             return callback(new Error('Request blocked (rate limited)'));
         }
 
-        let state = this.service.getCharacteristic(this.Characteristic.MotionDetected);
-        return callback(null, state);
+        let characteristic = this.service.getCharacteristic(this.Characteristic.MotionDetected);
+        return callback(null, characteristic.value);
     }
 
     async getBatteryStatus(callback) {
