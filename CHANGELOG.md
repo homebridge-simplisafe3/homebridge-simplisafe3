@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.15 (2020-12-22)
+- Fixes a compatibility issue with upcoming Homebridge releases (issue #167)
+
 ## 1.6.14 (2020-12-15)
 - Clearer language for error logging (issue #163)
 - Fixes an authentication failure edge case
