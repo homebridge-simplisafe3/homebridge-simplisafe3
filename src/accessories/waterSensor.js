@@ -81,8 +81,8 @@ class SS3WaterSensor {
         }
 
         if (!forceRefresh) {
-            let state = this.service.getCharacteristic(this.Characteristic.LeakDetected);
-            return callback(null, state);
+            let characteristic = this.service.getCharacteristic(this.Characteristic.LeakDetected);
+            return callback(null, characteristic.value);
         }
 
         try {

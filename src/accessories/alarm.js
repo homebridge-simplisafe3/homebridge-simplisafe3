@@ -107,8 +107,8 @@ class SS3Alarm {
         }
 
         if (!forceRefresh) {
-            let state = this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState);
-            return callback(null, state);
+            let characteristic = this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState);
+            return callback(null, characteristic.value);
         }
 
         try {
@@ -127,8 +127,8 @@ class SS3Alarm {
         }
 
         if (!forceRefresh) {
-            let state = this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState);
-            return callback(null, state);
+            let characteristic = this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState);
+            return callback(null, characteristic.value);
         }
 
         try {
