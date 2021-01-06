@@ -1,6 +1,6 @@
 {
   "name": "homebridge-simplisafe3",
-  "version": "1.6.15",
+  "version": "1.6.16",
   "description": "A complete Homebridge plugin for the SimpliSafe 3 security system",
   "main": "index.js",
   "engines": {
