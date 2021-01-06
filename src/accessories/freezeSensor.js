@@ -103,20 +103,9 @@ class SS3FreezeSensor {
     }
 
     async getBatteryStatus(callback) {
-        try {
-            let sensor = await this.getSensorInformation();
-
-            if (!sensor.flags) {
-                throw new Error('Sensor response not understood');
-            }
-
-            let batteryLow = sensor.flags.lowBattery;
-            let homekitState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
-            callback(null, homekitState);
-
-        } catch (err) {
-            callback(new Error(`An error occurred while getting sensor battery level: ${err}`));
-        }
+        // No need to ping API for this and HomeKit is not very patient when waiting for it
+        let characteristic = this.service.getCharacteristic(this.Characteristic.StatusLowBattery);
+        return callback(null, characteristic.value);
     }
 
     startListening() {
