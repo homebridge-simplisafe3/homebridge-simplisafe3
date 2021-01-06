@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.16 (2021-01-05)
+- Fixes a reported issue with camera snapshots (issue #172)
+- Updates one of the plugins dependencies which had a critical security flaw (PR #176)
+
 ## 1.6.15 (2020-12-22)
 - Fixes a compatibility issue with upcoming Homebridge releases (issue #167)
 
