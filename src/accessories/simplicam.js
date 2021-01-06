@@ -260,15 +260,14 @@ class SS3SimpliCam {
             },
             rejectUnauthorized: false // OK because we are using IP and just polled DNS
         };
-        jpegExtract(url, (err, img) => {
-            if (!err) {
-                if (this.debug) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(img.length/1000)}kB image`);
-                callback(undefined, img);
-            } else {
-                this.log.error('An error occurred while making snapshot request:', err.statusCode ? err.statusCode : '', err.statusMessage ? err.statusMessage : '');
-                if (this.debug) this.log.error(err);
-                callback(err);
-            }
+        
+        jpegExtract(url).then(img => {
+            if (this.debug) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(img.length/1000)}kB image`);
+            callback(undefined, img);
+        }).catch(err => {
+            this.log.error('An error occurred while making snapshot request:', err.statusCode ? err.statusCode : '', err.statusMessage ? err.statusMessage : '');
+            if (this.debug) this.log.error(err);
+            callback(err);
         });
     }
 
