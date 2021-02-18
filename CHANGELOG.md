@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.17 (2021-02-18)
+- Fixes some Homebridge v1.3.x characteristic warnings (issue #187)
+
 ## 1.6.16 (2021-01-05)
 - Fixes a reported issue with camera snapshots (issue #172)
 - Updates one of the plugins dependencies which had a critical security flaw (PR #176)
