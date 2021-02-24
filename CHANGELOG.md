@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.18 (2021-02-24)
+- Fixes an issue that caused incompatibility with node version 15.3.0 (issue #189). Thanks to @lmcquade
+
 ## 1.6.17 (2021-02-18)
 - Fixes some Homebridge v1.3.x characteristic warnings (issue #187)
 
