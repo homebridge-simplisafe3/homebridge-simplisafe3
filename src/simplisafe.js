@@ -764,7 +764,8 @@ class SimpliSafe3 {
                     ns: `/v1/user/${userId}`,
                     accessToken: this.token
                 },
-                transports: ['websocket', 'polling']
+                transports: ['websocket', 'polling'],
+                pfx: []
             });
 
             // for debugging, we only want one of these listeners
