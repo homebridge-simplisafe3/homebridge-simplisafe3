@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.19 (2021-02-26)
+- Less noisy default logging of SimpliSafe API errors (issue #192)
+
 ## 1.6.18 (2021-02-24)
 - Fixes an issue that caused incompatibility with node version 15.3.0 (issue #189). Thanks to @lmcquade
 
