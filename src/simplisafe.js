@@ -18,6 +18,7 @@ const mfaTimeout = 5 * 60 * 1000; // ms
 const rateLimitInitialInterval = 60000; // ms
 const rateLimitMaxInterval = 2 * 60 * 60 * 1000; // ms
 const sensorRefreshLockoutDuration = 15000; // ms
+const errorSuppressionDuration = 5 * 60 * 1000; // ms
 
 const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
@@ -118,6 +119,8 @@ class SimpliSafe3 {
     sensorRefreshLockoutTimeout;
     sensorRefreshLockoutEnabled = false;
     sensorSubscriptions = [];
+    errorSupperessionTimeout;
+    nSuppressedErrors;
     ssId;
     storagePath;
 
@@ -871,9 +874,18 @@ class SimpliSafe3 {
                     }
                 } catch (err) {
                     if (!(err instanceof RateLimitError)) { // never log rate limit errors as they are handled elsewhere
-                        let expected = [409, 504].indexOf(parseInt(err.statusCode)) !== -1; // SettingsInProgress and GatewayTimeout errors are "expected"
-                        if (!expected || (expected && this.debug)) this.log.error(`Sensor refresh received an error${err.statusCode ? ' code ' + err.statusCode : ''} from the SimpliSafe API: "${err.type ?? 'Unknown Error Type'}": ${err.message ?? 'No message provided'}`);
-                        if (this.debug) this.log.error(err);
+                      if (this.debug) {
+                        this.log.error(`Sensor refresh received an error from the SimpliSafe API:`, err);
+                      } else if (!this.errorSupperessionTimeout) {
+                        this.nSuppressedErrors = 1;
+                        this.errorSupperessionTimeout = setTimeout(() => {
+                          if (!this.debug && this.nSuppressedErrors > 0) this.log.warn(`${this.nSuppressedErrors} error${this.nSuppressedErrors > 1 ? 's were' : ' was'} received from the SimpliSafe API while refereshing sensors in the last ${errorSuppressionDuration / 60000} minutes. Enable debug logging for detailed output.`);
+                          clearTimeout(this.errorSupperessionTimeout);
+                          this.errorSupperessionTimeout = undefined;
+                        }, errorSuppressionDuration);
+                      } else {
+                        this.nSuppressedErrors++;
+                      }
                     }
                 }
 
