@@ -874,21 +874,18 @@ class SimpliSafe3 {
                     }
                 } catch (err) {
                     if (!(err instanceof RateLimitError)) { // never log rate limit errors as they are handled elsewhere
-                        if (this.debug || !this.errorSupperessionTimeout) {
-                          let expected = [409, 502, 504].indexOf(parseInt(err.statusCode)) !== -1; // SettingsInProgress and GatewayTimeout errors are "expected"
-                          expected = expected || err.toString().indexOf('502 Bad Gateway') !== -1; // 502 errors arent passed in statusCode for some reason
-                          if (!expected || (expected && this.debug)) this.log.error(`Sensor refresh received an error${err.statusCode ? ' code ' + err.statusCode : ''} from the SimpliSafe API: "${err.type ?? 'Unknown Error Type'}": ${err.message ?? 'No message provided'}`);
-                          if (this.debug) this.log.error(err);
-
-                          this.nSuppressedErrors = 1;
-                          this.errorSupperessionTimeout = setTimeout(() => {
-                            if (!this.debug && this.nSuppressedErrors > 0) this.log.warn(`${this.nSuppressedErrors} error${this.nSuppressedErrors > 1 ? 's were' : ' was'} received from the SimpliSafe API while refereshing sensors in the last ${errorSuppressionDuration / 60000} minutes. Enable debug logging for detailed output.`);
-                            clearTimeout(this.errorSupperessionTimeout);
-                            this.errorSupperessionTimeout = undefined;
-                          }, errorSuppressionDuration);
-                        } else {
-                          this.nSuppressedErrors++;
-                        }
+                      if (this.debug) {
+                        this.log.error(`Sensor refresh received an error from the SimpliSafe API:`, err);
+                      } else if (!this.errorSupperessionTimeout) {
+                        this.nSuppressedErrors = 1;
+                        this.errorSupperessionTimeout = setTimeout(() => {
+                          if (!this.debug && this.nSuppressedErrors > 0) this.log.warn(`${this.nSuppressedErrors} error${this.nSuppressedErrors > 1 ? 's were' : ' was'} received from the SimpliSafe API while refereshing sensors in the last ${errorSuppressionDuration / 60000} minutes. Enable debug logging for detailed output.`);
+                          clearTimeout(this.errorSupperessionTimeout);
+                          this.errorSupperessionTimeout = undefined;
+                        }, errorSuppressionDuration);
+                      } else {
+                        this.nSuppressedErrors++;
+                      }
                     }
                 }
 
