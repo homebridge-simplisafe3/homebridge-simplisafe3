@@ -326,7 +326,7 @@ class SS3Platform {
                     let sensorName = sensor.name || `Motion Sensor ${sensor.serial}`;
                     // Check if secret alerts are enabled
                     if (sensor.setting.off == 0 || sensor.setting.home == 0 || sensor.setting.away == 0) {
-                        this.log.warn(`Motion Sensor '${sensorName}' requires secret alerts to be enabled in SimpliSafe before you can add it to Homebridge.`);
+                        if (!addAndRemove) this.log.warn(`Motion Sensor '${sensorName}' requires secret alerts to be enabled in SimpliSafe before you can add it to Homebridge.`);
                         continue;
                     }
                     let uuid = UUIDGen.generate(sensor.serial);
