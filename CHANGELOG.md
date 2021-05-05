@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.6.20 (2021-05-05)
+- Addresses a critical security flaw in one of the plugin's dependencies
+
 ## 1.6.19 (2021-02-26)
 - Less noisy default logging of SimpliSafe API errors (issue #192)
 
