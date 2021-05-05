@@ -48,7 +48,7 @@
     "ip": "^1.1.5",
     "is-docker": "^2.0.0",
     "jpeg-extract": "^3.0.1",
-    "socket.io-client": "^2.3.0"
+    "socket.io-client": "^4.0.1"
   },
   "eslintConfig": {
     "env": {
