@@ -1,8 +1,8 @@
 # Change Log
 All notable changes are documented here.
 
-## 1.6.21 (2021-05-05)
-- Reverts changes from v1.6.20 which caused connectivity problems while a permanent solution can be explored.
+## 1.6.22 (2021-05-10)
+- Security release. See #214
 
 ## 1.6.19 (2021-02-26)
 - Less noisy default logging of SimpliSafe API errors (issue #192)
