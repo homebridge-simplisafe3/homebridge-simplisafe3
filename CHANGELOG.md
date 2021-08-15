@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.7.0 (2021-08-15)
+- Adds support for self-monitoring plans (issue #229). Thanks to @ASpehler
+- Security fixes. See #216, #221
+
 ## 1.6.22 (2021-05-10)
 - Security release. See #214
 
