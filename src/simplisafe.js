@@ -444,7 +444,8 @@ class SimpliSafe3 {
             url: `/users/${userId}/subscriptions?activeOnly=false`
         });
 
-        let subscriptions = data.subscriptions.filter(s => s.sStatus === 10 || s.sStatus === 20);
+        // sStatus 7: Self-Monitoring with Camera Recording (5 cameras)
+        let subscriptions = data.subscriptions.filter(s => [7, 10, 20].includes(s.sStatus));
 
         if (this.accountNumber) {
             subscriptions = subscriptions.filter(s => s.location.account === this.accountNumber);
