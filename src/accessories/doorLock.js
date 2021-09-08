@@ -18,13 +18,15 @@ class SS3DoorLock {
         this.uuid = UUIDGen.generate(id);
 
         this.CURRENT_SS3_TO_HOMEKIT = {
+            0: Characteristic.LockCurrentState.UNSECURED, // may not exist
             1: Characteristic.LockCurrentState.SECURED,
-            0: Characteristic.LockCurrentState.UNSECURED
+            2: Characteristic.LockCurrentState.UNSECURED
         };
 
         this.TARGET_SS3_TO_HOMEKIT = {
+            0: Characteristic.LockTargetState.UNSECURED, // may not exist
             1: Characteristic.LockTargetState.SECURED,
-            0: Characteristic.LockTargetState.UNSECURED
+            2: Characteristic.LockTargetState.UNSECURED
         };
 
         this.TARGET_HOMEKIT_TO_SS3 = {
