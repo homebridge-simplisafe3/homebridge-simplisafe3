@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.7.1 (2021-09-07)
+- Fixes possible incorrect door lock state on startup. See #237. Thanks to @ljensen51 for raising the issue.
+- Security fixes. See #235
+
 ## 1.7.0 (2021-08-15)
 - Adds support for self-monitoring plans (issue #229). Thanks to @ASpehler
 - Security fixes. See #216, #221
