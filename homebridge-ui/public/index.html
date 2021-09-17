@@ -1,0 +1,92 @@
+<div class="card">
+  <div class="card-body">
+    <div class="form-group text-center">
+      <p class="form-text small">
+        SimpliSafe login now requires using their OAuth flow, click the button below to launch the login page. Once verified you will be redirected to a URL (begins with 'com.SimpliSafe.mobile://') which you should copy and paste back here in its entirety.
+      </p>
+      <p class="form-text small">
+        Note that in some browsers (e.g. Chrome) the browser will not redirect you and will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.
+      </p>
+      <p class="form-text small">
+        See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md'>README</a> for more information.
+      </p>
+      <a href="" target="_blank" id="ssLoginButton" class="btn btn-primary btn-lg disabled">Launch SimpliSafe Login</a>
+      <div id="redirectUrl" class="text-left">
+        <label for="redirectUrlInput">Redirected URL</label>
+        <input type="text" class="form-control" id="redirectUrlInput" aria-describedby="authRedirectHelp">
+        <small id="authRedirectHelp" class="form-text text-muted">Enter the full URL</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modules -->
+<script type="text/javascript" src="js/modules/jquery.min.js"></script>
+
+<script>
+(async () => {
+  console.log('startup');
+  $('#redirectUrl').slideUp();
+
+  // get the current homebridge config
+  const pluginConfig = await homebridge.getPluginConfig();
+  console.log(pluginConfig);
+  if (!pluginConfig.length) {
+    pluginConfig.push({ name: 'Home Alarm' })
+    await homebridge.updatePluginConfig(pluginConfig)
+  }
+
+  homebridge.showSchemaForm();
+
+  window.homebridge.addEventListener('configChanged', (event) => {
+    console.log('Updated config:', event.data);
+  });
+
+  const authURLResponse = await homebridge.request('/getSSAuthURL');
+  if (authURLResponse.success) {
+    $('#ssLoginButton').attr('href', authURLResponse.url).removeClass('disabled');
+  }
+
+  $('#ssLoginButton').click(function() {
+    $('#redirectUrl').slideDown();
+  });
+
+  $('#redirectUrlInput').on('paste input', async function () {
+    const redirectUrl = $('#redirectUrlInput').val();
+    if (redirectUrl.length > 0) {
+      const getCodeResponse = await homebridge.request('/getAuthCodeFromUrl', {
+        redirectURLStr: redirectUrl
+      });
+
+      console.log(getCodeResponse);
+
+      if (!getCodeResponse.success) {
+        homebridge.toast.error('Unable to extract auth code from URL, check to ensure the pasted URL was correct.', 'Error retrieving code');
+        $('#redirectUrlInput').addClass('is-invalid');
+      } else {
+        $('#redirectUrlInput').removeClass('is-invalid');
+        $('#redirectUrl').slideUp();
+        const authURLResponse = await homebridge.request('/getToken', {
+          authCode: getCodeResponse.authCode
+        });
+
+        console.log(authURLResponse);
+
+        if (authURLResponse.success) {
+          const auth = {
+            accessToken: authURLResponse.token.access_token,
+            refreshToken: authURLResponse.token.refresh_token
+          }
+          pluginConfig[0].auth = auth;
+          await homebridge.updatePluginConfig(pluginConfig);
+          await homebridge.savePluginConfig();
+          homebridge.toast.success('Restart to apply the changes.', 'Plugin Config Updated');
+        } else {
+          homebridge.toast.error('Error retrieving token.');
+        }
+      }
+    }
+  });
+
+})();
+</script>

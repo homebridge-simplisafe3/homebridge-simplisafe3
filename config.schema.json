@@ -3,6 +3,7 @@
   "pluginType": "platform",
   "singular": true,
   "headerDisplay": "*Please note this plugin requires an active SimpliSafe 'interactive' monitoring plan.*",
+  "customUi": true,
   "schema": {
     "type": "object",
     "properties": {
@@ -17,13 +18,13 @@
         "title": "Authorization",
         "type": "object",
         "properties": {
-          "username": {
-            "title": "SimpliSafe Username",
+          "accessToken": {
+            "title": "Access Token",
             "type": "string",
             "required": true
           },
-          "password": {
-            "title": "SimpliSafe Password",
+          "refreshToken": {
+            "title": "Refresh Token",
             "type": "string",
             "required": true
           }
@@ -114,8 +115,8 @@
       "type": "fieldset",
       "items": [
         "name",
-        "auth.username",
-        "auth.password",
+        "auth.accessToken",
+        "auth.refreshToken",
         "cameras"
       ]
     },
@@ -139,6 +140,10 @@
       "expandable": true,
       "title": "Advanced Options",
       "items": [{
+          "key": "auth",
+          "description": "Credentials can be obtained using the settings panel in Homebridge Config UI X or the command line <code>homebridge-simplisafe3 login</code>. See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md'>README</a> for more information."
+        },
+        {
           "key": "debug",
           "description": "To see all messages the Homebridge debug (<code>-D</code>) option must also be enabled. <small>See <a target='_blank' href='https://github.com/homebridge/homebridge-raspbian-image/wiki/How-To-Enable-Debug-or-Insecure-Mode'>https://github.com/homebridge/homebridge-raspbian-image/wiki/How-To-Enable-Debug-or-Insecure-Mode</a></small>"
         },

@@ -10,13 +10,13 @@
     "url": "https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/issues"
   },
   "dependencies": {
+    "@homebridge/plugin-ui-utils": "0.0.19",
     "@oclif/command": "^1.8.0",
     "@oclif/config": "^1.17.0",
     "@oclif/plugin-help": "^3.2.3",
     "axios": "^0.21.1",
     "cli-ux": "^5.6.3",
     "core-js": "^3.6.5",
-    "crypto": "^1.0.1",
     "ffmpeg-for-homebridge": "^0.0.5",
     "ip": "^1.1.5",
     "is-docker": "^2.0.0",
@@ -105,7 +105,7 @@
   },
   "repository": "git+https://github.com/homebridge-simplisafe3/homebridge-simplisafe3.git",
   "scripts": {
-    "build": "rm -rf lib && babel src -d lib && cp package.json config.schema.json README.md lib/",
+    "build": "rm -rf lib && babel src -d lib && cp -r package.json config.schema.json homebridge-ui README.md lib/",
     "deploy": "npm publish lib/",
     "postpack": "rm -f oclif.manifest.json",
     "prepack": "oclif-dev manifest && oclif-dev readme",
