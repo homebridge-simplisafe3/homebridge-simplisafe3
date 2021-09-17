@@ -27,6 +27,11 @@
             "title": "Refresh Token",
             "type": "string",
             "required": true
+          },
+          "codeVerifier": {
+            "title": "Code Verifier",
+            "type": "string",
+            "required": true
           }
         }
       },
@@ -117,6 +122,7 @@
         "name",
         "auth.accessToken",
         "auth.refreshToken",
+        "auth.codeVerifier",
         "cameras"
       ]
     },

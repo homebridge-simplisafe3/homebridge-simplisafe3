@@ -11,12 +11,20 @@ class UiServer extends HomebridgePluginUiServer {
 
         this.loginManager = new SimpliSafeLoginManager();
 
+        this.onRequest('/getCodeVerifier', this.getCodeVerifier.bind(this));
         this.onRequest('/getSSAuthURL', this.getSSAuthURL.bind(this));
         this.onRequest('/getToken', this.getToken.bind(this));
         this.onRequest('/getAuthCodeFromUrl', this.getAuthCodeFromUrl.bind(this));
 
         // this.ready() must be called to let the UI know you are ready to accept api calls
         this.ready();
+    }
+
+    /**
+   * Get code verifier
+   */
+    async getCodeVerifier() {
+        return { success: true, codeVerifier: this.loginManager.codeVerifier }
     }
 
     /**

@@ -13,11 +13,16 @@ const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe
 const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
 
 class SimpliSafeLoginManager {
+    token;
+    refreshToken;
+    tokenType = 'Bearer';
     codeVerifier;
     codeChallenge;
 
-    constructor () {
-        this.codeVerifier = this.base64URLEncode(crypto.randomBytes(32));
+    constructor (accessToken, refreshToken, codeVerifier) {
+        if (accessToken !== undefined) this.token = accessToken;
+        if (refreshToken !== undefined) this.refreshToken = refreshToken;
+        this.codeVerifier = (codeVerifier !== undefined) ? codeVerifier : this.base64URLEncode(crypto.randomBytes(32));
         this.codeChallenge = this.base64URLEncode(this.sha256(this.codeVerifier));
     }
 
@@ -84,6 +89,21 @@ class SimpliSafeLoginManager {
                 code_verifier: this.codeVerifier,
                 code: authorizationCode,
                 redirect_uri: SS_OAUTH_REDIRECT_URI,
+            });
+
+            return response.data;
+        } catch (err) {
+            this.log(err);
+        }
+    }
+
+    async refreshCredentials() {
+        try {
+            const response = await ssOAuth.post('/token', {
+                grant_type: 'refresh_token',
+                client_id: SS_OAUTH_CLIENT_ID,
+                code_verifier: this.codeVerifier,
+                refresh_token: this.refreshToken
             });
 
             return response.data;

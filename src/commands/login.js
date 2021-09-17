@@ -11,9 +11,10 @@ class Login extends Command {
 
         const loginURL = this.loginManager.getSSAuthURL();
 
-        this.log('A browser window will open to log you into the SimpliSafe site. Or copy + paste this URL into your browser: '+loginURL);
-        this.log('Once logged in you will be redirected to a URL that doesnt open (starts with com.SimpliSafe.mobile://). Copy and paste it back here.');
-        this.log('Note that in some browsers (e.g. Chrome) the browser will not redirect you and will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.');
+        this.log('\n******* Simplisafe Authentication *******');
+        this.log('\nA browser window will open to log you into the SimpliSafe site. Or copy + paste this URL into your browser: '+loginURL);
+        this.log('\nOnce logged in you will be redirected to a URL that doesnt open (starts with com.SimpliSafe.mobile://). Copy and paste it back here.');
+        this.log('\nNote that in some browsers (e.g. Chrome) the browser will not redirect you and will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.\n');
 
         await cli.anykey();
 
@@ -25,8 +26,10 @@ class Login extends Command {
 
         const tokenResponse = await this.loginManager.getToken(code);
 
-        this.log('Credentials retrieved successfully, you will need to enter the access_token and refresh_token below into the plugin config.');
-        this.log(tokenResponse);
+        this.log('\nCredentials retrieved successfully, you will need to enter the information below into the plugin config.');
+        this.log('accessToken: ' + this.loginManager.codeVerifier);
+        this.log('refreshToken: ' + tokenResponse.refresh_token);
+        this.log('codeVerifier: ' + tokenResponse.access_token);
     }
 }
 
