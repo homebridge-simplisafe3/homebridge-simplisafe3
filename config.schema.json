@@ -141,7 +141,7 @@
       "title": "Advanced Options",
       "items": [{
           "key": "auth",
-          "description": "Credentials can be obtained using the settings panel in Homebridge Config UI X or the command line <code>homebridge-simplisafe3 login</code>. See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md'>README</a> for more information."
+          "description": "Credentials can be obtained using the settings panel in Homebridge Config UI X or the command line <code>homebridge-simplisafe3 login</code>. See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md#simplisafe-authentication'>README</a> for more information."
         },
         {
           "key": "debug",

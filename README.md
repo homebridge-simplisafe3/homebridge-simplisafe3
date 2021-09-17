@@ -51,13 +51,16 @@ Then, add the following configuration to the `platforms` array in your Homebridg
     "platform": "homebridge-simplisafe3.SimpliSafe 3",
     "name": "Home Alarm",
     "auth": {
-        "username": "YOUR_USERNAME",
-        "password": "YOUR_PASSWORD"
+        "accessToken": "YOUR_ACCESS_TOKEN",
+        "resfreshToken": "YOUR_REFRESH_TOKEN"
     }
 }
 ```
 
-That's it! The plugin will automatically load all your sensors into Homebridge.
+### SimpliSafe Authentication
+As of December 2021 SimpliSafe has transitioned to only supporting a protocol called OAuth for authentication. This requires the user to authenticate in a browser and it is not possible to circumvent this and authenticate directly against the API. This plugin provides two main ways to obtain credentials:
+1. Users of [Config UI X](https://github.com/oznu/homebridge-config-ui-x) (which is included in many Homebridge installations) can initiate this process from the plugin settings. A button will launch the authentication process and you will have to copy and paste the final URL (begins with com.SimpliSafe.mobile://) back into the plugin settings. While Safari will redirect to the URL (and show an error) allowing you to easily copy and paste the URL, in some browsers (e.g. Chrome) the browser will not redirect you and will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.
+1. Alternatively the plugin provides a command-line method for the above. The process works the same as above and can be run using `homebridge-simplisafe3 login`.
 
 ### Optional Parameters
 
