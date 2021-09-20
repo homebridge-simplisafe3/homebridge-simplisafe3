@@ -9,12 +9,12 @@ class UiServer extends HomebridgePluginUiServer {
     // super must be called first
         super();
 
-        this.loginManager = new SimpliSafeLoginManager();
+        this.loginManager = new SimpliSafeLoginManager(this.homebridgeStoragePath);
 
         this.onRequest('/getCodeVerifier', this.getCodeVerifier.bind(this));
         this.onRequest('/getSSAuthURL', this.getSSAuthURL.bind(this));
-        this.onRequest('/getToken', this.getToken.bind(this));
         this.onRequest('/getAuthCodeFromUrl', this.getAuthCodeFromUrl.bind(this));
+        this.onRequest('/getToken', this.getToken.bind(this));
 
         // this.ready() must be called to let the UI know you are ready to accept api calls
         this.ready();
@@ -43,7 +43,7 @@ class UiServer extends HomebridgePluginUiServer {
         try {
           code = this.loginManager.parseCodeFromURL(redirectURLStr);
         } catch (error) {
-          return { success: false, error: error }
+          return { success: false, error: error.toString() }
         }
         return { success: true, authCode: code }
     }
@@ -53,8 +53,17 @@ class UiServer extends HomebridgePluginUiServer {
    */
     async getToken(payload) {
         const code = payload.authCode;
-        const token = await this.loginManager.getToken(code);
-        return { success: true, token: token }
+        try {
+          await this.loginManager.getToken(code);
+        } catch (error) {
+            console.log(error);
+            return { success: false, error: error.toString() }
+        }
+        return {
+          success: true,
+          accessToken: this.loginManager.accessToken,
+          refreshToken: this.loginManager.refreshToken
+        }
     }
 }
 

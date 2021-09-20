@@ -14,27 +14,6 @@
         "default": "Home Alarm",
         "placeholder": "e.g. Home Alarm"
       },
-      "auth": {
-        "title": "Authorization",
-        "type": "object",
-        "properties": {
-          "accessToken": {
-            "title": "Access Token",
-            "type": "string",
-            "required": true
-          },
-          "refreshToken": {
-            "title": "Refresh Token",
-            "type": "string",
-            "required": true
-          },
-          "codeVerifier": {
-            "title": "Code Verifier",
-            "type": "string",
-            "required": true
-          }
-        }
-      },
       "cameras": {
         "title": " Cameras",
         "type": "boolean",
@@ -120,9 +99,6 @@
       "type": "fieldset",
       "items": [
         "name",
-        "auth.accessToken",
-        "auth.refreshToken",
-        "auth.codeVerifier",
         "cameras"
       ]
     },
@@ -145,10 +121,7 @@
       "type": "fieldset",
       "expandable": true,
       "title": "Advanced Options",
-      "items": [{
-          "key": "auth",
-          "description": "Credentials can be obtained using the settings panel in Homebridge Config UI X or the command line <code>homebridge-simplisafe3 login</code>. See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md#simplisafe-authentication'>README</a> for more information."
-        },
+      "items": [
         {
           "key": "debug",
           "description": "To see all messages the Homebridge debug (<code>-D</code>) option must also be enabled. <small>See <a target='_blank' href='https://github.com/homebridge/homebridge-raspbian-image/wiki/How-To-Enable-Debug-or-Insecure-Mode'>https://github.com/homebridge/homebridge-raspbian-image/wiki/How-To-Enable-Debug-or-Insecure-Mode</a></small>"

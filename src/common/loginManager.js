@@ -1,5 +1,7 @@
 const crypto = require('crypto');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 const ssOAuth = axios.create({
     baseURL: 'https://auth.simplisafe.com/oauth'
@@ -12,19 +14,66 @@ const SS_OAUTH_REDIRECT_URI = 'com.simplisafe.mobile://auth.simplisafe.com/ios/c
 const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
 const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
 
+const accountsFilename = 'simplisafe3accounts.json';
+
 class SimpliSafeLoginManager {
-    token;
+    storagePath;
+    accessToken;
     refreshToken;
     tokenType = 'Bearer';
     codeVerifier;
     codeChallenge;
+    expiry;
+    log;
 
-    constructor (accessToken, refreshToken, codeVerifier) {
-        if (accessToken !== undefined) this.token = accessToken;
-        if (refreshToken !== undefined) this.refreshToken = refreshToken;
-        this.codeVerifier = (codeVerifier !== undefined) ? codeVerifier : this.base64URLEncode(crypto.randomBytes(32));
+    constructor(storagePath, log) {
+        this.storagePath = storagePath;
+        this.log = log || console.log;
+
+        const account = this._parseAccountsFile();
+        this.log(account);
+
+        this.codeVerifier = this.base64URLEncode(crypto.randomBytes(32));
         this.codeChallenge = this.base64URLEncode(this.sha256(this.codeVerifier));
     }
+
+    async _parseAccountsFile() {
+        const accountsFile = path.join(this.storagePath, accountsFilename);
+        if (fs.existsSync(accountsFile)) {
+          let fileContents;
+
+          try {
+            fileContents = (await fs.readFile(accountsFile)).toString();
+          } catch {
+            fileContents = '{}';
+          }
+
+          const account = JSON.parse(fileContents);
+          if (account.accessToken !== undefined) {
+              this.accessToken = account.accessToken;
+              this.refreshToken = account.refreshToken;
+              this.codeVerifier = account.codeVerifier;
+          }
+          return account;
+        }
+    }
+
+    async _writeAccountsFile() {
+      const account = {
+          accessToken: this.accessToken,
+          codeVerifier: this.codeVerifier,
+          refreshToken: this.refreshToken
+      }
+
+      try {
+          fs.writeFileSync(
+            path.join(this.storagePath, accountsFilename),
+            JSON.stringify(account)
+          );
+      } catch (err) {
+        throw err;
+      }
+   }
 
     async login() {
         try {
@@ -39,6 +88,10 @@ class SimpliSafeLoginManager {
         }
 
         const tokenResponse = await this.getToken(code);
+    }
+
+    isLoggedIn() {
+        return this.rToken !== null || (this.token !== null && Date.now() < this.expiry);
     }
 
     getSSAuthURL() {
@@ -83,7 +136,7 @@ class SimpliSafeLoginManager {
 
     async getToken(authorizationCode) {
         try {
-            const response = await ssOAuth.post('/token', {
+            const tokenResponse = await ssOAuth.post('/token', {
                 grant_type: 'authorization_code',
                 client_id: SS_OAUTH_CLIENT_ID,
                 code_verifier: this.codeVerifier,
@@ -91,25 +144,38 @@ class SimpliSafeLoginManager {
                 redirect_uri: SS_OAUTH_REDIRECT_URI,
             });
 
-            return response.data;
+            await this._storeToken(tokenResponse.data);
+            return this.accessToken;
         } catch (err) {
-            this.log(err);
+            throw new Error('Error getting token: ' + err);
         }
     }
 
     async refreshCredentials() {
         try {
-            const response = await ssOAuth.post('/token', {
+            const refreshTokenResponse = await ssOAuth.post('/token', {
                 grant_type: 'refresh_token',
                 client_id: SS_OAUTH_CLIENT_ID,
-                code_verifier: this.codeVerifier,
                 refresh_token: this.refreshToken
+            }, {
+                'Host': 'auth.simplisafe.com',
+                'Content-Type': 'application/json',
+                'Content-Length': 186
             });
 
-            return response.data;
+            this.log(refreshTokenResponse);
+            await this._storeToken(refreshTokenResponse.data);
+            return this.accessToken;
         } catch (err) {
-            this.log(err);
+            throw new Error('Error refreshing token: ' + err);
         }
+    }
+
+    async _storeToken(token) {
+        this.accessToken = token.access_token;
+        this.refreshToken = token.refresh_token;
+        this.expiry = Date.now() + (token.expires_in * 1000);
+        await this._writeAccountsFile();
     }
 }
 

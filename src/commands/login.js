@@ -1,13 +1,22 @@
 const {Command, flags} = require('@oclif/command');
 const {cli} = require('cli-ux');
 const SimpliSafeLoginManager = require('../common/loginManager.js');
+const path = require('path');
+const os = require('os');
 
 class Login extends Command {
+    static flags = {
+      homebridgeDir: flags.string({
+        char: 'd',
+        default: path.join(os.homedir(), '.homebridge'),
+        description: 'The path to your Homebridge directory',
+      })
+    }
     loginManager;
 
     async run() {
         const {flags} = this.parse(Login);
-        this.loginManager = new SimpliSafeLoginManager();
+        this.loginManager = new SimpliSafeLoginManager(flags.homebridgeDir);
 
         const loginURL = this.loginManager.getSSAuthURL();
 
@@ -24,12 +33,16 @@ class Login extends Command {
 
         let code = this.loginManager.parseCodeFromURL(redirectURLStr);
 
-        const tokenResponse = await this.loginManager.getToken(code);
+        try {
+          await this.loginManager.getToken(code);
 
-        this.log('\nCredentials retrieved successfully, you will need to enter the information below into the plugin config.');
-        this.log('accessToken: ' + this.loginManager.codeVerifier);
-        this.log('refreshToken: ' + tokenResponse.refresh_token);
-        this.log('codeVerifier: ' + tokenResponse.access_token);
+          this.log('\nCredentials retrieved successfully.');
+          this.log('accessToken: ' + this.loginManager.accessToken);
+          this.log('refreshToken: ' + this.loginManager.refreshToken);
+        } catch (e) {
+          this.log('\nAn error occurred retrieving credentials:');
+          this.log(e);
+        }
     }
 }
 

@@ -43,17 +43,13 @@ Either install and configure using Config UI X or you can manually install the p
 npm install -g --unsafe-perm homebridge-simplisafe3
 ```
 
-Then, add the following configuration to the `platforms` array in your Homebridge `config.json`.
+If installing manually, add the following configuration to the `platforms` array in your Homebridge `config.json` and then proceed with <a href="#simplisafe-authentication">authentication</a>.
 
 
 ```
 {
     "platform": "homebridge-simplisafe3.SimpliSafe 3",
-    "name": "Home Alarm",
-    "auth": {
-        "accessToken": "YOUR_ACCESS_TOKEN",
-        "resfreshToken": "YOUR_REFRESH_TOKEN"
-    }
+    "name": "Home Alarm"
 }
 ```
 

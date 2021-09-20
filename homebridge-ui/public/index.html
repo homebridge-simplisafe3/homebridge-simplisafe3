@@ -25,22 +25,20 @@
 
 <script>
 (async () => {
-  console.log('startup');
   $('#redirectUrl').slideUp();
 
   // get the current homebridge config
   const pluginConfig = await homebridge.getPluginConfig();
-  console.log(pluginConfig);
   if (!pluginConfig.length) {
     pluginConfig.push({ name: 'Home Alarm' })
     await homebridge.updatePluginConfig(pluginConfig)
   }
 
-  homebridge.showSchemaForm();
-
   window.homebridge.addEventListener('configChanged', (event) => {
     console.log('Updated config:', event.data);
   });
+
+  homebridge.showSchemaForm();
 
   let codeVerifier;
   const codeVerifierResponse = await homebridge.request('/getCodeVerifier');
@@ -70,26 +68,19 @@
         homebridge.toast.error('Unable to extract auth code from URL, check to ensure the pasted URL was correct.', 'Error retrieving code');
         $('#redirectUrlInput').addClass('is-invalid');
       } else {
-        $('#redirectUrlInput').removeClass('is-invalid');
-        $('#redirectUrl').slideUp();
-        const authURLResponse = await homebridge.request('/getToken', {
+        const getTokenResponse = await homebridge.request('/getToken', {
           authCode: getCodeResponse.authCode
         });
 
-        console.log(authURLResponse);
+        console.log(getTokenResponse);
 
-        if (authURLResponse.success) {
-          const auth = {
-            accessToken: authURLResponse.token.access_token,
-            codeVerifier: codeVerifier,
-            refreshToken: authURLResponse.token.refresh_token
-          }
-          pluginConfig[0].auth = auth;
-          await homebridge.updatePluginConfig(pluginConfig);
-          await homebridge.savePluginConfig();
-          homebridge.toast.success('Restart to apply the changes.', 'Plugin Config Updated');
+        if (getTokenResponse.success) {
+          homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
+          $('#redirectUrlInput').removeClass('is-invalid');
+          $('#redirectUrl').slideUp();
         } else {
-          homebridge.toast.error('Error retrieving token.');
+          homebridge.toast.error('Please try again.', 'Error retrieving token');
+          $('#redirectUrlInput').addClass('is-invalid');
         }
       }
     }
