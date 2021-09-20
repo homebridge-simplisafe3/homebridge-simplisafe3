@@ -32,7 +32,7 @@
   },
   "homepage": "https://github.com/homebridge-simplisafe3/homebridge-simplisafe3#readme",
   "devDependencies": {
-    "@babel/cli": "^7.10.1",
+    "@babel/cli": "^7.15.7",
     "@babel/core": "^7.10.2",
     "@babel/node": "^7.10.1",
     "@babel/plugin-proposal-class-properties": "^7.10.1",
