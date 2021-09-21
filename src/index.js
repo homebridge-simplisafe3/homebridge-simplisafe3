@@ -2,6 +2,7 @@
 // SimpliSafe 3 HomeBridge Plugin
 
 import SimpliSafe3, { SENSOR_TYPES, RateLimitError } from './simplisafe';
+import SimpliSafeLoginManager from './common/loginManager.js';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
 import MotionSensor from './accessories/motionSensor';
@@ -41,17 +42,17 @@ class SS3Platform {
             refreshInterval = config.sensorRefresh * 1000;
         }
 
-
-        this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, this.api.user.storagePath(), log, this.debug);
+        this.loginManager = new SimpliSafeLoginManager(this.api.user.storagePath());
+        this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, this.loginManager, this.api.user.storagePath(), log, this.debug);
 
         if (config.subscriptionId) {
             if (this.debug) this.log.debug(`Specifying account number: ${config.subscriptionId}`);
             this.simplisafe.setDefaultSubscription(config.subscriptionId);
         }
 
-        this.initialLoad = this.simplisafe.login(config.auth.username, config.auth.password, true)
+        this.initialLoad = this.loginManager.refreshCredentials()
             .then(() => {
-                if (this.debug) this.log.debug('Logged in!');
+                if (this.debug) this.log.debug('SimpliSafe credentials refreshed!');
                 return this.refreshAccessories(false);
             })
             .catch(err => {
@@ -73,7 +74,7 @@ class SS3Platform {
                     return Promise.all(this.cachedAccessoryConfig);
                 })
                 .then(() => {
-                    if (!this.simplisafe.isLoggedIn()) throw new Error('Not logged into SimpliSafe. Check credentials in the plugin config.');
+                    if (!this.loginManager.isLoggedIn()) throw new Error('Not logged into SimpliSafe. Check credentials in the plugin config.');
                     else return this.refreshAccessories();
                 })
                 .catch(err => {

@@ -34,10 +34,6 @@
     await homebridge.updatePluginConfig(pluginConfig)
   }
 
-  window.homebridge.addEventListener('configChanged', (event) => {
-    console.log('Updated config:', event.data);
-  });
-
   homebridge.showSchemaForm();
 
   let codeVerifier;
@@ -62,8 +58,6 @@
         redirectURLStr: redirectUrl
       });
 
-      console.log(getCodeResponse);
-
       if (!getCodeResponse.success) {
         homebridge.toast.error('Unable to extract auth code from URL, check to ensure the pasted URL was correct.', 'Error retrieving code');
         $('#redirectUrlInput').addClass('is-invalid');
@@ -71,8 +65,6 @@
         const getTokenResponse = await homebridge.request('/getToken', {
           authCode: getCodeResponse.authCode
         });
-
-        console.log(getTokenResponse);
 
         if (getTokenResponse.success) {
           homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');

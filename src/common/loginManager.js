@@ -9,7 +9,7 @@ const ssOAuth = axios.create({
 
 const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com/authorize';
 const SS_OAUTH_CLIENT_ID = '42aBZ5lYrVW12jfOuu3CQROitwxg9sN5';
-const SS_OAUTH_CLIENT = 'eyJuYW1lIjoiQXV0aDAuc3dpZnQiLCJlbnYiOnsiaU9TIjoiMTUuMCIsInN3aWZ0IjoiNS54In0sInZlcnNpb24iOiIxLjMzLjAifQ';
+const SS_OAUTH_AUTH0_CLIENT = 'eyJuYW1lIjoiQXV0aDAuc3dpZnQiLCJlbnYiOnsiaU9TIjoiMTUuMCIsInN3aWZ0IjoiNS54In0sInZlcnNpb24iOiIxLjMzLjAifQ';
 const SS_OAUTH_REDIRECT_URI = 'com.simplisafe.mobile://auth.simplisafe.com/ios/com.simplisafe.mobile/callback';
 const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
 const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
@@ -24,14 +24,11 @@ class SimpliSafeLoginManager {
     codeVerifier;
     codeChallenge;
     expiry;
-    log;
 
-    constructor(storagePath, log) {
+    constructor(storagePath) {
         this.storagePath = storagePath;
-        this.log = log || console.log;
 
         const account = this._parseAccountsFile();
-        this.log(account);
 
         this.codeVerifier = this.base64URLEncode(crypto.randomBytes(32));
         this.codeChallenge = this.base64URLEncode(this.sha256(this.codeVerifier));
@@ -43,7 +40,7 @@ class SimpliSafeLoginManager {
           let fileContents;
 
           try {
-            fileContents = (await fs.readFile(accountsFile)).toString();
+            fileContents = (fs.readFileSync(accountsFile)).toString();
           } catch {
             fileContents = '{}';
           }
@@ -75,23 +72,8 @@ class SimpliSafeLoginManager {
       }
    }
 
-    async login() {
-        try {
-            const redirectURL = new URL(redirectURLStr);
-            const maybeCode = redirectURL.searchParams.get('code');
-            if (!maybeCode) {
-                throw new Error();
-            }
-            code = maybeCode;
-        } catch (error) {
-            throw new Error('Invalid redirect URL');
-        }
-
-        const tokenResponse = await this.getToken(code);
-    }
-
     isLoggedIn() {
-        return this.rToken !== null || (this.token !== null && Date.now() < this.expiry);
+        return this.refreshToken !== null || (this.accessToken !== null && Date.now() < this.expiry);
     }
 
     getSSAuthURL() {
@@ -103,7 +85,7 @@ class SimpliSafeLoginManager {
         loginURL.searchParams.append('code_challenge_method', 'S256');
         loginURL.searchParams.append('code_challenge', this.codeChallenge);
         loginURL.searchParams.append('audience', 'AUDIENCE');
-        loginURL.searchParams.append('auth0Client', SS_OAUTH_CLIENT);
+        loginURL.searchParams.append('auth0Client', SS_OAUTH_AUTH0_CLIENT);
         return loginURL.toString().replace('SCOPE', SS_OAUTH_SCOPE).replace('AUDIENCE', SS_OAUTH_AUDIENCE);
     }
 
@@ -147,7 +129,7 @@ class SimpliSafeLoginManager {
             await this._storeToken(tokenResponse.data);
             return this.accessToken;
         } catch (err) {
-            throw new Error('Error getting token: ' + err);
+            throw new Error('Error getting token: ' + err.toString());
         }
     }
 
@@ -158,16 +140,18 @@ class SimpliSafeLoginManager {
                 client_id: SS_OAUTH_CLIENT_ID,
                 refresh_token: this.refreshToken
             }, {
-                'Host': 'auth.simplisafe.com',
-                'Content-Type': 'application/json',
-                'Content-Length': 186
+                headers: {
+                  'Host': 'auth.simplisafe.com',
+                  'Content-Type': 'application/json',
+                  'Content-Length': 186,
+                  'Auth0-Client': SS_OAUTH_AUTH0_CLIENT
+                }
             });
 
-            this.log(refreshTokenResponse);
             await this._storeToken(refreshTokenResponse.data);
             return this.accessToken;
         } catch (err) {
-            throw new Error('Error refreshing token: ' + err);
+            throw new Error('Error refreshing token: ' + err.toString());
         }
     }
 
