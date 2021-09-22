@@ -1,6 +1,6 @@
 const {Command, flags} = require('@oclif/command');
 const {cli} = require('cli-ux');
-const SimpliSafeLoginManager = require('../common/loginManager.js');
+const SimpliSafe3AuthenticationManager = require('../common/authManager.js');
 const path = require('path');
 const os = require('os');
 
@@ -12,13 +12,13 @@ class Login extends Command {
         description: 'The path to your Homebridge directory',
       })
     }
-    loginManager;
+    authManager;
 
     async run() {
         const {flags} = this.parse(Login);
-        this.loginManager = new SimpliSafeLoginManager(flags.homebridgeDir);
+        this.authManager = new SimpliSafe3AuthenticationManager(flags.homebridgeDir);
 
-        const loginURL = this.loginManager.getSSAuthURL();
+        const loginURL = this.authManager.getSSAuthURL();
 
         this.log('\n******* Simplisafe Authentication *******');
         this.log('\nA browser window will open to log you into the SimpliSafe site. Or copy + paste this URL into your browser: '+loginURL);
@@ -31,14 +31,14 @@ class Login extends Command {
 
         const redirectURLStr = (await cli.prompt('Redirect URL'));
 
-        let code = this.loginManager.parseCodeFromURL(redirectURLStr);
+        let code = this.authManager.parseCodeFromURL(redirectURLStr);
 
         try {
-          await this.loginManager.getToken(code);
+          await this.authManager.getToken(code);
 
           this.log('\nCredentials retrieved successfully.');
-          this.log('accessToken: ' + this.loginManager.accessToken);
-          this.log('refreshToken: ' + this.loginManager.refreshToken);
+          this.log('accessToken: ' + this.authManager.accessToken);
+          this.log('refreshToken: ' + this.authManager.refreshToken);
         } catch (e) {
           this.log('\nAn error occurred retrieving credentials:');
           this.log(e);

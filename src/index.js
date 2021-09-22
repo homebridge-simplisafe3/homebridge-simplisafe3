@@ -2,7 +2,7 @@
 // SimpliSafe 3 HomeBridge Plugin
 
 import SimpliSafe3, { SENSOR_TYPES, RateLimitError } from './simplisafe';
-import SimpliSafeLoginManager from './common/loginManager.js';
+import SimpliSafe3AuthenticationManager from './common/authManager.js';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
 import MotionSensor from './accessories/motionSensor';
@@ -42,27 +42,28 @@ class SS3Platform {
             refreshInterval = config.sensorRefresh * 1000;
         }
 
-        this.loginManager = new SimpliSafeLoginManager(this.api.user.storagePath());
-        this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, this.loginManager, this.api.user.storagePath(), log, this.debug);
+        this.authManager = new SimpliSafe3AuthenticationManager(this.api.user.storagePath(), log, this.debug);
+        this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, this.authManager, this.api.user.storagePath(), log, this.debug);
 
         if (config.subscriptionId) {
             if (this.debug) this.log.debug(`Specifying account number: ${config.subscriptionId}`);
             this.simplisafe.setDefaultSubscription(config.subscriptionId);
         }
 
-        this.initialLoad = this.loginManager.refreshCredentials()
+        this.initialLoad = this.authManager.refreshCredentials()
             .then(() => {
-                if (this.debug) this.log.debug('SimpliSafe credentials refreshed!');
+                if (this.debug) this.log.debug('SimpliSafe credentials initial refresh successful');
                 return this.refreshAccessories(false);
             })
             .catch(err => {
                 if (err instanceof RateLimitError) {
-                    this.log.error('Login or refresh failed due to rate limiting or connectivity, trying again later');
+                    this.log.error('Initial load failed due to rate limiting or connectivity, trying again later');
                     setTimeout(async () => {
                         await this.retryBlockedAccessories();
                     }, this.simplisafe.nextAttempt - Date.now());
                 } else {
                     this.log.error('SimpliSafe login failed with error:', err);
+                    this.log.error('See the plugin README for more information on authenticating with SimpliSafe.');
                 }
             });
 
@@ -74,7 +75,7 @@ class SS3Platform {
                     return Promise.all(this.cachedAccessoryConfig);
                 })
                 .then(() => {
-                    if (!this.loginManager.isLoggedIn()) throw new Error('Not logged into SimpliSafe. Check credentials in the plugin config.');
+                    if (!this.authManager.isAuthenticated()) throw new Error('Not authenticated with SimpliSafe.');
                     else return this.refreshAccessories();
                 })
                 .catch(err => {
@@ -460,7 +461,7 @@ class SS3Platform {
 
     async retryBlockedAccessories() {
         try {
-            await this.simplisafe.login(this.simplisafe.username, this.simplisafe.password, true);
+            await this.authManager.refreshCredentials();
             if (this.debug) this.log.debug('Recovered from 403 rate limit!');
             await this.refreshAccessories(false);
             this.cachedAccessoryConfig = [];
@@ -473,12 +474,12 @@ class SS3Platform {
 
         } catch (err) {
             if (err instanceof RateLimitError) {
-                this.log.error('Log in attempt failed, still rate limited');
+                this.log.error('Credentials refresh attempt failed, still rate limited');
                 setTimeout(async () => {
                     await this.retryBlockedAccessories();
                 }, this.simplisafe.nextAttempt - Date.now());
             } else {
-                this.log.error('An error occurred while logging in again:', err);
+                this.log.error('An error occurred while refreshing credentials again:', err);
             }
         }
     }

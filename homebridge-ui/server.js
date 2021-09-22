@@ -1,15 +1,15 @@
 const { HomebridgePluginUiServer } = require('@homebridge/plugin-ui-utils');
-const SimpliSafeLoginManager = require('../common/loginManager.js');
+const SimpliSafe3AuthenticationManager = require('../common/authManager.js');
 
 // your class MUST extend the HomebridgePluginUiServer
 class UiServer extends HomebridgePluginUiServer {
-    loginManager;
+    authManager;
 
     constructor () {
     // super must be called first
         super();
 
-        this.loginManager = new SimpliSafeLoginManager(this.homebridgeStoragePath);
+        this.authManager = new SimpliSafe3AuthenticationManager(this.homebridgeStoragePath);
 
         this.onRequest('/getCodeVerifier', this.getCodeVerifier.bind(this));
         this.onRequest('/getSSAuthURL', this.getSSAuthURL.bind(this));
@@ -24,14 +24,14 @@ class UiServer extends HomebridgePluginUiServer {
    * Get code verifier
    */
     async getCodeVerifier() {
-        return { success: true, codeVerifier: this.loginManager.codeVerifier }
+        return { success: true, codeVerifier: this.authManager.codeVerifier }
     }
 
     /**
    * Get SS auth URL
    */
     async getSSAuthURL() {
-        return { success: true, url: this.loginManager.getSSAuthURL() }
+        return { success: true, url: this.authManager.getSSAuthURL() }
     }
 
     /**
@@ -41,7 +41,7 @@ class UiServer extends HomebridgePluginUiServer {
         const redirectURLStr = payload.redirectURLStr;
         let code;
         try {
-          code = this.loginManager.parseCodeFromURL(redirectURLStr);
+          code = this.authManager.parseCodeFromURL(redirectURLStr);
         } catch (error) {
           return { success: false, error: error.toString() }
         }
@@ -54,15 +54,15 @@ class UiServer extends HomebridgePluginUiServer {
     async getToken(payload) {
         const code = payload.authCode;
         try {
-          await this.loginManager.getToken(code);
+          await this.authManager.getToken(code);
         } catch (error) {
             console.log(error);
             return { success: false, error: error.toString() }
         }
         return {
           success: true,
-          accessToken: this.loginManager.accessToken,
-          refreshToken: this.loginManager.refreshToken
+          accessToken: this.authManager.accessToken,
+          refreshToken: this.authManager.refreshToken
         }
     }
 }

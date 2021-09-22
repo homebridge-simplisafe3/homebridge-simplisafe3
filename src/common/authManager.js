@@ -1,3 +1,6 @@
+// © 2021 Michael Shamoon
+// SimpliSafe 3 Authentication Manager
+//
 const crypto = require('crypto');
 const axios = require('axios');
 const fs = require('fs');
@@ -14,9 +17,9 @@ const SS_OAUTH_REDIRECT_URI = 'com.simplisafe.mobile://auth.simplisafe.com/ios/c
 const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
 const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
 
-const accountsFilename = 'simplisafe3accounts.json';
+const accountsFilename = 'simplisafe3auth.json';
 
-class SimpliSafeLoginManager {
+class SimpliSafe3AuthenticationManager {
     storagePath;
     accessToken;
     refreshToken;
@@ -24,19 +27,31 @@ class SimpliSafeLoginManager {
     codeVerifier;
     codeChallenge;
     expiry;
+    refreshInterval;
+    log;
+    debug;
 
-    constructor(storagePath) {
+    constructor(storagePath, log, debug) {
         this.storagePath = storagePath;
+        this.log = log;
+        this.debug = debug || false;
 
         const account = this._parseAccountsFile();
+        if (account.accessToken !== undefined) {
+            this.accessToken = account.accessToken;
+            this.refreshToken = account.refreshToken;
+            this.codeVerifier = account.codeVerifier;
+        }
 
-        this.codeVerifier = this.base64URLEncode(crypto.randomBytes(32));
+        if (!this.codeVerifier) this.codeVerifier = this.base64URLEncode(crypto.randomBytes(32));
         this.codeChallenge = this.base64URLEncode(this.sha256(this.codeVerifier));
     }
 
-    async _parseAccountsFile() {
+    _parseAccountsFile() {
         const accountsFile = path.join(this.storagePath, accountsFilename);
-        if (fs.existsSync(accountsFile)) {
+        if (!fs.existsSync(this.storagePath)) {
+          throw new Error(`Supplied path ${this.storagePath} does not exist`);
+        } else if (fs.existsSync(accountsFile)) {
           let fileContents;
 
           try {
@@ -45,23 +60,13 @@ class SimpliSafeLoginManager {
             fileContents = '{}';
           }
 
-          const account = JSON.parse(fileContents);
-          if (account.accessToken !== undefined) {
-              this.accessToken = account.accessToken;
-              this.refreshToken = account.refreshToken;
-              this.codeVerifier = account.codeVerifier;
-          }
-          return account;
+          return JSON.parse(fileContents);
         }
+
+        return {};
     }
 
-    async _writeAccountsFile() {
-      const account = {
-          accessToken: this.accessToken,
-          codeVerifier: this.codeVerifier,
-          refreshToken: this.refreshToken
-      }
-
+    _writeAccountsFile(account) {
       try {
           fs.writeFileSync(
             path.join(this.storagePath, accountsFilename),
@@ -72,8 +77,8 @@ class SimpliSafeLoginManager {
       }
    }
 
-    isLoggedIn() {
-        return this.refreshToken !== null || (this.accessToken !== null && Date.now() < this.expiry);
+    isAuthenticated() {
+        return this.refreshToken !== null && Date.now() < this.expiry;
     }
 
     getSSAuthURL() {
@@ -134,13 +139,16 @@ class SimpliSafeLoginManager {
     }
 
     async refreshCredentials() {
+        if (this.refreshToken == undefined) {
+            throw new Error('No authentication credentials detected.');
+        }
         try {
             const refreshTokenResponse = await ssOAuth.post('/token', {
                 grant_type: 'refresh_token',
                 client_id: SS_OAUTH_CLIENT_ID,
                 refresh_token: this.refreshToken
             }, {
-                headers: {
+                headers: { // SS seems to need these...
                   'Host': 'auth.simplisafe.com',
                   'Content-Type': 'application/json',
                   'Content-Length': 186,
@@ -149,6 +157,7 @@ class SimpliSafeLoginManager {
             });
 
             await this._storeToken(refreshTokenResponse.data);
+            if (this.log !== undefined && this.debug) this.log.debug('Credentials refresh was successful');
             return this.accessToken;
         } catch (err) {
             throw new Error('Error refreshing token: ' + err.toString());
@@ -159,8 +168,23 @@ class SimpliSafeLoginManager {
         this.accessToken = token.access_token;
         this.refreshToken = token.refresh_token;
         this.expiry = Date.now() + (token.expires_in * 1000);
-        await this._writeAccountsFile();
+        this.tokenType = token.token_type;
+
+        const account = {
+            accessToken: this.accessToken,
+            codeVerifier: this.codeVerifier,
+            refreshToken: this.refreshToken
+        }
+        await this._writeAccountsFile(account);
+
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
+        this.refreshInterval = setInterval(() => {
+            this.refreshCredentials();
+            if (this.log !== undefined && this.debug) this.log.debug('Pre-emptively authenticating with SimpliSafe');
+        }, token.expires_in * 1000 - 300000);
     }
 }
 
-module.exports = SimpliSafeLoginManager
+module.exports = SimpliSafe3AuthenticationManager

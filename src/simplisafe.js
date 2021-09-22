@@ -102,7 +102,7 @@ const generateSimplisafeId = () => {
 
 class SimpliSafe3 {
 
-    loginManager;
+    authManager;
     userId;
     subId;
     accountNumber;
@@ -123,14 +123,13 @@ class SimpliSafe3 {
     isBlocked;
     nextBlockInterval = rateLimitInitialInterval;
     nextAttempt = 0;
-    loginAttempt;
 
-    constructor(sensorRefreshTime = 15000, resetConfig = false, loginManager, storagePath, log, debug) {
+    constructor(sensorRefreshTime = 15000, resetConfig = false, authManager, storagePath, log, debug) {
         this.sensorRefreshTime = sensorRefreshTime;
         this.log = log || console.log;
         this.debug = debug;
         this.storagePath = storagePath;
-        this.loginManager = loginManager;
+        this.authManager = authManager;
 
         let internalConfigFile = path.join(this.storagePath, internalConfigFileName);
         if (fs.existsSync(internalConfigFile) && resetConfig) {
@@ -176,30 +175,12 @@ class SimpliSafe3 {
             throw err;
         }
 
-        if (!this.loginManager.isLoggedIn()) {
-            if (this.isBlocked) {
-                // User is not logged in due to the last login attempt being blocked.
-                // It's now time to try logging in again.
-
-                // Use this logic so that if multiple requests happen at the same time,
-                // only one will attempt to log in.
-                if (!this.loginAttempt) {
-                    this.loginAttempt = this.login(this.username, this.password, true);
-                }
-                await this.loginAttempt;
-                this.loginAttempt = null;
-            } else {
-                let err = new Error('User is not logged in');
-                throw err;
-            }
-        }
-
         try {
             const response = await ssApi.request({
                 ...params,
                 headers: {
                     ...params.headers,
-                    Authorization: `${this.loginManager.tokenType} ${this.loginManager.accessToken}`
+                    Authorization: `${this.authManager.tokenType} ${this.authManager.accessToken}`
                 }
             });
             this._resetRateLimitHandler();
@@ -212,15 +193,18 @@ class SimpliSafe3 {
 
             let statusCode = err.response.status;
             if (statusCode == 401 && !tokenRefreshed) {
-                return this.loginManager.refreshCredentials()
+                return this.authManager.refreshCredentials()
                     .then(() => {
+                        if (this.debug) this.log.debug('Credentials refreshed successfully after failed request');
                         return this.request(params, true);
                     })
                     .catch(async err => {
                         let statusCode = err.status;
-                        if ((statusCode == 401 || statusCode == 403)) {
-                            // await this.login(this.username, this.password, true);
-                            return this.request(params, true);
+                        if (statusCode == 403) {
+                            this.log.error('SSAPI request failed, request blocked (rate limit?).');
+                            if (this.debug) this.log.error('SSAPI request received a response error with code 403:', err.response);
+                            this._setRateLimitHandler();
+                            throw new RateLimitError(err.response.data);
                         } else {
                             throw err;
                         }
@@ -589,7 +573,7 @@ class SimpliSafe3 {
                 path: '/socket.io',
                 query: {
                     ns: `/v1/user/${userId}`,
-                    accessToken: this.loginManager.accessToken
+                    accessToken: this.authManager.accessToken
                 },
                 transports: ['websocket', 'polling'],
                 pfx: []
