@@ -159,7 +159,9 @@ class SimpliSafe3AuthenticationManager {
     }
 
     async refreshCredentials() {
-        if (this.refreshToken == undefined) {
+        if (this.refreshToken == undefined && this.username !== undefined && this.password !== undefined) {
+          return this._loginWithUsernamePassword();
+        } else if (this.refreshToken == undefined) {
             throw new Error('No authentication credentials detected.');
         }
         try {
@@ -206,28 +208,31 @@ class SimpliSafe3AuthenticationManager {
         }, token.expires_in * 1000 - 300000);
     }
 
-    async loginWithUsernamePassword() {
+    // Deprecated login with username / password
+    async _loginWithUsernamePassword() {
         try {
-          const ssApi = axios.create({
-              baseURL: 'https://api.simplisafe.com/v1'
-          });
-          const response = await ssApi.post('/api/token', {
-              username: this.username,
-              password: this.password,
-              grant_type: 'password',
-              client_id: clientUsername,
-              device_id: `Homebridge; useragent="Homebridge-SimpliSafe3 (SS-ID: ${this.ssId})"; uuid="${clientUuid}"; id="${this.ssId}"`,
-              scope: ''
-          }, {
-              auth: {
-                  username: clientUsername,
-                  password: clientPassword
-            }
-          });
+            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. See README for more info.');
+            if (this.log && this.log.debug && this.debug) this.log.debug('Attempting to login with username / password.');
+            const ssApi = axios.create({
+                baseURL: 'https://api.simplisafe.com/v1'
+            });
+            const response = await ssApi.post('/api/token', {
+                username: this.username,
+                password: this.password,
+                grant_type: 'password',
+                client_id: clientUsername,
+                device_id: `Homebridge; useragent="Homebridge-SimpliSafe3 (SS-ID: ${this.ssId})"; uuid="${clientUuid}"; id="${this.ssId}"`,
+                scope: ''
+            }, {
+                auth: {
+                    username: clientUsername,
+                    password: clientPassword
+              }
+            });
 
-          let token = response.data;
-          this._storeToken(token);
-          if (this.log && this.log.debug) this.log('Username / password login successful.');
+            let token = response.data;
+            this._storeToken(token);
+            if (this.log && this.log.debug && this.debug) this.log.debug('Username / password login successful.');
         } catch (error) {
             this.log('Username / password login failed.');
             return false;
