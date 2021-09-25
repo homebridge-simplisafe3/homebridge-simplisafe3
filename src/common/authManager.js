@@ -182,7 +182,7 @@ class SimpliSafe3AuthenticationManager {
         }
         this.refreshInterval = setInterval(() => {
             this.refreshCredentials();
-            if (this.log !== undefined && this.debug) this.log.debug('Pre-emptively authenticating with SimpliSafe');
+            if (this.log !== undefined && this.debug) this.log.debug('Preemptively authenticating with SimpliSafe');
         }, token.expires_in * 1000 - 300000);
     }
 }
