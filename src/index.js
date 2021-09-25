@@ -432,6 +432,7 @@ class SS3Platform {
                             this.log,
                             this.debug,
                             this.simplisafe,
+                            this.authManager,
                             Service,
                             Characteristic,
                             UUIDGen,
