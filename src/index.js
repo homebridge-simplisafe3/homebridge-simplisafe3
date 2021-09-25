@@ -50,11 +50,20 @@ class SS3Platform {
             this.simplisafe.setDefaultSubscription(config.subscriptionId);
         }
 
-        if (config.auth && config.auth.username) {
-            this.log.warn('Outdated SimpliSafe credentials detected in the plugin config. Please ensure you are using the newest mehtod to authenticate. See README for more info.');
+        let initialLoginMethod = this.authManager.refreshCredentials;
+
+        if (config.auth && config.auth.username && config.auth.password) {
+            this.log.warn('WARNING: Outdated SimpliSafe credentials detected in the plugin config. Please ensure you are using the newest mehtod to authenticate. SimpliSafe has stated this change will "may" become permanent as of December 2021. See README for more info.');
+            if (!this.authManager.accountsFileExists()) {
+                this.log.warn('Attempting to login with username / password. This method may cease to function at a later date.');
+                this.authManager.username = config.auth.username;
+                this.authManager.password = config.auth.password;
+                this.authManager.ssId = this.simplisafe.ssId;
+                initialLoginMethod = this.authManager.loginWithUsernamePassword;
+            }
         }
 
-        this.initialLoad = this.authManager.refreshCredentials()
+        this.initialLoad = initialLoginMethod.apply(this.authManager)
             .then(() => {
                 if (this.debug) this.log.debug('SimpliSafe credentials initial refresh successful');
                 return this.refreshAccessories(false);

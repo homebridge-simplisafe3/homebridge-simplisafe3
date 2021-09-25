@@ -17,6 +17,12 @@ const SS_OAUTH_REDIRECT_URI = 'com.simplisafe.mobile://auth.simplisafe.com/ios/c
 const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
 const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
 
+// Retained for deprecated username / password login, for now
+const clientUuid = '4df55627-46b2-4e2c-866b-1521b395ded2';
+const clientUsername = `${clientUuid}.WebApp.simplisafe.com`;
+const clientPassword = '';
+const ssApiExpiry = 3600;
+
 const accountsFilename = 'simplisafe3auth.json';
 
 class SimpliSafe3AuthenticationManager {
@@ -30,6 +36,11 @@ class SimpliSafe3AuthenticationManager {
     refreshInterval;
     log;
     debug;
+
+    // Retained for deprecated username / password login, for now
+    username;
+    password;
+    ssId;
 
     constructor(storagePath, log, debug) {
         this.storagePath = storagePath;
@@ -47,20 +58,29 @@ class SimpliSafe3AuthenticationManager {
         this.codeChallenge = this.base64URLEncode(this.sha256(this.codeVerifier));
     }
 
-    _parseAccountsFile() {
+    _storagePathExists() {
+        return fs.existsSync(this.storagePath);
+    }
+
+    accountsFileExists() {
+        if (!this._storagePathExists()) return false;
         const accountsFile = path.join(this.storagePath, accountsFilename);
-        if (!fs.existsSync(this.storagePath)) {
-          throw new Error(`Supplied path ${this.storagePath} does not exist`);
-        } else if (fs.existsSync(accountsFile)) {
+        return fs.existsSync(accountsFile);
+    }
+
+    _parseAccountsFile() {
+        if (this.accountsFileExists()) {
           let fileContents;
 
           try {
-            fileContents = (fs.readFileSync(accountsFile)).toString();
+            fileContents = (fs.readFileSync(path.join(this.storagePath, accountsFilename))).toString();
           } catch {
             fileContents = '{}';
           }
 
           return JSON.parse(fileContents);
+        } else if (!this._storagePathExists()) {
+            throw new Error(`Supplied path ${this.storagePath} does not exist`);
         }
 
         return {};
@@ -184,6 +204,34 @@ class SimpliSafe3AuthenticationManager {
             this.refreshCredentials();
             if (this.log !== undefined && this.debug) this.log.debug('Preemptively authenticating with SimpliSafe');
         }, token.expires_in * 1000 - 300000);
+    }
+
+    async loginWithUsernamePassword() {
+        try {
+          const ssApi = axios.create({
+              baseURL: 'https://api.simplisafe.com/v1'
+          });
+          const response = await ssApi.post('/api/token', {
+              username: this.username,
+              password: this.password,
+              grant_type: 'password',
+              client_id: clientUsername,
+              device_id: `Homebridge; useragent="Homebridge-SimpliSafe3 (SS-ID: ${this.ssId})"; uuid="${clientUuid}"; id="${this.ssId}"`,
+              scope: ''
+          }, {
+              auth: {
+                  username: clientUsername,
+                  password: clientPassword
+            }
+          });
+
+          let token = response.data;
+          this._storeToken(token);
+          if (this.log && this.log.debug) this.log('Username / password login successful.');
+        } catch (error) {
+            this.log('Username / password login failed.');
+            return false;
+        }
     }
 }
 
