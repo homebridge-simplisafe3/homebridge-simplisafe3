@@ -103,7 +103,7 @@
   "license": "MIT",
   "main": "index.js",
   "oclif": {
-    "commands": "./src/commands",
+    "commands": "./commands",
     "bin": "homebridge-simplisafe3",
     "plugins": [
       "@oclif/plugin-help"
