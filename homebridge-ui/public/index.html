@@ -7,16 +7,19 @@
     </div>
     <div id="auth" class="pt-2">
       <p class="form-text small">
-        SimpliSafe login now requires using their OAuth flow, click the button below to launch the login page. Once verified you will be redirected to a URL (begins with 'com.SimpliSafe.mobile://') which you should copy and paste back here in its entirety.
+        Click the button below to launch the SimpliSafe login page. Once verified, you will be redirected to a URL (begins with 'com.SimpliSafe.mobile://') which you should copy and paste back here in its entirety.
       </p>
       <p class="form-text small">
         Note that in some browsers (e.g. Chrome) the browser will not redirect you and will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.
       </p>
       <p class="form-text small">
+        Also please note that this task cannot be performed on an iOS device that has the SimpliSafe app installed (authenticating will launch the app).
+      </p>
+      <p class="form-text small">
         See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md#simplisafe-authentication'>README</a> for more information.
       </p>
       <a href="" target="_blank" id="ssLoginButton" class="btn btn-primary btn-lg disabled">Launch SimpliSafe Login</a>
-      <div id="redirectUrl" class="collapse text-left">
+      <div id="redirectUrl" class="text-left">
         <label for="redirectUrlInput">Redirected URL</label>
         <input type="text" class="form-control" id="redirectUrlInput" aria-describedby="authRedirectHelp">
         <small id="authRedirectHelp" class="form-text text-muted">Enter the full URL</small>
@@ -43,7 +46,6 @@
   homebridge.showSchemaForm();
 
   const credentialsExistResponse = await homebridge.request('/credentialsExist');
-  console.log(credentialsExistResponse);
   if (credentialsExistResponse.success && credentialsExistResponse.credentialsExist) {
       $('#authExists').slideDown(0);
       $('#auth').slideUp(0);

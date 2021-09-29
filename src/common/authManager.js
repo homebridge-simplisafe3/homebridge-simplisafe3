@@ -10,6 +10,10 @@ const ssOAuth = axios.create({
     baseURL: 'https://auth.simplisafe.com/oauth'
 });
 
+const ssApiV1 = axios.create({
+    baseURL: 'https://api.simplisafe.com/v1'
+});
+
 const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com/authorize';
 const SS_OAUTH_CLIENT_ID = '42aBZ5lYrVW12jfOuu3CQROitwxg9sN5';
 const SS_OAUTH_AUTH0_CLIENT = 'eyJuYW1lIjoiQXV0aDAuc3dpZnQiLCJlbnYiOnsiaU9TIjoiMTUuMCIsInN3aWZ0IjoiNS54In0sInZlcnNpb24iOiIxLjMzLjAifQ';
@@ -159,11 +163,16 @@ class SimpliSafe3AuthenticationManager {
     }
 
     async refreshCredentials() {
-        if (this.refreshToken == undefined && this.username !== undefined && this.password !== undefined) {
-            return this._loginWithUsernamePassword();
-        } else if (this.refreshToken == undefined) {
-            throw new Error('No authentication credentials detected.');
+        if (!this.accountsFileExists()) {
+            if (this.username !== undefined && this.password !== undefined) {
+                // support old username / password, for now...
+                if (this.refreshToken == undefined) return this._loginWithUsernamePassword();
+                else return this._refreshWithUsernamePassword();
+            } else if (this.refreshToken == undefined) {
+                throw new Error('No authentication credentials detected.');
+            }
         }
+
         try {
             const refreshTokenResponse = await ssOAuth.post('/token', {
                 grant_type: 'refresh_token',
@@ -180,7 +189,6 @@ class SimpliSafe3AuthenticationManager {
 
             await this._storeToken(refreshTokenResponse.data);
             if (this.log !== undefined && this.debug) this.log.debug('Credentials refresh was successful');
-            return this.accessToken;
         } catch (err) {
             throw new Error('Error refreshing token: ' + err.toString());
         }
@@ -211,12 +219,9 @@ class SimpliSafe3AuthenticationManager {
     // Deprecated login with username / password
     async _loginWithUsernamePassword() {
         try {
-            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. See README for more info.');
+            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please update to use the newest method. See README for more info.');
             if (this.log && this.log.debug && this.debug) this.log.debug('Attempting to login with username / password.');
-            const ssApi = axios.create({
-                baseURL: 'https://api.simplisafe.com/v1'
-            });
-            const response = await ssApi.post('/api/token', {
+            const response = await ssApiV1.post('/api/token', {
                 username: this.username,
                 password: this.password,
                 grant_type: 'password',
@@ -231,11 +236,41 @@ class SimpliSafe3AuthenticationManager {
             });
 
             let token = response.data;
-            this._storeToken(token);
+            this.accessToken = token.access_token;
+            this.refreshToken = token.refresh_token;
+            this.expiry = Date.now() + (parseInt(token.expires_in) * 1000);
+            this.tokenType = token.token_type;
             if (this.log && this.log.debug && this.debug) this.log.debug('Username / password login successful.');
         } catch (error) {
             this.log('Username / password login failed.');
-            return false;
+            throw error;
+        }
+    }
+
+    // Deprecated refresh with username / password
+    async _refreshWithUsernamePassword() {
+        try {
+            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please update to use the newest method. See README for more info.');
+            if (this.log && this.log.debug && this.debug) this.log.debug('Attempting to refresh with username / password.');
+            const response = await ssApiV1.post('/api/token', {
+                refresh_token: this.refreshToken,
+                grant_type: 'refresh_token'
+            }, {
+              auth: {
+                  username: clientUsername,
+                  password: clientPassword
+              }
+            });
+
+            let token = response.data;
+            this.accessToken = token.access_token;
+            this.refreshToken = token.refresh_token;
+            this.expiry = Date.now() + (parseInt(token.expires_in) * 1000);
+            this.tokenType = token.token_type;
+            if (this.log && this.log.debug && this.debug) this.log.debug('Username / password refresh successful.');
+        } catch (error) {
+            this.log('Refresh with username / password login failed.');
+            throw error;
         }
     }
 }
