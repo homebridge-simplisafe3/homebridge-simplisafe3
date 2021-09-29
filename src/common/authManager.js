@@ -219,7 +219,7 @@ class SimpliSafe3AuthenticationManager {
     // Deprecated login with username / password
     async _loginWithUsernamePassword() {
         try {
-            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please update to use the newest method. See README for more info.');
+            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please re-authenticate using newest method. See README for more info.');
             if (this.log && this.log.debug && this.debug) this.log.debug('Attempting to login with username / password.');
             const response = await ssApiV1.post('/api/token', {
                 username: this.username,
@@ -250,7 +250,7 @@ class SimpliSafe3AuthenticationManager {
     // Deprecated refresh with username / password
     async _refreshWithUsernamePassword() {
         try {
-            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please update to use the newest method. See README for more info.');
+            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please re-authenticate using newest method. See README for more info.');
             if (this.log && this.log.debug && this.debug) this.log.debug('Attempting to refresh with username / password.');
             const response = await ssApiV1.post('/api/token', {
                 refresh_token: this.refreshToken,
