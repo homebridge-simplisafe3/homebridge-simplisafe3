@@ -24,6 +24,7 @@ class Login extends Command {
         this.log('\nA browser window will open to log you into the SimpliSafe site. Or copy + paste this URL into your browser: '+loginURL);
         this.log('\nOnce logged in you will be redirected to a URL that doesnt open (starts with com.SimpliSafe.mobile://). Copy and paste it back here.');
         this.log('\nNote that in some browsers (e.g. Chrome) the browser will not redirect you and will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.\n');
+        this.log('\nAlso please note that this task cannot be performed on an iOS device that has the SimpliSafe app installed (authenticating will launch the app).\n');
 
         await cli.anykey();
 
