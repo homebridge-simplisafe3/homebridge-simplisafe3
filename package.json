@@ -107,8 +107,6 @@
   "scripts": {
     "build": "rm -rf lib && babel src -d lib && cp -r package.json config.schema.json homebridge-ui README.md lib/",
     "deploy": "npm publish lib/",
-    "postpack": "rm -f oclif.manifest.json",
-    "prepack": "oclif-dev manifest && oclif-dev readme",
     "release": "./scripts/release.sh",
     "start": "nodemon --exec babel-node src/index.js",
     "test": "echo NO TESTS",
