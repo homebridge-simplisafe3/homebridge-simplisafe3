@@ -1,7 +1,7 @@
 # Change Log
 All notable changes are documented here.
 
-## 1.8.1 (2021-09-29)
+## 1.8.2 (2021-09-29)
 - The plugin has been updated to use a new authentication method that will be required by SimpliSafe on or after December 2021. Please update your credentials as soon as possible, see the [README](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md#simplisafe-authentication) for more info. Issue #231.
 
 ## 1.7.2 (2021-09-29)
