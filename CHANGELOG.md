@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.7.2 (2021-09-29)
+- Security fixes.
+
 ## 1.7.1 (2021-09-07)
 - Fixes possible incorrect door lock state on startup. See #237. Thanks to @ljensen51 for raising the issue.
 - Security fixes. See #235
