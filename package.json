@@ -109,7 +109,6 @@
     "deploy": "npm publish lib/",
     "release": "./scripts/release.sh",
     "start": "nodemon --exec babel-node src/index.js",
-    "test": "echo NO TESTS",
-    "version": "oclif-dev readme && git add README.md"
+    "test": "echo NO TESTS"
   }
 }
