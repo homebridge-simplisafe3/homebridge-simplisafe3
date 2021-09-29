@@ -84,7 +84,13 @@
     "/bin",
     "/npm-shrinkwrap.json",
     "/oclif.manifest.json",
-    "/src"
+    "/simplisafe.js",
+    "/accessories",
+    "/commands",
+    "/common",
+    "/homebridge-ui",
+    "/config.schema.json",
+    "/README.md"
   ],
   "homepage": "https://github.com/homebridge-simplisafe3/homebridge-simplisafe3#readme",
   "keywords": [
