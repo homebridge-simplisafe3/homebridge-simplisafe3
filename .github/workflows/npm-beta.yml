@@ -1,8 +1,8 @@
-name: Publish to NPM
+name: Publish Beta to NPM
 
 on:
   release:
-    types: [released]
+    types: [prereleased]
 
 env:
   GITHUB_RELEASE: ${{ github.event.release.tag_name }}
@@ -22,6 +22,6 @@ jobs:
       - run: npm version --allow-same-version --no-git-tag-version "$GITHUB_RELEASE"
       - run: npm ci
       - run: npm run build
-      - run: npm publish lib/
+      - run: npm publish lib/ --tag beta
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
