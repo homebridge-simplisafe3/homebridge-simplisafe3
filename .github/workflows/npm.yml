@@ -2,8 +2,8 @@ name: Publish to NPM
 
 on:
   release:
-    types: [released]
-
+    types: [published]
+    
 env:
   GITHUB_RELEASE: ${{ github.event.release.tag_name }}
 
@@ -25,3 +25,4 @@ jobs:
       - run: npm publish lib/
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
+
