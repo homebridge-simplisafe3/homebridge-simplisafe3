@@ -3,6 +3,7 @@
   "pluginType": "platform",
   "singular": true,
   "headerDisplay": "*Please note this plugin requires an active SimpliSafe 'interactive' monitoring plan.*",
+  "customUi": true,
   "schema": {
     "type": "object",
     "properties": {
@@ -12,22 +13,6 @@
         "required": true,
         "default": "Home Alarm",
         "placeholder": "e.g. Home Alarm"
-      },
-      "auth": {
-        "title": "Authorization",
-        "type": "object",
-        "properties": {
-          "username": {
-            "title": "SimpliSafe Username",
-            "type": "string",
-            "required": true
-          },
-          "password": {
-            "title": "SimpliSafe Password",
-            "type": "string",
-            "required": true
-          }
-        }
       },
       "cameras": {
         "title": " Cameras",
@@ -114,8 +99,6 @@
       "type": "fieldset",
       "items": [
         "name",
-        "auth.username",
-        "auth.password",
         "cameras"
       ]
     },
@@ -138,7 +121,8 @@
       "type": "fieldset",
       "expandable": true,
       "title": "Advanced Options",
-      "items": [{
+      "items": [
+        {
           "key": "debug",
           "description": "To see all messages the Homebridge debug (<code>-D</code>) option must also be enabled. <small>See <a target='_blank' href='https://github.com/homebridge/homebridge-raspbian-image/wiki/How-To-Enable-Debug-or-Insecure-Mode'>https://github.com/homebridge/homebridge-raspbian-image/wiki/How-To-Enable-Debug-or-Insecure-Mode</a></small>"
         },

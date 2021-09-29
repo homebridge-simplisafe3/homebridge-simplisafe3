@@ -6,11 +6,6 @@ import io from 'socket.io-client';
 import fs from 'fs';
 import path from 'path';
 
-// Do not touch these - they allow the client to make requests to the SimpliSafe API
-const clientUuid = '4df55627-46b2-4e2c-866b-1521b395ded2';
-const clientUsername = `${clientUuid}.WebApp.simplisafe.com`;
-const clientPassword = '';
-
 const subscriptionCacheTime = 3000; // ms
 const sensorCacheTime = 3000; // ms
 const internalConfigFileName = 'simplisafe3config.json';
@@ -101,12 +96,7 @@ const generateSimplisafeId = () => {
 
 class SimpliSafe3 {
 
-    token;
-    rToken;
-    tokenType;
-    expiry;
-    username;
-    password;
+    authManager;
     userId;
     subId;
     accountNumber;
@@ -127,13 +117,13 @@ class SimpliSafe3 {
     isBlocked;
     nextBlockInterval = rateLimitInitialInterval;
     nextAttempt = 0;
-    loginAttempt;
 
-    constructor(sensorRefreshTime = 15000, resetConfig = false, storagePath, log, debug) {
+    constructor(sensorRefreshTime = 15000, resetConfig = false, authManager, storagePath, log, debug) {
         this.sensorRefreshTime = sensorRefreshTime;
         this.log = log || console.log;
         this.debug = debug;
         this.storagePath = storagePath;
+        this.authManager = authManager;
 
         let internalConfigFile = path.join(this.storagePath, internalConfigFileName);
         if (fs.existsSync(internalConfigFile) && resetConfig) {
@@ -156,114 +146,8 @@ class SimpliSafe3 {
                 this.log.warn('Warning: could not save SS config file. SS-ID will vary');
             }
         }
-    }
 
-    async login(username, password, storeCredentials = false) {
-
-        if (storeCredentials) {
-            this.username = username;
-            this.password = password;
-        }
-
-        if (this.isBlocked && Date.now() < this.nextAttempt) {
-            let err = new RateLimitError('Login request blocked (rate limit).');
-            throw err;
-        }
-
-        try {
-            const response = await ssApi.post('/api/token', {
-                username: username,
-                password: password,
-                grant_type: 'password',
-                client_id: clientUsername,
-                device_id: `Homebridge; useragent="Homebridge-SimpliSafe3 (SS-ID: ${this.ssId})"; uuid="${this.clientUuid}"; id="${this.ssId}"`,
-                scope: ''
-            }, {
-                auth: {
-                    username: clientUsername,
-                    password: clientPassword
-                }
-            });
-
-            let data = response.data;
-            this._storeLogin(data);
-            this._resetRateLimitHandler();
-        } catch (err) {
-
-            if (err.response) {
-                let errCode = err.response.status;
-                let errData = err.response.data;
-
-                if (errCode == 403 && (errData && errData.error && errData.error == 'mfa_required')) {
-
-                    this.log.warn('Multifactor authentication required. Check your email and approve the request!');
-
-                    // Multifactor Authentication required
-                    let mfaToken = errData.mfa_token;
-                    try {
-                        let mfaResponse = await ssApi.post('/api/mfa/challenge', {
-                            challenge_type: 'oob',
-                            client_id: clientUsername,
-                            mfa_token: mfaToken
-                        });
-
-                        let oobCode = mfaResponse.data.oob_code;
-                        let interval = mfaResponse.data.interval * 1000;
-
-                        let tokenData = await this.checkMultifactorAuthentication(mfaToken, oobCode, interval);
-                        this._storeLogin(tokenData);
-                        this._resetRateLimitHandler();
-
-                    } catch (err) {
-                        this.logout(storeCredentials);
-                        throw err.response ? err.response : err;
-                    }
-
-                } else if (errCode == 403 && errData.error_description !== 'INVALID_CREDENTIALS_PASSWORD') {
-                    this._setRateLimitHandler();
-                    if (this.debug) this.log.error('SSAPI login received a response error with code 403:', err.response);
-                    let err = new RateLimitError('SSAPI login failed, request blocked (rate limit?).');
-                    throw err;
-                } else {
-                    this.logout(storeCredentials);
-                    throw errData.error_description == 'INVALID_CREDENTIALS_PASSWORD' ? errData : err.response;
-                }
-            } else {
-                this._setRateLimitHandler();
-                let err = new RateLimitError('SSAPI login failed, request blocked (connectivity?).');
-                throw err;
-            }
-        }
-    }
-
-    async checkMultifactorAuthentication(mfaToken, oob, interval) {
-        const timeLimit = Date.now() + mfaTimeout;
-
-        const intervalChecker = new Promise((resolve, reject) => {
-            const mfaInterval = setInterval(async () => {
-
-                if (Date.now() > timeLimit) {
-                    clearInterval(mfaInterval);
-                    reject();
-                }
-
-                let response = await ssApi.post('/api/token', {
-                    grant_type: 'http://simplisafe.com/oauth/grant-type/mfa-oob',
-                    client_id: clientUsername,
-                    mfa_token: mfaToken,
-                    oob_code: oob
-                });
-
-                let data = response.data;
-                if (data.access_token) {
-                    clearInterval(mfaInterval);
-                    resolve(data);
-                }
-
-            }, interval);
-        });
-
-        return intervalChecker;
+        this._resetRateLimitHandler();
     }
 
     _resetRateLimitHandler() {
@@ -279,96 +163,10 @@ class SimpliSafe3 {
         }
     }
 
-    _storeLogin(tokenResponse) {
-        this.token = tokenResponse.access_token;
-        this.rToken = tokenResponse.refresh_token;
-        this.tokenType = tokenResponse.token_type;
-        this.expiry = Date.now() + (tokenResponse.expires_in * 1000);
-    }
-
-    logout(keepCredentials = false) {
-        this.token = null;
-        this.rToken = null;
-        this.tokenType = null;
-        this.expiry = null;
-        if (!keepCredentials) {
-            this.username = null;
-            this.password = null;
-        }
-    }
-
-    isLoggedIn() {
-        return this.rToken !== null || (this.token !== null && Date.now() < this.expiry);
-    }
-
-    async refreshToken() {
-        if (!this.isLoggedIn() || !this.rToken) {
-            let err = new Error('User is not logged in');
-            throw err;
-        }
-
-        if (this.isBlocked && Date.now() < this.nextAttempt) {
-            let err = new RateLimitError('Refresh token request blocked (rate limit).');
-            throw err;
-        }
-
-        try {
-            const response = await ssApi.post('/api/token', {
-                refresh_token: this.rToken,
-                grant_type: 'refresh_token'
-            }, {
-                auth: {
-                    username: clientUsername,
-                    password: clientPassword
-                }
-            });
-
-            let data = response.data;
-            this._storeLogin(data);
-            this._resetRateLimitHandler();
-
-        } catch (err) {
-
-            if (err.response) {
-                let errCode = err.response.status;
-
-                if (errCode == 403) {
-                    this.log.error('SSAPI token refresh failed, request blocked (rate limit?).');
-                    this._setRateLimitHandler();
-                } else {
-                    this.logout(this.username != null);
-                }
-                throw err.response;
-            } else {
-                this._setRateLimitHandler();
-                let err = new RateLimitError('SSAPI login failed, request blocked (connectivity?).');
-                throw err;
-            }
-        }
-    }
-
     async request(params, tokenRefreshed = false) {
         if (this.isBlocked && Date.now() < this.nextAttempt) {
             let err = new RateLimitError('Blocking request: rate limited');
             throw err;
-        }
-
-        if (!this.isLoggedIn()) {
-            if (this.isBlocked) {
-                // User is not logged in due to the last login attempt being blocked.
-                // It's now time to try logging in again.
-
-                // Use this logic so that if multiple requests happen at the same time,
-                // only one will attempt to log in.
-                if (!this.loginAttempt) {
-                    this.loginAttempt = this.login(this.username, this.password, true);
-                }
-                await this.loginAttempt;
-                this.loginAttempt = null;
-            } else {
-                let err = new Error('User is not logged in');
-                throw err;
-            }
         }
 
         try {
@@ -376,7 +174,7 @@ class SimpliSafe3 {
                 ...params,
                 headers: {
                     ...params.headers,
-                    Authorization: `${this.tokenType} ${this.token}`
+                    Authorization: `${this.authManager.tokenType} ${this.authManager.accessToken}`
                 }
             });
             this._resetRateLimitHandler();
@@ -389,15 +187,18 @@ class SimpliSafe3 {
 
             let statusCode = err.response.status;
             if (statusCode == 401 && !tokenRefreshed) {
-                return this.refreshToken()
+                return this.authManager.refreshCredentials()
                     .then(() => {
+                        if (this.debug) this.log.debug('Credentials refreshed successfully after failed request');
                         return this.request(params, true);
                     })
                     .catch(async err => {
                         let statusCode = err.status;
-                        if ((statusCode == 401 || statusCode == 403) && this.username && this.password) {
-                            await this.login(this.username, this.password, true);
-                            return this.request(params, true);
+                        if (statusCode == 403) {
+                            this.log.error('SSAPI request failed, request blocked (rate limit?).');
+                            if (this.debug) this.log.error('SSAPI request received a response error with code 403:', err.response);
+                            this._setRateLimitHandler();
+                            throw new RateLimitError(err.response.data);
                         } else {
                             throw err;
                         }
@@ -766,7 +567,7 @@ class SimpliSafe3 {
                 path: '/socket.io',
                 query: {
                     ns: `/v1/user/${userId}`,
-                    accessToken: this.token
+                    accessToken: this.authManager.accessToken
                 },
                 transports: ['websocket', 'polling'],
                 pfx: []

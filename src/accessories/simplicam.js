@@ -17,7 +17,7 @@ const dnsLookup = promisify(dns.lookup);
 
 class SS3SimpliCam {
 
-    constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, Service, Characteristic, UUIDGen, CameraController) {
+    constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, authManager, Service, Characteristic, UUIDGen, CameraController) {
         this.Characteristic = Characteristic;
         this.Service = Service;
         this.UUIDGen = UUIDGen;
@@ -28,6 +28,7 @@ class SS3SimpliCam {
         this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
+        this.authManager = authManager;
         this.uuid = UUIDGen.generate(id);
         this.reachable = true;
 
@@ -256,11 +257,11 @@ class SS3SimpliCam {
         const url = {
             url: `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/mjpg?x=${request.width}&fr=1`,
             headers: {
-                'Authorization': `Bearer ${this.simplisafe.token}`
+                'Authorization': `Bearer ${this.authManager.accessToken}`
             },
             rejectUnauthorized: false // OK because we are using IP and just polled DNS
         };
-        
+
         jpegExtract(url).then(img => {
             if (this.debug) this.log.debug(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(img.length/1000)}kB image`);
             callback(undefined, img);
@@ -377,7 +378,7 @@ class SS3SimpliCam {
 
                     let sourceArgs = [
                         ['-re'],
-                        ['-headers', `Authorization: Bearer ${this.simplisafe.token}`],
+                        ['-headers', `Authorization: Bearer ${this.authManager.accessToken}`],
                         ['-i', `https://${this.serverIpAddress}/v1/${this.cameraDetails.uuid}/flv?x=${width}&audioEncoding=AAC`]
                     ];
 
