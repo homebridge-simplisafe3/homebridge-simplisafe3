@@ -80,12 +80,6 @@
       "babel/semi": 1
     }
   },
-  "files": [
-    "/bin",
-    "/npm-shrinkwrap.json",
-    "/oclif.manifest.json",
-    "/src"
-  ],
   "homepage": "https://github.com/homebridge-simplisafe3/homebridge-simplisafe3#readme",
   "keywords": [
     "homebridge",
