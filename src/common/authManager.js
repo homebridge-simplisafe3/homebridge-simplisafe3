@@ -44,7 +44,7 @@ class SimpliSafe3AuthenticationManager {
 
     constructor(storagePath, log, debug) {
         this.storagePath = storagePath;
-        this.log = log;
+        this.log = log || console.log;
         this.debug = debug || false;
 
         const account = this._parseAccountsFile();
@@ -160,7 +160,7 @@ class SimpliSafe3AuthenticationManager {
 
     async refreshCredentials() {
         if (this.refreshToken == undefined && this.username !== undefined && this.password !== undefined) {
-          return this._loginWithUsernamePassword();
+            return this._loginWithUsernamePassword();
         } else if (this.refreshToken == undefined) {
             throw new Error('No authentication credentials detected.');
         }
@@ -189,7 +189,7 @@ class SimpliSafe3AuthenticationManager {
     async _storeToken(token) {
         this.accessToken = token.access_token;
         this.refreshToken = token.refresh_token;
-        this.expiry = Date.now() + (token.expires_in * 1000);
+        this.expiry = Date.now() + (parseInt(token.expires_in) * 1000);
         this.tokenType = token.token_type;
 
         const account = {
@@ -205,7 +205,7 @@ class SimpliSafe3AuthenticationManager {
         this.refreshInterval = setInterval(() => {
             this.refreshCredentials();
             if (this.log !== undefined && this.debug) this.log.debug('Preemptively authenticating with SimpliSafe');
-        }, token.expires_in * 1000 - 300000);
+        }, parseInt(token.expires_in) * 1000 - 300000);
     }
 
     // Deprecated login with username / password

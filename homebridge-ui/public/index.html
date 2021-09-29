@@ -1,6 +1,11 @@
 <div class="card">
-  <div class="card-body">
-    <div class="form-group text-center">
+  <div class="card-body text-center">
+    <div id="authExists">
+      <p class="mb-0">
+        <strong>Authentication has been setup already.</strong> <a id="showAuth" href="#auth">Show Authentication Instructions.</a>
+      </p>
+    </div>
+    <div id="auth" class="pt-2">
       <p class="form-text small">
         SimpliSafe login now requires using their OAuth flow, click the button below to launch the login page. Once verified you will be redirected to a URL (begins with 'com.SimpliSafe.mobile://') which you should copy and paste back here in its entirety.
       </p>
@@ -11,7 +16,7 @@
         See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md#simplisafe-authentication'>README</a> for more information.
       </p>
       <a href="" target="_blank" id="ssLoginButton" class="btn btn-primary btn-lg disabled">Launch SimpliSafe Login</a>
-      <div id="redirectUrl" class="text-left">
+      <div id="redirectUrl" class="collapse text-left">
         <label for="redirectUrlInput">Redirected URL</label>
         <input type="text" class="form-control" id="redirectUrlInput" aria-describedby="authRedirectHelp">
         <small id="authRedirectHelp" class="form-text text-muted">Enter the full URL</small>
@@ -25,57 +30,70 @@
 
 <script>
 (async () => {
-  $('#redirectUrl').slideUp();
+  $('#redirectUrl').slideUp(0);
+  $('#authExists').slideUp(0);
 
   // get the current homebridge config
   const pluginConfig = await homebridge.getPluginConfig();
   if (!pluginConfig.length) {
-    pluginConfig.push({ name: 'Home Alarm' })
-    await homebridge.updatePluginConfig(pluginConfig)
+      pluginConfig.push({ name: 'Home Alarm' })
+      await homebridge.updatePluginConfig(pluginConfig)
   }
 
   homebridge.showSchemaForm();
 
+  const credentialsExistResponse = await homebridge.request('/credentialsExist');
+  console.log(credentialsExistResponse);
+  if (credentialsExistResponse.success && credentialsExistResponse.credentialsExist) {
+      $('#authExists').slideDown(0);
+      $('#auth').slideUp(0);
+  }
+
   let codeVerifier;
   const codeVerifierResponse = await homebridge.request('/getCodeVerifier');
   if (codeVerifierResponse.success) {
-    codeVerifier = codeVerifierResponse.codeVerifier;
+      codeVerifier = codeVerifierResponse.codeVerifier;
   }
 
   const authURLResponse = await homebridge.request('/getSSAuthURL');
   if (authURLResponse.success) {
-    $('#ssLoginButton').attr('href', authURLResponse.url).removeClass('disabled');
+      $('#ssLoginButton').attr('href', authURLResponse.url).removeClass('disabled');
   }
 
+  $('#showAuth').click(function() {
+      $('#auth').slideDown();
+  });
+
   $('#ssLoginButton').click(function() {
-    $('#redirectUrl').slideDown();
+      $('#redirectUrl').slideDown();
   });
 
   $('#redirectUrlInput').on('paste input', async function () {
-    const redirectUrl = $('#redirectUrlInput').val();
-    if (redirectUrl.length > 0) {
-      const getCodeResponse = await homebridge.request('/getAuthCodeFromUrl', {
-        redirectURLStr: redirectUrl
-      });
+      const redirectUrl = $('#redirectUrlInput').val();
+      if (redirectUrl.length > 0) {
+          const getCodeResponse = await homebridge.request('/getAuthCodeFromUrl', {
+              redirectURLStr: redirectUrl
+          });
 
-      if (!getCodeResponse.success) {
-        homebridge.toast.error('Unable to extract auth code from URL, check to ensure the pasted URL was correct.', 'Error retrieving code');
-        $('#redirectUrlInput').addClass('is-invalid');
-      } else {
-        const getTokenResponse = await homebridge.request('/getToken', {
-          authCode: getCodeResponse.authCode
-        });
+          if (!getCodeResponse.success) {
+              homebridge.toast.error('Unable to extract auth code from URL, check to ensure the pasted URL was correct.', 'Error retrieving code');
+              $('#redirectUrlInput').addClass('is-invalid');
+          } else {
+              const getTokenResponse = await homebridge.request('/getToken', {
+                  authCode: getCodeResponse.authCode
+              });
 
-        if (getTokenResponse.success) {
-          homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
-          $('#redirectUrlInput').removeClass('is-invalid');
-          $('#redirectUrl').slideUp();
-        } else {
-          homebridge.toast.error('Please try again.', 'Error retrieving token');
-          $('#redirectUrlInput').addClass('is-invalid');
-        }
+              if (getTokenResponse.success) {
+                  homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
+                  $('#redirectUrlInput').removeClass('is-invalid');
+                  $('#redirectUrl').slideUp();
+                  $('#authExists').slideDown();
+              } else {
+                  homebridge.toast.error('Please try again.', 'Error retrieving token');
+                  $('#redirectUrlInput').addClass('is-invalid');
+              }
+          }
       }
-    }
   });
 
 })();

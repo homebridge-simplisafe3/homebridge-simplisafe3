@@ -11,6 +11,7 @@ class UiServer extends HomebridgePluginUiServer {
 
         this.authManager = new SimpliSafe3AuthenticationManager(this.homebridgeStoragePath);
 
+        this.onRequest('/credentialsExist', this.credentialsExist.bind(this));
         this.onRequest('/getCodeVerifier', this.getCodeVerifier.bind(this));
         this.onRequest('/getSSAuthURL', this.getSSAuthURL.bind(this));
         this.onRequest('/getAuthCodeFromUrl', this.getAuthCodeFromUrl.bind(this));
@@ -18,6 +19,13 @@ class UiServer extends HomebridgePluginUiServer {
 
         // this.ready() must be called to let the UI know you are ready to accept api calls
         this.ready();
+    }
+
+    /**
+   * Reports whether credentials already exiist
+   */
+    async credentialsExist() {
+        return { success: true, credentialsExist: this.authManager.accountsFileExists() }
     }
 
     /**
