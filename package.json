@@ -105,7 +105,7 @@
   },
   "repository": "git+https://github.com/homebridge-simplisafe3/homebridge-simplisafe3.git",
   "scripts": {
-    "build": "rm -rf lib && babel src -d lib && cp -r package.json config.schema.json homebridge-ui README.md bin lib/",
+    "build": "rm -rf lib && babel src -d lib && cp -r package.json config.schema.json homebridge-ui bin README.md lib/",
     "deploy": "npm publish lib/",
     "release": "./scripts/release.sh",
     "start": "nodemon --exec babel-node src/index.js",
