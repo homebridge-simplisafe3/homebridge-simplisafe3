@@ -188,7 +188,7 @@ class SimpliSafe3AuthenticationManager {
             });
 
             await this._storeToken(refreshTokenResponse.data);
-            if (this.log !== undefined && this.debug) this.log.debug('Credentials refresh was successful');
+            if (this.log !== undefined && this.debug) this.log('Credentials refresh was successful');
         } catch (err) {
             throw new Error('Error refreshing token: ' + err.toString());
         }
@@ -212,7 +212,7 @@ class SimpliSafe3AuthenticationManager {
         }
         this.refreshInterval = setInterval(() => {
             this.refreshCredentials();
-            if (this.log !== undefined && this.debug) this.log.debug('Preemptively authenticating with SimpliSafe');
+            if (this.log !== undefined && this.debug) this.log('Preemptively authenticating with SimpliSafe');
         }, parseInt(token.expires_in) * 1000 - 300000);
     }
 
@@ -220,7 +220,7 @@ class SimpliSafe3AuthenticationManager {
     async _loginWithUsernamePassword() {
         try {
             if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please re-authenticate using newest method. See README for more info.');
-            if (this.log && this.log.debug && this.debug) this.log.debug('Attempting to login with username / password.');
+            if (this.log && this.debug) this.log('Attempting to login with username / password.');
             const response = await ssApiV1.post('/api/token', {
                 username: this.username,
                 password: this.password,
@@ -240,7 +240,7 @@ class SimpliSafe3AuthenticationManager {
             this.refreshToken = token.refresh_token;
             this.expiry = Date.now() + (parseInt(token.expires_in) * 1000);
             this.tokenType = token.token_type;
-            if (this.log && this.log.debug && this.debug) this.log.debug('Username / password login successful.');
+            if (this.log && this.debug) this.log('Username / password login successful.');
         } catch (error) {
             this.log('Username / password login failed.');
             throw error;
@@ -251,7 +251,7 @@ class SimpliSafe3AuthenticationManager {
     async _refreshWithUsernamePassword() {
         try {
             if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please re-authenticate using newest method. See README for more info.');
-            if (this.log && this.log.debug && this.debug) this.log.debug('Attempting to refresh with username / password.');
+            if (this.log && this.debug) this.log('Attempting to refresh with username / password.');
             const response = await ssApiV1.post('/api/token', {
                 refresh_token: this.refreshToken,
                 grant_type: 'refresh_token'
@@ -267,7 +267,7 @@ class SimpliSafe3AuthenticationManager {
             this.refreshToken = token.refresh_token;
             this.expiry = Date.now() + (parseInt(token.expires_in) * 1000);
             this.tokenType = token.token_type;
-            if (this.log && this.log.debug && this.debug) this.log.debug('Username / password refresh successful.');
+            if (this.log && this.debug) this.log('Username / password refresh successful.');
         } catch (error) {
             this.log('Refresh with username / password login failed.');
             throw error;

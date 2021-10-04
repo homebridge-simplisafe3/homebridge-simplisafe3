@@ -16,7 +16,7 @@ class SS3EntrySensor {
     }
 
     identify(callback) {
-        if (this.debug) this.log.debug(`Identify request for ${this.name}`);
+        if (this.debug) this.log(`Identify request for ${this.name}`);
         callback();
     }
 
@@ -130,7 +130,7 @@ class SS3EntrySensor {
     }
 
     async refreshState() {
-        if (this.debug) this.log.debug('Refreshing sensor state');
+        if (this.debug) this.log('Refreshing sensor state');
         try {
             let sensor = await this.getSensorInformation();
             if (!sensor.status || !sensor.flags) {
@@ -146,7 +146,7 @@ class SS3EntrySensor {
             this.service.updateCharacteristic(this.Characteristic.ContactSensorState, homekitSensorState);
             this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
 
-            if (this.debug) this.log.debug(`Updated current state for ${this.name}: ${open}, ${batteryLow}`);
+            if (this.debug) this.log(`Updated current state for ${this.name}: ${open}, ${batteryLow}`);
 
         } catch (err) {
             this.log.error('An error occurred while refreshing state');

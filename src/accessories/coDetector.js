@@ -16,7 +16,7 @@ class SS3CODetector {
     }
 
     identify(callback) {
-        if (this.debug) this.log.debug(`Identify request for ${this.name}`);
+        if (this.debug) this.log(`Identify request for ${this.name}`);
         callback();
     }
 
@@ -169,7 +169,7 @@ class SS3CODetector {
     }
 
     async refreshState() {
-        if (this.debug) this.log.debug('Refreshing sensor state');
+        if (this.debug) this.log('Refreshing sensor state');
         try {
             let sensor = await this.getSensorInformation();
             if (!sensor.status || !sensor.flags) {
@@ -188,7 +188,7 @@ class SS3CODetector {
             this.service.updateCharacteristic(this.Characteristic.StatusFault, homekitFaultState);
             this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
 
-            if (this.debug) this.log.debug(`Updated current state for ${this.name}: ${sensor.status.triggered}, ${sensor.status.tamper}, ${sensor.status.malfunction}, ${batteryLow}`);
+            if (this.debug) this.log(`Updated current state for ${this.name}: ${sensor.status.triggered}, ${sensor.status.tamper}, ${sensor.status.malfunction}, ${batteryLow}`);
 
         } catch (err) {
             this.log.error('An error occurred while refreshing state');

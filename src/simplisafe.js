@@ -189,7 +189,7 @@ class SimpliSafe3 {
             if (statusCode == 401 && !tokenRefreshed) {
                 return this.authManager.refreshCredentials()
                     .then(() => {
-                        if (this.debug) this.log.debug('Credentials refreshed successfully after failed request');
+                        if (this.debug) this.log('Credentials refreshed successfully after failed request');
                         return this.request(params, true);
                     })
                     .catch(async err => {
@@ -547,7 +547,7 @@ class SimpliSafe3 {
                             break;
                         default:
                             // Unknown event
-                            if (this.debug) this.log.debug('Unknown SSAPI event:', data);
+                            if (this.debug) this.log('Unknown SSAPI event:', data);
                             callback(null, data);
                             break;
                     }
@@ -576,15 +576,15 @@ class SimpliSafe3 {
             // for debugging, we only want one of these listeners
             if (this.debug) {
                 this.socket.on('connect', () => {
-                    this.log.debug('SSAPI socket connected');
+                    this.log('SSAPI socket connected');
                 });
 
                 this.socket.on('reconnect_attempt', (attemptNumber) => {
-                    this.log.debug(`SSAPI socket reconnect_attempt #${attemptNumber}`);
+                    this.log(`SSAPI socket reconnect_attempt #${attemptNumber}`);
                 });
 
                 this.socket.on('reconnect', () => {
-                    this.log.debug('SSAPI socket reconnected');
+                    this.log('SSAPI socket reconnected');
                 });
 
                 this.socket.on('connect_error', (err) => {
@@ -592,7 +592,7 @@ class SimpliSafe3 {
                 });
 
                 this.socket.on('connect_timeout', () => {
-                    this.log.debug('SSAPI socket connect_timeout');
+                    this.log('SSAPI socket connect_timeout');
                 });
 
                 this.socket.on('error', (err) => {
@@ -607,7 +607,7 @@ class SimpliSafe3 {
                 });
 
                 this.socket.on('disconnect', (reason) => {
-                    this.log.debug('SSAPI socket disconnect reason:', reason);
+                    this.log('SSAPI socket disconnect reason:', reason);
                 });
             }
         }
@@ -663,7 +663,7 @@ class SimpliSafe3 {
                 }
 
                 if (this.sensorRefreshLockoutTimeout) {
-                    if (this.debug) this.log.debug('Sensor refresh lockout in effect, refresh blocked.');
+                    if (this.debug) this.log('Sensor refresh lockout in effect, refresh blocked.');
                     return;
                 }
 
