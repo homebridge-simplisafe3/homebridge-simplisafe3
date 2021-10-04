@@ -1,7 +1,7 @@
 # Change Log
 All notable changes are documented here.
 
-## 1.8.3 (2021-10-03)
+## 1.8.4 (2021-10-03)
 - The plugin no longer requires setting the `-D` debug option for homebridge to display all debug messages (the `debug` option is still used).
 
 ## 1.8.2 (2021-09-29)

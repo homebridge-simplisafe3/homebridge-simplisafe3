@@ -40,7 +40,7 @@ Paste the relevant section of your homebridge config.json here
 <!-- If applicable, add screenshots to help explain your problem. If not, enter "not applicable". -->
 
 ### Logs:
-<!-- Important: please enable the debug option for the plugin *and* Homebridge debug mode (https://github.com/homebridge/homebridge/wiki/Basic-Troubleshooting#debug-mode) before generating the log. -->
+<!-- Important: please enable the debug option for the plugin and optionally Homebridge debug mode (https://github.com/homebridge/homebridge/wiki/Basic-Troubleshooting#debug-mode) before generating the log. -->
 <!-- Paste any relevant log output into a gist, hastebin or paste below. -->
 <!-- If using hastebin or other text sharing website please make the lifespan long. -->
 <!-- Paste the link between the two () above. -->
