@@ -68,10 +68,10 @@ Type: boolean (default `false`)
 
 Switch this on to get more details about your sensors and plugin behavior in your Homebridge logs. This can be useful if you are having trouble or need to report an issue.
 
-#### `subscriptionId`
+#### `subscriptionId` (Account Number)
 Type: string
 
-Add this parameter in case you have multiple protected locations or accounts with SimpliSafe. The `subscriptionId` can be found at the bottom of your base unit.
+Add this parameter in case you have multiple protected locations or accounts with SimpliSafe, this is your "account number" in Simplisafe. The best way to ensure you have the correct number is to check under the [SimpliSafe web control panel > View Account](https://webapp.simplisafe.com/#/account) and look for **account #** next to the correct plan. For most users this is the same as the serial number at the bottom of your base unit.
 
 #### `sensorRefresh`
 Type: integer (default `15` seconds)
@@ -100,8 +100,9 @@ Device             | Supported          | Notes
 Alarm arm/disarm   | :white_check_mark: | Home, away and off modes
 SimpliCam          | :white_check_mark: | Audio, video, motion*, no microphone
 Doorbell           | :white_check_mark: | Audio, video, motion, no microphone
-Smart lock         | :white_check_mark: |
-Entry sensor       | :white_check_mark: |
+Outdoor Camera     | :x:                | Not supported yet
+Smart lock         | :white_check_mark: | Fully supports locking, unlocking
+Entry sensor       | :white_check_mark: | Status not provided as 'push' by SS so is polled based on `sensorRefresh`
 Smoke detector     | :white_check_mark: | Includes support for tamper & fault
 CO detector        | :white_check_mark: | Includes support for tamper & fault
 Water sensor       | :white_check_mark: |
@@ -120,16 +121,7 @@ Using the "Secret Alert" setting will allow for motion events at all times but n
 All devices also support low battery warnings.
 
 ### Camera Support
-To enable camera support, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin).
-
-**As of version v1.5.0 (which requires Homebridge v1.0.0 or later) cameras do not need to be added separately. Bridged cameras in v1.5.0 or later will not function properly with versions of Homebridge below 1.0.0. See [Migrating External Cameras to Bridged Cameras](#migrating-external-cameras-to-bridged-cameras) below.**
-
-#### Migrating External Cameras to Bridged Cameras
-After upgrading to v1.5.0, old (external) cameras will cease to function. This also means any existing HomeKit automations containing the camera will need to be updated. We recommend the following steps to avoid losing automations:
-
-1. After updating the plugin you will see your new cameras automatically, if you are unsure which is which, click **Edit** on the camera in the Home app to view its settings and at the bottom you will see a button to **Remove Camera From Home** under an *old* external camera whereas new ones will show a link to the Bridge (and no remove button).
-1. Before removing the old camera, update any automations that you have to replace any relevant parts with the new camera.
-1. You can now safely remove your old camera from the Home app.
+To enable camera support, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin). Currently only the SimpliCam and Doorbell camera are supported.
 
 #### Camera Options
 This plugin includes [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) to automatically include a compatible build of ffmpeg and thus the plugin works "out of the box" without requiring a custom ffmpeg build.
@@ -144,7 +136,6 @@ For advanced scenarios including specifying a custom ffmpeg build or command lin
     "audioOptions": "-ar 256k ... (any other ffmpeg argument)"
 }
 ```
-\* *Note that the format of `"cameraOptions"` changed as of v1.4.3. Old config files should continue work but your settings may need to be re-entered if you are switching to using Config UI X*
 
 Any arguments provided in `sourceOptions`, `videoOptions` and `audioOptions` will be added to the list of arguments passed to ffmpeg, or will replace the default ones if these already exist.
 To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re"`.
@@ -160,6 +151,6 @@ To remove a default argument, define it with `false` as its value, e.g. `"-tune 
 - Due to transcoding requirements, when using a Raspberry Pi 3b video feeds will disconnect after ~20 seconds. RPi 4 or newer is recommended. See [issue #147](https://github.com/nzapponi/homebridge-simplisafe3/issues/147)
 
 ## Help & Support
-Any feedback is welcomed. For bugs, feature requests, etc. you may open an issue here.
+All feedback is welcomed. For bugs, feature requests, etc. you may open an issue here.
 
 The official [Homebridge Discord server](https://discord.gg/kqNCe2D) and [Reddit community](https://www.reddit.com/r/homebridge/) are another great place to ask for help.

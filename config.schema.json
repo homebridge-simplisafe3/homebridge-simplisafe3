@@ -25,7 +25,7 @@
         "type": "boolean"
       },
       "subscriptionId": {
-        "title": "Subscription ID",
+        "title": "Account Number",
         "type": "string"
       },
       "sensorRefresh": {
@@ -128,7 +128,7 @@
         },
         {
           "key": "subscriptionId",
-          "description": "Add this parameter in case you have multiple protected locations or accounts with SimpliSafe. The subscriptionId can be found at the bottom of your base unit."
+          "description": "Find your account number under SS web control panel > View Account. See README for more info."
         },
         "sensorRefresh",
         {
@@ -138,7 +138,7 @@
         {
           "key": "excludedDevices",
           "title": "Excluded Devices",
-          "description": "A list of devices to exclude from HomeKit. Users device serial number which can be found in the SS app.",
+          "description": "A list of devices to exclude from HomeKit. Uses the device serial number which can be found in the SS app.",
           "add": "Add Another Device",
           "type": "array",
           "items": [

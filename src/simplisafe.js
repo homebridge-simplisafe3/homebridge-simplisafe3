@@ -270,10 +270,10 @@ class SimpliSafe3 {
                 if (subs.length == 1) {
                     subscriptionId = subs[0].sid;
                 } else if (subs.length == 0) {
-                    throw new Error('No matching subscriptions found. Check your account and ensure you have an active subscription.');
+                    throw new Error('No matching monitoring plans found. Check your account and ensure you have an active plan.');
                 } else {
                     let accountNumbers = subs.map(s => s.location.account);
-                    throw new Error(`Multiple subscriptions found. Edit your config.json file and add a parameter called "subscriptionId": "YOUR ACCOUNT NUMBER". The account numbers found were: ${accountNumbers.join(', ')}.`);
+                    throw new Error(`Multiple plans found. You must specify a plan in the plugin settings. See README for more info. The account numbers found were: ${accountNumbers.join(', ')}.`);
                 }
             }
         }
