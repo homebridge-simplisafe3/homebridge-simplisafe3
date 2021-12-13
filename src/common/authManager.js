@@ -194,7 +194,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             if (this.log !== undefined && this.debug) this.log('Credentials refresh was successful');
         } catch (err) {
             this.emit('refreshCredentialsFailure');
-            throw new Error('Error refreshing token: ' + err.toString());
+            throw new Error('Failed refreshing token: ' + err.toString());
         }
     }
 
@@ -215,8 +215,12 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             clearInterval(this.refreshInterval);
         }
         this.refreshInterval = setInterval(() => {
-            this.refreshCredentials();
             if (this.log !== undefined && this.debug) this.log('Preemptively authenticating with SimpliSafe');
+            this.refreshCredentials()
+            .catch(err => {
+                // handled elsewhere, just log
+                if (this.log !== undefined) this.log.error(err);
+            })
         }, parseInt(token.expires_in) * 1000 - 300000);
     }
 
