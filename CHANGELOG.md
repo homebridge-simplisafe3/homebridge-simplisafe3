@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.8.5 (2021-12-13)
+- The plugin now sets the 'General Fault' proprty of the alarm when it detects authentication failure. See #264.
+- Documentation and settings UI updated to clarify `subscriptionId` property. See #201
+
 ## 1.8.4 (2021-10-03)
 - The plugin no longer requires setting the `-D` debug option for homebridge to display all debug messages (the `debug` option is still used).
 
