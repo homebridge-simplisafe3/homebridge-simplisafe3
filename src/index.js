@@ -45,6 +45,13 @@ class SS3Platform {
         this.authManager = new SimpliSafe3AuthenticationManager(this.api.user.storagePath(), log, this.debug);
         this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, this.authManager, this.api.user.storagePath(), log, this.debug);
 
+        this.authManager.on('refreshCredentialsSuccess', () => {
+            if (this.alarmAccessory) this.alarmAccessory.setFault(false);
+        });
+        this.authManager.on('refreshCredentialsFailure', () => {
+          if (this.alarmAccessory) this.alarmAccessory.setFault(true);
+        });
+
         if (config.subscriptionId) {
             if (this.debug) this.log(`Specifying account number: ${config.subscriptionId}`);
             this.simplisafe.setDefaultSubscription(config.subscriptionId);
@@ -170,6 +177,7 @@ class SS3Platform {
                 );
 
                 this.devices.push(alarmAccessory);
+                this.alarmAccessory = alarmAccessory;
 
                 if (addAndRemove) {
                     let newAccessory = new Accessory('SimpliSafe 3', UUIDGen.generate(subscription.location.system.serial));

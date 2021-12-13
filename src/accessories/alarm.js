@@ -162,6 +162,7 @@ class SS3Alarm {
                 }, data.exitDelay * 1000);
             }
             this.nRetries = 0;
+            this.setFault(false);
             callback(null);
         } catch (err) {
             if ([409, 504].indexOf(parseInt(err.statusCode)) !== -1 && this.nRetries < targetStateMaxRetries) { // 409 = SettingsInProgress, 504 = GatewayTimeout
@@ -174,6 +175,7 @@ class SS3Alarm {
             } else {
                 this.log.error('Error while setting alarm state:', err);
                 this.nRetries = 0;
+                this.setFault();
                 callback(new Error(`An error occurred while setting the alarm state: ${err}`));
             }
         }
@@ -249,10 +251,16 @@ class SS3Alarm {
             this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, currentHomekitState);
             this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, targetHomekitState);
             if (this.debug) this.log(`Updated current state for ${this.name}: ${state}`);
+            this.setFault(false);
         } catch (err) {
             this.log.error('An error occurred while refreshing state');
             this.log.error(err);
+            this.setFault();
         }
+    }
+
+    setFault(fault = true) {
+        this.service.updateCharacteristic(this.Characteristic.StatusFault, fault ? this.Characteristic.StatusFault.GENERAL_FAULT : this.Characteristic.StatusFault.NO_FAULT);
     }
 
 }

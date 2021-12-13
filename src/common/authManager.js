@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const events = require('events');
 
 const ssOAuth = axios.create({
     baseURL: 'https://auth.simplisafe.com/oauth'
@@ -29,7 +30,7 @@ const ssApiExpiry = 3600;
 
 const accountsFilename = 'simplisafe3auth.json';
 
-class SimpliSafe3AuthenticationManager {
+class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     storagePath;
     accessToken;
     refreshToken;
@@ -47,6 +48,7 @@ class SimpliSafe3AuthenticationManager {
     ssId;
 
     constructor(storagePath, log, debug) {
+        super();
         this.storagePath = storagePath;
         this.log = log || console.log;
         this.debug = debug || false;
@@ -188,8 +190,10 @@ class SimpliSafe3AuthenticationManager {
             });
 
             await this._storeToken(refreshTokenResponse.data);
+            this.emit('refreshCredentialsSuccess');
             if (this.log !== undefined && this.debug) this.log('Credentials refresh was successful');
         } catch (err) {
+            this.emit('refreshCredentialsFailure');
             throw new Error('Error refreshing token: ' + err.toString());
         }
     }
