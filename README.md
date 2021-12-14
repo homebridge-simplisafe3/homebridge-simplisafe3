@@ -14,10 +14,9 @@ A complete (unofficial) [Homebridge](https://github.com/homebridge/homebridge) p
 </span>
 
 ## Requirements
-- **You must be signed up for a SimpliSafe monitoring or self-monitoring plan that enables you to use the mobile app for this plugin to work.** The monitoring plan enables API access to SimpliSafe.
-- As of version 1.5.0 of this plugin, Homebridge v1.0.0 or greater is required. Because of [significant changes to Homebridge](https://github.com/homebridge/homebridge/releases/tag/1.0.0) the plugin may not work properly with older versions of Homebridge. The last version of this plugin to officially support Homebridge 0.4.53 was version 1.4.12 which can still be installed using a command like `sudo npm install -g --unsafe-perm homebridge-simplisafe3@1.4.12`.
-- Works with native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge)
-- Compatible with the official [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x) which is recommended for easiest usage
+- :warning: **You must be signed up for a SimpliSafe monitoring or self-monitoring plan that enables you to use the mobile app for this plugin to work.** An active monitoring plan enables API access to SimpliSafe.
+- Works with native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge).
+- Compatible with the official [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x) which is **recommended for easiest usage**.
 
 ## Features
 Supercharge your SimpliSafe system and integrate with HomeKit the right way!
@@ -33,9 +32,7 @@ Here are some example screenshots:
 
 ## Usage
 
-This plugin supports installation and changing settings (for `config.js`) via the popular [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x) (recommended for easiest usage).
-
-Ensure you are running Node v10.17.0 or higher (this version is required by Homebridge v1.0.0). You can check by using `node -v`.
+This plugin supports installation and changing settings (for `config.js`) via the popular [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x) which is recommended for easiest usage.
 
 Either install and configure using Config UI X or you can manually install the plugin by running:
 
@@ -54,9 +51,18 @@ If installing manually, add the following configuration to the `platforms` array
 ```
 
 ### SimpliSafe Authentication
-As of December 2021 and v1.8.x of this plugin, SimpliSafe has transitioned to only supporting a protocol called OAuth for authentication. This requires the user to authenticate in a browser and it is not possible to circumvent this and authenticate directly against the API. This plugin provides two main ways to obtain credentials:
-1. Users of [Config UI X](https://github.com/oznu/homebridge-config-ui-x) (which is included in many Homebridge installations) can initiate this process from the plugin settings. A button will launch the authentication process and you will have to copy and paste the final URL (begins with com.SimpliSafe.mobile://) back into the plugin settings. While Safari will redirect to the URL (and show an error) allowing you to easily copy and paste the URL, in some browsers (e.g. Chrome) the browser will not redirect you and will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message. Also please note that this task cannot be performed on an iOS device that has the SimpliSafe app installed (authenticating will launch the app).
+As of December 2021 and v1.8.0 of this plugin, SimpliSafe has transitioned to only supporting a protocol called OAuth for authentication. This requires the user to authenticate in a browser and it is not possible to circumvent this and authenticate directly against the API. This plugin provides two ways to obtain credentials:
+
+1. Users of [Config UI X](https://github.com/oznu/homebridge-config-ui-x) (which is included in many Homebridge installations) can initiate this process from the plugin settings. A button will launch the authentication process and you will have to copy and paste the final URL (begins with com.SimpliSafe.mobile://) back into the plugin settings. While Safari will redirect to the URL (and show an error) allowing you to easily copy and paste the URL.
+
+   - Note that in some browsers (e.g. Chrome) the browser will not redirect you and will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.
+
+   - Also please note that this task cannot be performed on an iOS device that has the SimpliSafe app installed (authenticating will launch the app).
+
 1. Alternatively the plugin provides a command-line method for authenticating. The process works the same as above and can be run using `homebridge-simplisafe3 login`. If you are using a non-standard storage location for Homebridge pass the `-d` argument e.g. `homebridge-simplisafe3 login -d /path/to/storage/`.
+
+#### Authentication Failure Notifications
+The plugin is designed to persistently and proactively maintain authentication with SimpliSafe but obviously this is not perfect. When authentication with SimpliSafe fails, the plugin sets the [**Status Fault** property](https://developers.homebridge.io/#/characteristic/StatusFault) of the Alarm to `true`. Though you are not able to see this property in the Home app, it can be viewed in other HomeKit apps and you can create automations based on this, for example to send you an email or notification when this happens using the excellent [homebridge-messenger plugin](https://github.com/potrudeau/homebridge-messenger).
 
 ### Optional Parameters
 
