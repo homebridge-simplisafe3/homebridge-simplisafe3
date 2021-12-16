@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.8.6 (2021-12-16)
+- Fixes an issue that could cause the authentication command line tool to fail.
+- Addresses a security vulnerability.
+
 ## 1.8.5 (2021-12-13)
 - The plugin now sets the 'General Fault' proprty of the alarm when it detects authentication failure. See #264.
 - Documentation and settings UI updated to clarify `subscriptionId` property. See #201
