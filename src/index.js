@@ -446,7 +446,7 @@ class SS3Platform {
                         if (addAndRemove) {
                             let newAccessory = new Accessory(cameraName, uuid);
                             newAccessory.addService(Service.MotionSensor);
-                            if (camera.model == 'SS002') { // SSO02 is doorbell cam
+                            if (camera.supportedFeatures.doorbell) {
                                 newAccessory.addService(Service.Doorbell);
                             }
                             cameraAccessory.setAccessory(newAccessory);
