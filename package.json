@@ -1,6 +1,6 @@
 {
   "name": "homebridge-simplisafe3",
-  "version": "1.8.6",
+  "version": "1.8.7",
   "description": "A complete Homebridge plugin for the SimpliSafe 3 security system",
   "author": "Niccolò Zapponi",
   "bin": {
