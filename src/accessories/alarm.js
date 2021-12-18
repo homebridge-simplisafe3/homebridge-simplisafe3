@@ -201,6 +201,9 @@ class SS3Alarm {
                         }, SOCKET_RETRY_INTERVAL);
                         break;
                 }
+                if (this.service && event == EVENT_TYPES.ALARM_TRIGGER) {
+                    this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED);
+                }
                 if (this.service && data && (data.sensorType == SENSOR_TYPES.APP || data.sensorType == SENSOR_TYPES.KEYPAD || data.sensorType == SENSOR_TYPES.KEYCHAIN || data.sensorType == SENSOR_TYPES.DOORLOCK)) {
                     if (this.debug) this.log('Alarm received event:', event);
                     switch (event) {
