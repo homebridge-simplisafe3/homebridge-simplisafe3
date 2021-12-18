@@ -202,6 +202,7 @@ class SS3Alarm {
                         break;
                 }
                 if (this.service && event == EVENT_TYPES.ALARM_TRIGGER) {
+                    if (this.debug) this.log.warn('Alarm triggered! ' + event)
                     this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED);
                 }
                 if (this.service && data && (data.sensorType == SENSOR_TYPES.APP || data.sensorType == SENSOR_TYPES.KEYPAD || data.sensorType == SENSOR_TYPES.KEYCHAIN || data.sensorType == SENSOR_TYPES.DOORLOCK)) {
