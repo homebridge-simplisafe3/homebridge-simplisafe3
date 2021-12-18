@@ -1,7 +1,7 @@
 # Change Log
 All notable changes are documented here.
 
-## 1.8.7 (2021-12-18)
+## 1.8.8 (2021-12-18)
 - Fixes an issue that could prevent alarm triggering in HomeKit
 
 ## 1.8.6 (2021-12-16)
