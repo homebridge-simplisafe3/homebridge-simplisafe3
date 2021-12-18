@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.8.7 (2021-12-18)
+- Fixes an issue that could prevent alarm triggering in HomeKit
+
 ## 1.8.6 (2021-12-16)
 - Fixes an issue that could cause the authentication command line tool to fail.
 - Addresses a security vulnerability.
