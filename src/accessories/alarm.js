@@ -142,8 +142,19 @@ class SS3Alarm {
     }
 
     async setTargetState(homekitState, callback) {
-        let state = this.TARGET_HOMEKIT_TO_SS3[homekitState];
-        if (this.debug) this.log(`Setting target state to ${state}, ${homekitState}`);
+        var finalState = homekitState;
+
+        // This would be a setting variable
+        //
+        var someDisarmDisableVariable = true
+
+        if (someDisarmDisableVariable && homekitState == "3") {
+          if (this.debug) this.log("Disarming Disabled");
+          var finalState = this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState).statusCode;
+        }
+
+        let state = this.TARGET_HOMEKIT_TO_SS3[finalState];
+        if (this.debug) this.log(`Setting target state to ${state}, ${finalState}`);
 
         if (!this.service) {
             this.log.error('Alarm not linked to Homebridge service');
@@ -170,7 +181,7 @@ class SS3Alarm {
                 this.nRetries++;
                 setTimeout(async () => {
                     if (this.debug) this.log('Retrying setTargetState...');
-                    await this.setTargetState(homekitState, callback);
+                    await this.setTargetState(finalState, callback);
                 }, 1000); // wait 1  second and try again
             } else {
                 this.log.error('Error while setting alarm state:', err);
