@@ -107,7 +107,7 @@ Device             | Supported          | Notes
 Alarm arm/disarm   | :white_check_mark: | Home, away and off modes
 SimpliCam          | :white_check_mark: | Audio, video, motion*, no microphone
 Doorbell           | :white_check_mark: | Audio, video, motion, no microphone
-Outdoor Camera     | :x:                | Not supported yet
+Outdoor Camera     | :x:                | Not supported yet, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
 Smart lock         | :white_check_mark: | Fully supports locking, unlocking
 Entry sensor       | :white_check_mark: | Status not provided as 'push' by SS so is polled based on `sensorRefresh`
 Smoke detector     | :white_check_mark: | Includes support for tamper & fault
