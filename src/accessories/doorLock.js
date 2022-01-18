@@ -232,6 +232,18 @@ class SS3DoorLock {
                 this.nSocketConnectFailures++;
             }
         }
+
+        this.simplisafe.subscribeToSensor(this.id, lock => {
+            if (this.service) {
+                if (lock.flags) {
+                    if (lock.flags.lowBattery) {
+                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                    } else {
+                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                    }
+                }
+            }
+        });
     }
 
     async refreshState() {
@@ -243,6 +255,11 @@ class SS3DoorLock {
             let homekitTargetState = this.TARGET_SS3_TO_HOMEKIT[state];
             this.service.updateCharacteristic(this.Characteristic.LockCurrentState, homekitCurrentState);
             this.service.updateCharacteristic(this.Characteristic.LockTargetState, homekitTargetState);
+
+            let batteryLow = lock.flags.lowBattery;
+            let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+
+            this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
         } catch (err) {
             this.log.error('An error occurred while refreshing state');
             this.log.error(err);
