@@ -31,6 +31,7 @@ class SS3SimpliCam {
         this.authManager = authManager;
         this.uuid = UUIDGen.generate(id);
         this.reachable = true;
+        this.nSocketConnectFailures = 0;
 
         this.ffmpegPath = isDocker() ? 'ffmpeg' : ffmpegPath;
         if (this.debug && isDocker()) this.log('Detected running in docker, initializing with docker-bundled ffmpeg');

@@ -16,6 +16,7 @@ class SS3DoorLock {
         this.name = name;
         this.simplisafe = simplisafe;
         this.uuid = UUIDGen.generate(id);
+        this.nSocketConnectFailures = 0;
 
         this.CURRENT_SS3_TO_HOMEKIT = {
             0: Characteristic.LockCurrentState.UNSECURED, // may not exist
@@ -171,22 +172,22 @@ class SS3DoorLock {
     async startListening() {
         if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} lock now listening for real time events.`);
         try {
-            this.simplisafe.subscribeToEvents(async (event, data) => {
+            await this.simplisafe.subscribeToEvents((event, data) => {
                 switch (event) {
-                    // Socket events
-                    case EVENT_TYPES.CONNECTED:
-                        if (this.debug) this.log(`${this.name} lock now listening for real time events.`);
-                        this.nSocketConnectFailures = 0;
-                        break;
-                    case EVENT_TYPES.DISCONNECT:
-                        if (this.debug) this.log(`${this.name} lock real time events disconnected.`);
-                        break;
-                    case EVENT_TYPES.CONNECTION_LOST:
-                        if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} lock real time events connection lost. Attempting to reconnect...`);
-                        setTimeout(async () => {
-                            await this.startListening();
-                        }, SOCKET_RETRY_INTERVAL);
-                        break;
+                // Socket events
+                case EVENT_TYPES.CONNECTED:
+                    if (this.debug) this.log(`${this.name} lock now listening for real time events.`);
+                    this.nSocketConnectFailures = 0;
+                    break;
+                case EVENT_TYPES.DISCONNECT:
+                    if (this.debug) this.log(`${this.name} lock real time events disconnected.`);
+                    break;
+                case EVENT_TYPES.CONNECTION_LOST:
+                    if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} lock real time events connection lost. Attempting to reconnect...`);
+                    setTimeout(async () => {
+                        await this.startListening();
+                    }, SOCKET_RETRY_INTERVAL);
+                    break;
                 }
 
                 if (this.service) {
@@ -194,30 +195,30 @@ class SS3DoorLock {
                     if (data && data.sensorSerial && data.sensorSerial == this.id) {
                         if (this.debug) this.log(`${this.name} lock received event: ${event}`);
                         switch (event) {
-                            case EVENT_TYPES.DOORLOCK_UNLOCKED:
-                                this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.UNSECURED);
-                                this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
-                                break;
-                            case EVENT_TYPES.DOORLOCK_LOCKED:
-                                this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.SECURED);
-                                this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
-                                break;
-                            case EVENT_TYPES.DOORLOCK_ERROR:
-                                try {
-                                    let lock = await this.getLockInformation();
-
+                        case EVENT_TYPES.DOORLOCK_UNLOCKED:
+                            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.UNSECURED);
+                            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
+                            break;
+                        case EVENT_TYPES.DOORLOCK_LOCKED:
+                            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.SECURED);
+                            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
+                            break;
+                        case EVENT_TYPES.DOORLOCK_ERROR:
+                            try {
+                                this.getLockInformation().then((lock) => {
                                     if (lock.status.lockJamState) {
                                         this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.JAMMED);
                                     } else if (lock.status.lockDisabled) {
                                         this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNKNOWN);
                                     }
-                                } catch (err) {
-                                    this.log.error(`An error occurred while updating ${this.name} lock error state: ${err}`);
-                                }
-                                break;
-                            default:
-                                if (this.debug) this.log(`${this.name} lock ignoring unhandled event: ${event}`);
-                                break;
+                                });
+                            } catch (err) {
+                                this.log.error(`An error occurred while updating ${this.name} lock error state: ${err}`);
+                            }
+                            break;
+                        default:
+                            if (this.debug) this.log(`${this.name} lock ignoring unhandled event: ${event}`);
+                            break;
                         }
                     }
                 }

@@ -80,7 +80,7 @@ export class RateLimitError extends Error {
     }
 }
 
-export const SOCKET_RETRY_INTERVAL = 1000; //ms
+export const SOCKET_RETRY_INTERVAL = 2000; //ms
 
 const generateSimplisafeId = () => {
     const supportedCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz0123456789';
@@ -182,12 +182,13 @@ class SimpliSafe3 {
         } catch (err) {
             if (!err.response) {
                 let rateLimitError = new RateLimitError(err);
+                this._setRateLimitHandler();
                 throw rateLimitError;
             }
 
             let statusCode = err.response.status;
             if (statusCode == 401 && !tokenRefreshed) {
-                return this.authManager.refreshCredentials()
+                this.authManager.refreshCredentials()
                     .then(() => {
                         if (this.debug) this.log('Credentials refreshed successfully after failed request');
                         return this.request(params, true);
@@ -570,7 +571,8 @@ class SimpliSafe3 {
                     accessToken: this.authManager.accessToken
                 },
                 transports: ['websocket', 'polling'],
-                pfx: []
+                pfx: [],
+                reconnectionAttempts: 10
             });
 
             // for debugging, we only want one of these listeners
