@@ -13,7 +13,7 @@ const internalConfigFileName = 'simplisafe3config.json';
 const mfaTimeout = 5 * 60 * 1000; // ms
 const rateLimitInitialInterval = 60000; // ms
 const rateLimitMaxInterval = 2 * 60 * 60 * 1000; // ms
-const sensorRefreshLockoutDuration = 15000; // ms
+const sensorRefreshLockoutDuration = 20000; // ms
 const errorSuppressionDuration = 5 * 60 * 1000; // ms
 
 const ssApi = axios.create({
