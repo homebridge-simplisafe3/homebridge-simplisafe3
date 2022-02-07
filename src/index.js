@@ -49,7 +49,7 @@ class SS3Platform {
             if (this.alarmAccessory) this.alarmAccessory.setFault(false);
         });
         this.authManager.on('refreshCredentialsFailure', () => {
-          if (this.alarmAccessory) this.alarmAccessory.setFault(true);
+            if (this.alarmAccessory) this.alarmAccessory.setFault(true);
         });
 
         if (config.subscriptionId) {
@@ -90,7 +90,10 @@ class SS3Platform {
                 })
                 .then(() => {
                     if (!this.authManager.isAuthenticated()) throw new Error('Not authenticated with SimpliSafe.');
-                    else return this.refreshAccessories();
+                    else {
+                        this.simplisafe.startListening();
+                        return this.refreshAccessories();
+                    }
                 })
                 .catch(err => {
                     this.log.error('Initial accessories refresh failed with error:', err);

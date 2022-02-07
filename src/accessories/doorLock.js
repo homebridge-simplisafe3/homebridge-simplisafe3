@@ -1,7 +1,5 @@
 import {
-    EVENT_TYPES,
-    RateLimitError,
-    SOCKET_RETRY_INTERVAL
+    EVENT_TYPES
 } from '../simplisafe';
 
 class SS3DoorLock {
@@ -36,6 +34,18 @@ class SS3DoorLock {
         };
 
         this.startListening();
+
+        this.simplisafe.subscribeToSensor(this.id, lock => {
+            if (this.service) {
+                if (lock.flags) {
+                    if (lock.flags.lowBattery) {
+                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                    } else {
+                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                    }
+                }
+            }
+        });
     }
 
     identify(callback) {
@@ -169,82 +179,39 @@ class SS3DoorLock {
         }
     }
 
-    async startListening() {
-        if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} lock now listening for real time events.`);
-        try {
-            await this.simplisafe.subscribeToEvents((event, data) => {
-                switch (event) {
-                // Socket events
-                case EVENT_TYPES.CONNECTED:
-                    if (this.debug) this.log(`${this.name} lock now listening for real time events.`);
-                    this.nSocketConnectFailures = 0;
-                    break;
-                case EVENT_TYPES.DISCONNECT:
-                    if (this.debug) this.log(`${this.name} lock real time events disconnected.`);
-                    break;
-                case EVENT_TYPES.CONNECTION_LOST:
-                    if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} lock real time events connection lost. Attempting to reconnect...`);
-                    setTimeout(async () => {
-                        await this.startListening();
-                    }, SOCKET_RETRY_INTERVAL);
-                    break;
-                }
+    startListening() {
+        this.simplisafe.on(EVENT_TYPES.DOORLOCK_UNLOCKED, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.DOORLOCK_UNLOCKED, data)) return;
+            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.UNSECURED);
+            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
+        });
 
-                if (this.service) {
-                    // Door lock events
-                    if (data && data.sensorSerial && data.sensorSerial == this.id) {
-                        if (this.debug) this.log(`${this.name} lock received event: ${event}`);
-                        switch (event) {
-                        case EVENT_TYPES.DOORLOCK_UNLOCKED:
-                            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.UNSECURED);
-                            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
-                            break;
-                        case EVENT_TYPES.DOORLOCK_LOCKED:
-                            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.SECURED);
-                            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
-                            break;
-                        case EVENT_TYPES.DOORLOCK_ERROR:
-                            try {
-                                this.getLockInformation().then((lock) => {
-                                    if (lock.status.lockJamState) {
-                                        this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.JAMMED);
-                                    } else if (lock.status.lockDisabled) {
-                                        this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNKNOWN);
-                                    }
-                                });
-                            } catch (err) {
-                                this.log.error(`An error occurred while updating ${this.name} lock error state: ${err}`);
-                            }
-                            break;
-                        default:
-                            if (this.debug) this.log(`${this.name} lock ignoring unhandled event: ${event}`);
-                            break;
-                        }
-                    }
-                }
-            });
-        } catch (err) {
-            if (err instanceof RateLimitError) {
-                let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
-                if (this.debug) this.log(`${this.name} lock caught RateLimitError, waiting ${retryInterval/1000}s to retry...`);
-                setTimeout(async () => {
-                    await this.startListening();
-                }, retryInterval);
-                this.nSocketConnectFailures++;
-            }
-        }
+        this.simplisafe.on(EVENT_TYPES.DOORLOCK_LOCKED, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.DOORLOCK_LOCKED, data)) return;
+            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.SECURED);
+            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
+        });
 
-        this.simplisafe.subscribeToSensor(this.id, lock => {
-            if (this.service) {
-                if (lock.flags) {
-                    if (lock.flags.lowBattery) {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
-                    } else {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+        this.simplisafe.on(EVENT_TYPES.DOORLOCK_ERROR, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.DOORLOCK_ERROR, data)) return;
+            try {
+                this.getLockInformation().then((lock) => {
+                    if (lock.status.lockJamState) {
+                        this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.JAMMED);
+                    } else if (lock.status.lockDisabled) {
+                        this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNKNOWN);
                     }
-                }
+                });
+            } catch (err) {
+                this.log.error(`An error occurred while updating ${this.name} lock error state: ${err}`);
             }
         });
+    }
+
+    _validateEvent(event, data) {
+        let valid = this.service && data && data.sensorSerial && data.sensorSerial == this.id;
+        if (this.debug && valid) this.log(`${this.name} lock received event: ${event}`);
+        return valid;
     }
 
     async refreshState() {

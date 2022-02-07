@@ -1,8 +1,6 @@
 import {
     EVENT_TYPES,
-    SENSOR_TYPES,
-    RateLimitError,
-    SOCKET_RETRY_INTERVAL
+    SENSOR_TYPES
 } from '../simplisafe';
 
 const targetStateMaxRetries = 5;
@@ -181,69 +179,57 @@ class SS3Alarm {
         }
     }
 
-    async startListening() {
-        if (this.debug && this.simplisafe.isSocketConnected()) this.log('Alarm now listening for real time events.');
-        try {
-            await this.simplisafe.subscribeToEvents((event, data) => {
-                switch (event) {
-                    // Socket events
-                    case EVENT_TYPES.CONNECTED:
-                        if (this.debug) this.log('Alarm now listening for real time events.');
-                        this.nSocketConnectFailures = 0;
-                        break;
-                    case EVENT_TYPES.DISCONNECT:
-                        if (this.debug) this.log('Alarm real time events disconnected.');
-                        break;
-                    case EVENT_TYPES.CONNECTION_LOST:
-                        if (this.debug && this.nSocketConnectFailures == 0) this.log('Alarm real time events connection lost. Attempting to reconnect...');
-                        setTimeout(async () => {
-                            await this.startListening();
-                        }, SOCKET_RETRY_INTERVAL);
-                        break;
-                }
-                if (this.service && event == EVENT_TYPES.ALARM_TRIGGER) {
-                    if (this.debug) this.log.warn('Alarm triggered! ' + event)
-                    this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED);
-                }
-                if (this.service && data && (data.sensorType == SENSOR_TYPES.APP || data.sensorType == SENSOR_TYPES.KEYPAD || data.sensorType == SENSOR_TYPES.KEYCHAIN || data.sensorType == SENSOR_TYPES.DOORLOCK)) {
-                    if (this.debug) this.log('Alarm received event:', event);
-                    switch (event) {
-                        case EVENT_TYPES.ALARM_DISARM:
-                        case EVENT_TYPES.ALARM_CANCEL:
-                        case EVENT_TYPES.ALARM_OFF:
-                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
-                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
-                            break;
-                        case EVENT_TYPES.HOME_ARM:
-                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
-                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
-                            break;
-                        case EVENT_TYPES.AWAY_ARM:
-                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
-                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
-                            break;
-                        case EVENT_TYPES.HOME_EXIT_DELAY:
-                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
-                            break;
-                        case EVENT_TYPES.AWAY_EXIT_DELAY:
-                            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
-                            break;
-                        default:
-                            if (this.debug) this.log(`Alarm ignoring unhandled event: ${event}`);
-                            break;
-                    }
-                }
-            });
-        } catch (err) {
-            if (err instanceof RateLimitError) {
-                let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
-                if (this.debug) this.log(`${this.name} alarm caught RateLimitError, waiting ${retryInterval/1000}s to retry...`);
-                setTimeout(async () => {
-                    await this.startListening();
-                }, retryInterval);
-                this.nSocketConnectFailures++;
-            }
-        }
+    startListening() {
+        this.simplisafe.on(EVENT_TYPES.ALARM_TRIGGER, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.ALARM_TRIGGER, data)) return;
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED);
+        });
+
+        this.simplisafe.on(EVENT_TYPES.ALARM_DISARM, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.ALARM_DISARM, data)) return;
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+        });
+
+        this.simplisafe.on(EVENT_TYPES.ALARM_CANCEL, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.ALARM_CANCEL, data)) return;
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+        });
+
+        this.simplisafe.on(EVENT_TYPES.HOME_ARM, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.HOME_ARM, data)) return;
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
+        });
+
+        this.simplisafe.on(EVENT_TYPES.ALARM_OFF, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.ALARM_OFF, data)) return;
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+        });
+
+        this.simplisafe.on(EVENT_TYPES.AWAY_ARM, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.AWAY_ARM, data)) return;
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
+        });
+
+        this.simplisafe.on(EVENT_TYPES.HOME_EXIT_DELAY, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.HOME_EXIT_DELAY, data)) return;
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
+        });
+
+        this.simplisafe.on(EVENT_TYPES.AWAY_EXIT_DELAY, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.AWAY_EXIT_DELAY, data)) return;
+            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
+        });
+    }
+
+    _validateEvent(event, data) {
+        if (this.debug) this.log('Alarm received event:', event);
+        if (event == EVENT_TYPES.ALARM_TRIGGER) return !!this.service; // just make sure this.service
+        else return this.service && data && (data.sensorType == SENSOR_TYPES.APP || data.sensorType == SENSOR_TYPES.KEYPAD || data.sensorType == SENSOR_TYPES.KEYCHAIN || data.sensorType == SENSOR_TYPES.DOORLOCK);
     }
 
     async refreshState() {

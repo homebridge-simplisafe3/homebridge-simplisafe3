@@ -8,9 +8,7 @@ import isDocker from 'is-docker';
 import jpegExtract from 'jpeg-extract';
 
 import {
-    EVENT_TYPES,
-    RateLimitError,
-    SOCKET_RETRY_INTERVAL
+    EVENT_TYPES
 } from '../simplisafe';
 
 const dnsLookup = promisify(dns.lookup);
@@ -148,63 +146,34 @@ class SS3SimpliCam {
         }
     }
 
-    async startListening() {
-        if (this.debug && this.simplisafe.isSocketConnected()) this.log(`${this.name} camera now listening for real time events.`);
-        try {
-            await this.simplisafe.subscribeToEvents((event, data) => {
-                switch (event) {
-                    // Socket events
-                    case EVENT_TYPES.CONNECTED:
-                        if (this.debug) this.log(`${this.name} camera now listening for real time events.`);
-                        this.nSocketConnectFailures = 0;
-                        break;
-                    case EVENT_TYPES.DISCONNECT:
-                        if (this.debug) this.log(`${this.name} camera real time events disconnected.`);
-                        break;
-                    case EVENT_TYPES.CONNECTION_LOST:
-                        if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} camera real time events connection lost. Attempting to reconnect...`);
-                        setTimeout(async () => {
-                            await this.startListening();
-                        }, SOCKET_RETRY_INTERVAL);
-                        break;
-                }
 
-                if (this.accessory && data) {
-                    let eventCameraIds = [data.sensorSerial];
-                    if (data.internal) eventCameraIds.push(data.internal.mainCamera);
+    startListening() {
+        this.simplisafe.on(EVENT_TYPES.CAMERA_MOTION, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.CAMERA_MOTION, data)) return;
+            this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
+            this.motionIsTriggered = true;
+            setTimeout(() => {
+                this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
+                this.motionIsTriggered = false;
+            }, 5000);
+        });
+        this.simplisafe.on(EVENT_TYPES.DOORBELL, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.DOORBELL, data)) return;
+            this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
+        });
+    }
 
-                    if (eventCameraIds.indexOf(this.id) > -1) {
-                        // Camera events
-                        if (this.debug) this.log(`${this.name} camera received event: ${event}`);
-                        switch (event) {
-                            case EVENT_TYPES.CAMERA_MOTION:
-                                this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
-                                this.motionIsTriggered = true;
-                                setTimeout(() => {
-                                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
-                                    this.motionIsTriggered = false;
-                                }, 5000);
-                                break;
-                            case EVENT_TYPES.DOORBELL:
-                                this.accessory.getService(this.Service.Doorbell).getCharacteristic(this.Characteristic.ProgrammableSwitchEvent).setValue(0);
-                                break;
-                            default:
-                                if (this.debug) this.log(`${this.name} camera ignoring unhandled event: ${event}`);
-                                break;
-                        }
-                    }
-                }
-            });
-        } catch (err) {
-            if (err instanceof RateLimitError) {
-                let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
-                if (this.debug) this.log(`${this.name} camera caught RateLimitError, waiting ${retryInterval/1000}s to retry...`);
-                setTimeout(async () => {
-                    await this.startListening();
-                }, retryInterval);
-                this.nSocketConnectFailures++;
-            }
+    _validateEvent(event, data) {
+        let valid;
+        if (!this.accessory || !data) valid = false;
+        else {
+            let eventCameraIds = [data.sensorSerial];
+            if (data.internal) eventCameraIds.push(data.internal.mainCamera);
+            valid = eventCameraIds.indexOf(this.id) > -1;
         }
+
+        if (this.debug && valid) this.log(`${this.name} camera received event: ${event}`);
+        return valid;
     }
 
     async handleSnapshotRequest(request, callback) {
@@ -220,29 +189,29 @@ class SS3SimpliCam {
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
             let alarmState = await this.simplisafe.getAlarmState();
             switch (alarmState) {
-                case 'OFF':
-                    if (this.cameraDetails.cameraSettings.shutterOff !== 'open') {
-                        if (this.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
-                        callback(new Error('Privacy shutter closed'));
-                        return;
-                    }
-                    break;
+            case 'OFF':
+                if (this.cameraDetails.cameraSettings.shutterOff !== 'open') {
+                    if (this.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
+                    callback(new Error('Privacy shutter closed'));
+                    return;
+                }
+                break;
 
-                case 'HOME':
-                    if (this.cameraDetails.cameraSettings.shutterHome !== 'open') {
-                        if (this.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
-                        callback(new Error('Privacy shutter closed'));
-                        return;
-                    }
-                    break;
+            case 'HOME':
+                if (this.cameraDetails.cameraSettings.shutterHome !== 'open') {
+                    if (this.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
+                    callback(new Error('Privacy shutter closed'));
+                    return;
+                }
+                break;
 
-                case 'AWAY':
-                    if (this.cameraDetails.cameraSettings.shutterAway !== 'open') {
-                        if (this.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
-                        callback(new Error('Privacy shutter closed'));
-                        return;
-                    }
-                    break;
+            case 'AWAY':
+                if (this.cameraDetails.cameraSettings.shutterAway !== 'open') {
+                    if (this.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
+                    callback(new Error('Privacy shutter closed'));
+                    return;
+                }
+                break;
             }
         }
 

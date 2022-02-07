@@ -5,6 +5,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import fs from 'fs';
 import path from 'path';
+import EventEmitter from 'events';
 
 const subscriptionCacheTime = 3000; // ms
 const sensorCacheTime = 3000; // ms
@@ -80,7 +81,7 @@ export class RateLimitError extends Error {
     }
 }
 
-export const SOCKET_RETRY_INTERVAL = 2000; //ms
+export const SOCKET_RETRY_INTERVAL = 1000; //ms
 
 const generateSimplisafeId = () => {
     const supportedCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz0123456789';
@@ -94,7 +95,7 @@ const generateSimplisafeId = () => {
     return `${id.substring(0, 5)}-${id.substring(5)}`;
 };
 
-class SimpliSafe3 {
+class SimpliSafe3 extends EventEmitter {
 
     authManager;
     userId;
@@ -113,12 +114,14 @@ class SimpliSafe3 {
     nSuppressedErrors;
     ssId;
     storagePath;
+    nSocketConnectFailures = 0;
 
     isBlocked;
     nextBlockInterval = rateLimitInitialInterval;
     nextAttempt = 0;
 
     constructor(sensorRefreshTime = 15000, resetConfig = false, authManager, storagePath, log, debug) {
+        super();
         this.sensorRefreshTime = sensorRefreshTime;
         this.log = log || console.log;
         this.debug = debug;
@@ -353,29 +356,7 @@ class SimpliSafe3 {
         return data;
     }
 
-    async getEvents(params) {
-
-        if (!this.subId) {
-            await this.getSubscription();
-        }
-
-        let url = `/subscriptions/${this.subId}/events`;
-        if (Object.keys(params).length > 0) {
-            let query = Object.keys(params).map(key => `${key}=${params[key]}`);
-            url = `${url}?${query.join('&')}`;
-        }
-
-        let data = await this.request({
-            method: 'GET',
-            url: url
-        });
-
-        let events = data.events;
-        return events;
-    }
-
     async getSensors(forceUpdate = false, forceRefresh = false) {
-
         if (!this.subId) {
             await this.getSubscription();
         }
@@ -462,105 +443,7 @@ class SimpliSafe3 {
         return data;
     }
 
-    async subscribeToEvents(callback) {
-
-        let _socketCallback = data => {
-            if (data.sid != this.subId) {
-                // Ignore event as it doesn't relate to this account
-                return;
-            }
-
-            switch (data.eventType) {
-                case 'alarm':
-                    callback(EVENT_TYPES.ALARM_TRIGGER, data);
-                    break;
-                case 'alarmCancel':
-                    callback(EVENT_TYPES.ALARM_OFF, data);
-                    break;
-                case 'activity':
-                case 'activityQuiet':
-                default:
-                    // if it's not an alarm event, check by eventCid
-                    switch (data.eventCid) {
-                        case 1400:
-                        case 1407:
-                            // 1400 is disarmed with Master PIN, 1407 is disarmed with Remote
-                            callback(EVENT_TYPES.ALARM_DISARM, data);
-                            this.handleSensorRefreshLockout();
-                            break;
-                        case 1406:
-                            callback(EVENT_TYPES.ALARM_CANCEL, data);
-                            this.handleSensorRefreshLockout();
-                            break;
-                        case 1409:
-                            callback(EVENT_TYPES.MOTION, data);
-                            break;
-                        case 9441:
-                            callback(EVENT_TYPES.HOME_EXIT_DELAY, data);
-                            break;
-                        case 3441:
-                        case 3491:
-                            callback(EVENT_TYPES.HOME_ARM, data);
-                            this.handleSensorRefreshLockout();
-                            break;
-                        case 9401:
-                        case 9407:
-                            // 9401 is for Keypad, 9407 is for Remote
-                            callback(EVENT_TYPES.AWAY_EXIT_DELAY, data);
-                            break;
-                        case 3401:
-                        case 3407:
-                        case 3487:
-                        case 3481:
-                            // 3401 is for Keypad, 3407 is for Remote
-                            callback(EVENT_TYPES.AWAY_ARM, data);
-                            this.handleSensorRefreshLockout();
-                            break;
-                        case 1429:
-                            callback(EVENT_TYPES.ENTRY, data);
-                            break;
-                        case 1110:
-                        case 1154:
-                        case 1159:
-                        case 1162:
-                        case 1132:
-                        case 1134:
-                        case 1120:
-                            callback(EVENT_TYPES.ALARM_TRIGGER, data);
-                            break;
-                        case 1170:
-                            callback(EVENT_TYPES.CAMERA_MOTION, data);
-                            break;
-                        case 1458:
-                            callback(EVENT_TYPES.DOORBELL, data);
-                            break;
-                        case 9700:
-                            callback(EVENT_TYPES.DOORLOCK_UNLOCKED, data);
-                            break;
-                        case 9701:
-                            callback(EVENT_TYPES.DOORLOCK_LOCKED, data);
-                            break;
-                        case 9703:
-                            callback(EVENT_TYPES.DOORLOCK_ERROR, data);
-                            break;
-                        case 1602:
-                            // Automatic test
-                            break;
-                        default:
-                            // Unknown event
-                            if (this.debug) this.log('Unknown SSAPI event:', data);
-                            callback(null, data);
-                            break;
-                    }
-                    break;
-            }
-        };
-
-        if (this.isBlocked && Date.now() < this.nextAttempt) {
-            let err = new RateLimitError('Login request blocked (rate limit).');
-            throw err;
-        }
-
+    async startListening() {
         if (!this.socket) {
             let userId = await this.getUserId();
 
@@ -572,7 +455,8 @@ class SimpliSafe3 {
                 },
                 transports: ['websocket', 'polling'],
                 pfx: [],
-                reconnectionAttempts: 10
+                reconnectionAttempts: 5, // we need a limit in case authentication has changed and need to create a new socket
+                reconnectionDelayMax: 30000
             });
 
             // for debugging, we only want one of these listeners
@@ -615,40 +499,142 @@ class SimpliSafe3 {
         }
 
         this.socket.on('connect', () => {
-            callback(EVENT_TYPES.CONNECTED);
+            if (this.debug) this.log(`Now listening for real time SimpliSafe events.`);
+            this.nSocketConnectFailures = 0;
         });
 
         this.socket.on('error', (err) => {
             if (err) {
-                this.unsubscribeFromEvents();
-                callback(EVENT_TYPES.CONNECTION_LOST);
+                this._destroySocket();
+                this._handleSocketConnectionFailure();
             }
         });
 
         this.socket.on('reconnect_failed', () => {
-            this.unsubscribeFromEvents();
-            callback(EVENT_TYPES.CONNECTION_LOST);
+            this._destroySocket();
+            this._handleSocketConnectionFailure();
         });
 
         this.socket.on('disconnect', (reason) => {
             if (reason === 'io server disconnect') {
                 // the disconnection was initiated by the server, you need to reconnect manually
-                this.unsubscribeFromEvents();
-                callback(EVENT_TYPES.CONNECTION_LOST);
+                this._destroySocket();
+                this._handleSocketConnectionFailure();
             } else {
-                callback(EVENT_TYPES.DISCONNECT);
+                if (this.debug) this.log(`SimpliSafe real time events disconnected.`);
             }
         });
 
-        this.socket.on('event', _socketCallback);
+        this.socket.on('event', (data) => {
+            if (data.sid != this.subId) {
+                // Ignore event as it doesn't relate to this account
+                return;
+            }
 
+            switch (data.eventType) {
+                case 'alarm':
+                    this.emit(EVENT_TYPES.ALARM_TRIGGER, data);
+                    break;
+                case 'alarmCancel':
+                    this.emit(EVENT_TYPES.ALARM_OFF, data);
+                    break;
+                case 'activity':
+                case 'activityQuiet':
+                default:
+                    // if it's not an alarm event, check by eventCid
+                    switch (data.eventCid) {
+                        case 1400:
+                        case 1407:
+                            // 1400 is disarmed with Master PIN, 1407 is disarmed with Remote
+                            this.emit(EVENT_TYPES.ALARM_DISARM, data);
+                            this.handleSensorRefreshLockout();
+                            break;
+                        case 1406:
+                            this.emit(EVENT_TYPES.ALARM_CANCEL, data);
+                            this.handleSensorRefreshLockout();
+                            break;
+                        case 1409:
+                            this.emit(EVENT_TYPES.MOTION, data);
+                            break;
+                        case 9441:
+                            this.emit(EVENT_TYPES.HOME_EXIT_DELAY, data);
+                            break;
+                        case 3441:
+                        case 3491:
+                            this.emit(EVENT_TYPES.HOME_ARM, data);
+                            this.handleSensorRefreshLockout();
+                            break;
+                        case 9401:
+                        case 9407:
+                            // 9401 is for Keypad, 9407 is for Remote
+                            this.emit(EVENT_TYPES.AWAY_EXIT_DELAY, data);
+                            break;
+                        case 3401:
+                        case 3407:
+                        case 3487:
+                        case 3481:
+                            // 3401 is for Keypad, 3407 is for Remote
+                            this.emit(EVENT_TYPES.AWAY_ARM, data);
+                            this.handleSensorRefreshLockout();
+                            break;
+                        case 1429:
+                            this.emit(EVENT_TYPES.ENTRY, data);
+                            break;
+                        case 1110:
+                        case 1154:
+                        case 1159:
+                        case 1162:
+                        case 1132:
+                        case 1134:
+                        case 1120:
+                            this.emit(EVENT_TYPES.ALARM_TRIGGER, data);
+                            break;
+                        case 1170:
+                            this.emit(EVENT_TYPES.CAMERA_MOTION, data);
+                            break;
+                        case 1458:
+                            this.emit(EVENT_TYPES.DOORBELL, data);
+                            break;
+                        case 9700:
+                            this.emit(EVENT_TYPES.DOORLOCK_UNLOCKED, data);
+                            break;
+                        case 9701:
+                            this.emit(EVENT_TYPES.DOORLOCK_LOCKED, data);
+                            break;
+                        case 9703:
+                            this.emit(EVENT_TYPES.DOORLOCK_ERROR, data);
+                            break;
+                        case 1602:
+                            // Automatic test
+                            break;
+                        default:
+                            // Unknown event
+                            if (this.debug) this.log('Unknown SSAPI event:', data);
+                            break;
+                    }
+                    break;
+            }
+        });
+
+    }
+
+    _handleSocketConnectionFailure() {
+        let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
+        if (this.debug) {
+            if (this.nSocketConnectFailures == 0) this.log(`SimpliSafe real time events connection lost. Attempting to reconnect...`);
+            else this.log.error(`Unable to reconnect SimpliSafe real time events. Delaying next attempt for ${retryInterval/1000}s...`);
+        }
+        setTimeout(async () => {
+            await this.startListening();
+        }, retryInterval);
+        this.nSocketConnectFailures++;
     }
 
     isSocketConnected() {
         return this.socket && this.socket.connected;
     }
 
-    unsubscribeFromEvents() {
+    _destroySocket() {
         if (this.socket) {
             this.socket.off();
             this.socket.close();
