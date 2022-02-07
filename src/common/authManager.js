@@ -1,6 +1,6 @@
 // © 2021 Michael Shamoon
 // SimpliSafe 3 Authentication Manager
-//
+
 const crypto = require('crypto');
 const axios = require('axios');
 const fs = require('fs');
@@ -170,8 +170,9 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         if (!this.accountsFileExists()) {
             if (this.username !== undefined && this.password !== undefined) {
                 // support old username / password, for now...
-                if (this.refreshToken == undefined) return this._loginWithUsernamePassword();
-                else return this._refreshWithUsernamePassword();
+                if (this.refreshToken == undefined) await this._loginWithUsernamePassword();
+                else await this._refreshWithUsernamePassword();
+                return;
             } else if (this.refreshToken == undefined) {
                 throw new Error('No authentication credentials detected.');
             }
@@ -200,7 +201,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 // Lets try again in case it was simple connectivity
                 this.nRetries++;
                 if (this.log !== undefined && this.debug) this.log(`Initiating credentials refresh attempt #${this.nRetries}`);
-                return this.refreshCredentials();
+                await this.refreshCredentials();
             } else {
                 this.emit('refreshCredentialsFailure');
                 this.nRetries = 0;
