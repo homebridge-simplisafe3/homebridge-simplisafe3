@@ -192,16 +192,15 @@ class SimpliSafe3 extends EventEmitter {
 
             let statusCode = err.response.status;
             if (statusCode == 401 && !tokenRefreshed) {
-                this.authManager.refreshCredentials()
-                    .then(() => {
-                        if (this.debug) this.log('Credentials refreshed successfully after failed request');
-                        return this.request(params, true);
-                    })
-                    .catch(async err => {
-                        this._setRateLimitHandler();
-                        if (this.debug) this.log.error('Credentials refresh failed with error:', err);
-                        throw err;
-                    });
+                try {
+                    await this.authManager.refreshCredentials();
+                    if (this.debug) this.log('Credentials refreshed successfully after failed request');
+                    return this.request(params, true);
+                } catch (err) {
+                    this._setRateLimitHandler();
+                    if (this.debug) this.log.error('Credentials refresh failed with error:', err);
+                    throw err;
+                }
             } else if (statusCode == 403) {
                 this.log.error('SSAPI request failed, request blocked (rate limit?).');
                 if (this.debug) this.log.error('SSAPI request received a response error with code 403:', err.response);
@@ -454,47 +453,44 @@ class SimpliSafe3 extends EventEmitter {
                 reconnectionDelayMax: 30000
             });
 
-            // for debugging, we only want one of these listeners
-            if (this.debug) {
-                this.socket.on('connect', () => {
-                    this.log('SSAPI socket connected');
-                });
+        }
 
-                this.socket.on('reconnect_attempt', (attemptNumber) => {
-                    this.log(`SSAPI socket reconnect_attempt #${attemptNumber}`);
-                });
+        // for debugging
+        if (this.debug) {
+          this.socket.on('reconnect_attempt', (attemptNumber) => {
+            this.log(`SSAPI socket reconnect_attempt #${attemptNumber}`);
+          });
 
-                this.socket.on('reconnect', () => {
-                    this.log('SSAPI socket reconnected');
-                });
+          this.socket.on('reconnect', () => {
+            this.log('SSAPI socket reconnected');
+          });
 
-                this.socket.on('connect_error', (err) => {
-                    this.log.error(`SSAPI socket connect_error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
-                });
+          this.socket.on('connect_error', (err) => {
+            this.log.error(`SSAPI socket connect_error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
+          });
 
-                this.socket.on('connect_timeout', () => {
-                    this.log('SSAPI socket connect_timeout');
-                });
+          this.socket.on('connect_timeout', () => {
+            this.log('SSAPI socket connect_timeout');
+          });
 
-                this.socket.on('error', (err) => {
-                    if (err.message == 'Not authorized') { //edge case
-                      this.isBlocked = true;
-                    }
-                    this.log.error(`SSAPI socket error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
-                });
-
-                this.socket.on('reconnect_failed', () => {
-                    this.log.error('SSAPI socket reconnect_failed');
-                });
-
-                this.socket.on('disconnect', (reason) => {
-                    this.log('SSAPI socket disconnect reason:', reason);
-                });
+          this.socket.on('error', (err) => {
+            if (err.message == 'Not authorized') { //edge case
+              this.isBlocked = true;
             }
+            this.log.error(`SSAPI socket error${err.type && err.message ? ' ' + err.type + ': ' + err.message : ': ' + err}`);
+          });
+
+          this.socket.on('reconnect_failed', () => {
+            this.log.error('SSAPI socket reconnect_failed');
+          });
+
+          this.socket.on('disconnect', (reason) => {
+            this.log('SSAPI socket disconnect reason:', reason);
+          });
         }
 
         this.socket.on('connect', () => {
-            if (this.debug) this.log(`Now listening for real time SimpliSafe events.`);
+            this.log(`Now listening for real time SimpliSafe events.`);
             this.nSocketConnectFailures = 0;
         });
 
@@ -516,7 +512,7 @@ class SimpliSafe3 extends EventEmitter {
                 this._destroySocket();
                 this._handleSocketConnectionFailure();
             } else {
-                if (this.debug) this.log(`SimpliSafe real time events disconnected.`);
+                this.log.warn(`SimpliSafe real time events disconnected.`);
             }
         });
 
@@ -615,10 +611,7 @@ class SimpliSafe3 extends EventEmitter {
 
     _handleSocketConnectionFailure() {
         let retryInterval = (2 ** this.nSocketConnectFailures) * SOCKET_RETRY_INTERVAL;
-        if (this.debug) {
-            if (this.nSocketConnectFailures == 0) this.log(`SimpliSafe real time events connection lost. Attempting to reconnect...`);
-            else this.log.error(`Unable to reconnect SimpliSafe real time events. Delaying next attempt for ${retryInterval/1000}s...`);
-        }
+        if (this.debug) this.log(`SimpliSafe real time events connection lost. Next attempt will be in ${retryInterval/1000}s.`);
         setTimeout(async () => {
             await this.startListening();
         }, retryInterval);
