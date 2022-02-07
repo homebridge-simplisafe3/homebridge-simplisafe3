@@ -6,12 +6,17 @@ import { spawn } from 'child_process';
 import ffmpegPath from 'ffmpeg-for-homebridge';
 import isDocker from 'is-docker';
 import jpegExtract from 'jpeg-extract';
+import path from 'path';
+import fs from 'fs';
 
 import {
     EVENT_TYPES
 } from '../simplisafe';
 
 const dnsLookup = promisify(dns.lookup);
+
+const privacyShutterImage = path.resolve(__dirname, '..', 'images', 'privacyshutter_snapshot.png');
+const privacyShutterImageInBytes = fs.readFileSync(privacyShutterImage);
 
 class SS3SimpliCam {
 
@@ -191,24 +196,21 @@ class SS3SimpliCam {
             switch (alarmState) {
             case 'OFF':
                 if (this.cameraDetails.cameraSettings.shutterOff !== 'open') {
-                    if (this.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
-                    callback(new Error('Privacy shutter closed'));
+                    this._handlePrivacyShutterClosedSnapshotRequest(callback);
                     return;
                 }
                 break;
 
             case 'HOME':
                 if (this.cameraDetails.cameraSettings.shutterHome !== 'open') {
-                    if (this.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
-                    callback(new Error('Privacy shutter closed'));
+                    this._handlePrivacyShutterClosedSnapshotRequest(callback);
                     return;
                 }
                 break;
 
             case 'AWAY':
                 if (this.cameraDetails.cameraSettings.shutterAway !== 'open') {
-                    if (this.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
-                    callback(new Error('Privacy shutter closed'));
+                    this._handlePrivacyShutterClosedSnapshotRequest(callback);
                     return;
                 }
                 break;
@@ -240,6 +242,11 @@ class SS3SimpliCam {
             if (this.debug) this.log.error(err);
             callback(err);
         });
+    }
+
+    _handlePrivacyShutterClosedSnapshotRequest(callback) {
+        if (this.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
+        callback(undefined, privacyShutterImageInBytes);
     }
 
     prepareStream(request, callback) {
