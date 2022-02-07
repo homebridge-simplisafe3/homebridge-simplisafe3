@@ -2,7 +2,7 @@
 // SimpliSafe 3 HomeBridge Plugin
 
 import SimpliSafe3, { SENSOR_TYPES, RateLimitError } from './simplisafe';
-import SimpliSafe3AuthenticationManager from './lib/authManager.js';
+import SimpliSafe3AuthenticationManager from './common/authManager.js';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
 import MotionSensor from './accessories/motionSensor';
@@ -17,7 +17,7 @@ import UnreachableAccessory from './accessories/unreachableAccessory';
 const PLUGIN_NAME = 'homebridge-simplisafe3';
 const PLATFORM_NAME = 'SimpliSafe 3';
 
-let UUIDGen;
+let Accessory, Service, Characteristic, UUIDGen, CameraController;
 
 class SS3Platform {
 
@@ -45,6 +45,13 @@ class SS3Platform {
         this.authManager = new SimpliSafe3AuthenticationManager(this.api.user.storagePath(), log, this.debug);
         this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, this.authManager, this.api.user.storagePath(), log, this.debug);
 
+        this.authManager.on('refreshCredentialsSuccess', () => {
+            if (this.alarmAccessory) this.alarmAccessory.setFault(false);
+        });
+        this.authManager.on('refreshCredentialsFailure', () => {
+            if (this.alarmAccessory) this.alarmAccessory.setFault(true);
+        });
+
         if (config.subscriptionId) {
             if (this.debug) this.log(`Specifying account number: ${config.subscriptionId}`);
             this.simplisafe.setDefaultSubscription(config.subscriptionId);
@@ -57,10 +64,10 @@ class SS3Platform {
             this.authManager.ssId = this.simplisafe.ssId;
         }
 
-        if (this.debug) this.log('Attempting intial SimpliSafe credentials refresh...');
         this.initialLoad = this.authManager.refreshCredentials()
             .then(() => {
-                return this.discoverSimpliSafeDevices();
+                if (this.debug) this.log('SimpliSafe credentials initial refresh successful');
+                return this.refreshAccessories(false);
             })
             .catch(err => {
                 if (err instanceof RateLimitError) {
@@ -85,7 +92,7 @@ class SS3Platform {
                     if (!this.authManager.isAuthenticated()) throw new Error('Not authenticated with SimpliSafe.');
                     else {
                         this.simplisafe.startListening();
-                        this.createNewPlatformAccessories();
+                        return this.refreshAccessories();
                     }
                 })
                 .catch(err => {
@@ -94,12 +101,25 @@ class SS3Platform {
         });
     }
 
+    addAccessory(device) {
+        if (this.debug) this.log('Add accessory');
+        try {
+            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [device.accessory]);
+            this.accessories.push(device.accessory);
+        } catch (err) {
+            this.log.error(`An error occurred while adding accessory: ${err}`);
+        }
+    }
+
     configureAccessory(accessory) {
+        if (this.debug) this.log(`Configure existing accessory '${accessory.displayName}' (uuid ${accessory.UUID})`);
+
         let config = new Promise((resolve, reject) => {
             this.initialLoad
                 .then(() => {
+
                     if (this.simplisafe.isBlocked) {
-                        let unreachableAccessory = new UnreachableAccessory(accessory, this.api);
+                        let unreachableAccessory = new UnreachableAccessory(accessory, Service, Characteristic);
                         this.unreachableAccessories.push(unreachableAccessory);
 
                         return resolve();
@@ -108,11 +128,11 @@ class SS3Platform {
                     let device = this.devices.find(device => device.uuid === accessory.UUID);
 
                     if (device) {
-                        if (this.debug) this.log(`Initializing SS device '${device.name ? device.name : device.uuid}' with cached accessory`);
+                        if (this.debug) this.log('Found device', device.name ? `'${device.name}'` : device.uuid);
                         device.setAccessory(accessory);
                         this.accessories.push(accessory);
                     } else {
-                        if (this.debug) this.log(`Cached accessory {${accessory.UUID}} not matched to a SimpliSafe device`);
+                        if (this.debug) this.log('Device not found', accessory.UUID);
                         this.removeAccessory(accessory);
                     }
 
@@ -127,9 +147,9 @@ class SS3Platform {
     }
 
     removeAccessory(accessory) {
+        if (this.debug) this.log('Remove accessory');
         if (accessory) {
             if (!this.persistAccessories && !this.simplisafe.isBlocked) {
-                if (this.debug) this.log('Removing accessory', accessory.name);
                 this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
             }
             if (this.accessories.indexOf(accessory) > -1) {
@@ -138,24 +158,8 @@ class SS3Platform {
         }
     }
 
-    createNewPlatformAccessories() {
-        for (let device of this.devices) {
-            let existingAccessory = this.accessories.find(acc => acc.UUID == device.uuid);
-            if (!existingAccessory) {
-                if (this.debug) this.log(`Initializing SS device '${device.name}' with new accessory...`);
-                let accessory = device.createAccessory();
-                try {
-                    this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-                    this.accessories.push(accessory);
-                } catch (err) {
-                    this.log.error(`An error occurred while adding accessory: ${err}`);
-                }
-            }
-        }
-    }
-
-    async discoverSimpliSafeDevices() {
-        if (this.debug) this.log('Discovering devices from SimpliSafe');
+    async refreshAccessories(addAndRemove = true) {
+        if (this.debug) this.log(`Refreshing accessories (add and remove: ${addAndRemove})`);
         try {
             let subscription = await this.simplisafe.getSubscription();
             if (subscription.location.system.serial == null) throw new Error('System serial not found.');
@@ -163,20 +167,41 @@ class SS3Platform {
             let alarm = this.accessories.find(acc => acc.UUID === uuid);
 
             if (!alarm) {
+                if (this.debug) this.log('Alarm not found, adding...');
                 const alarmAccessory = new Alarm(
                     'SimpliSafe 3',
                     subscription.location.system.serial,
                     this.log,
                     this.debug,
                     this.simplisafe,
-                    this.api
+                    Service,
+                    Characteristic,
+                    UUIDGen
                 );
 
                 this.devices.push(alarmAccessory);
+                this.alarmAccessory = alarmAccessory;
+
+                if (addAndRemove) {
+                    let newAccessory = new Accessory('SimpliSafe 3', UUIDGen.generate(subscription.location.system.serial));
+                    newAccessory.addService(Service.SecuritySystem);
+                    alarmAccessory.setAccessory(newAccessory);
+                    this.addAccessory(alarmAccessory);
+                }
             }
 
             let sensors = await this.simplisafe.getSensors();
             for (let sensor of sensors) {
+                if (this.debug) {
+                    this.log(`Discovered sensor '${sensor.name}' from SimpliSafe.`);
+                    this.log(sensor);
+                }
+
+                if (sensor.serial && this.excludedDevices.includes(sensor.serial)) {
+                  this.log.info(`Excluding sensor with serial '${sensor.serial}'`);
+                  continue;
+                }
+
                 if (sensor.type == SENSOR_TYPES.KEYPAD ||
                     sensor.type == SENSOR_TYPES.KEYCHAIN ||
                     sensor.type == SENSOR_TYPES.PANIC_BUTTON ||
@@ -187,109 +212,166 @@ class SS3Platform {
                     sensor.type == SENSOR_TYPES.DOORLOCK_2) {
                     // Ignore as no data is provided by SimpliSafe
                     // Door locks are configured below
-                    continue;
-                }
-
-                let uuid = UUIDGen.generate(sensor.serial);
-                let accessory = this.accessories.find(acc => acc.UUID === uuid);
-                let sensorName = sensor.name;
-                if (this.debug) {
-                    this.log(`Discovered sensor '${sensor.name}' from SimpliSafe:`, JSON.stringify(sensor));
-                }
-
-                if (sensor.serial && this.excludedDevices.includes(sensor.serial)) {
-                    this.log.info(`Excluding sensor with serial '${sensor.serial}'`);
-                    continue;
-                }
-
-                if (sensor.type == SENSOR_TYPES.ENTRY_SENSOR) {
+                } else if (sensor.type == SENSOR_TYPES.ENTRY_SENSOR) {
+                    let sensorName = sensor.name || `Entry Sensor ${sensor.serial}`;
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!accessory) {
-                        sensorName = sensorName || `Entry Sensor ${sensor.serial}`;
+                        if (this.debug) this.log(`Entry Sensor '${sensorName}' not found, adding...`);
                         const sensorAccessory = new EntrySensor(
                             sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            this.api
+                            Service,
+                            Characteristic,
+                            UUIDGen
                         );
 
                         this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensorName, uuid);
+                            newAccessory.addService(Service.ContactSensor);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
                     }
                 } else if (sensor.type == SENSOR_TYPES.CO_SENSOR) {
+                    let sensorName = sensor.name || `CO Detector ${sensor.serial}`;
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!accessory) {
-                        sensorName = sensorName || `CO Detector ${sensor.serial}`;
+                        if (this.debug) this.log(`CO Detector '${sensorName}' not found, adding...`);
                         const sensorAccessory = new CODetector(
                             sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            this.api
+                            Service,
+                            Characteristic,
+                            UUIDGen
                         );
 
                         this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensorName, uuid);
+                            newAccessory.addService(Service.CarbonMonoxideSensor);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
                     }
                 } else if (sensor.type == SENSOR_TYPES.SMOKE_SENSOR) {
+                    let sensorName = sensor.name || `Smoke Detector ${sensor.serial}`;
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!accessory) {
-                        sensorName = sensorName || `Smoke Detector ${sensor.serial}`;
+                        if (this.debug) this.log(`Smoke Detector '${sensorName}' not found, adding...`);
                         const sensorAccessory = new SmokeDetector(
                             sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            this.api
+                            Service,
+                            Characteristic,
+                            UUIDGen
                         );
 
                         this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensorName, uuid);
+                            newAccessory.addService(Service.SmokeSensor);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
                     }
                 } else if (sensor.type == SENSOR_TYPES.WATER_SENSOR) {
+                    let sensorName = sensor.name || `Water Sensor ${sensor.serial}`;
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!accessory) {
-                        sensorName = sensorName || `Water Sensor ${sensor.serial}`;
+                        if (this.debug) this.log(`Water Sensor '${sensorName}' not found, adding...`);
                         const sensorAccessory = new WaterSensor(
                             sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            this.api
+                            Service,
+                            Characteristic,
+                            UUIDGen
                         );
 
                         this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensorName, uuid);
+                            newAccessory.addService(Service.LeakSensor);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
                     }
                 } else if (sensor.type == SENSOR_TYPES.FREEZE_SENSOR) {
+                    let sensorName = sensor.name || `Freeze Sensor ${sensor.serial}`;
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!accessory) {
-                        sensorName = sensorName || `Freeze Sensor ${sensor.serial}`;
+                        if (this.debug) this.log(`Freeze Sensor '${sensorName}' not found, adding...`);
                         const sensorAccessory = new FreezeSensor(
                             sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            this.api
+                            Service,
+                            Characteristic,
+                            UUIDGen
                         );
 
                         this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensorName, uuid);
+                            newAccessory.addService(Service.TemperatureSensor);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
                     }
                 } else if (sensor.type == SENSOR_TYPES.MOTION_SENSOR) {
-                    sensorName = sensorName || `Motion Sensor ${sensor.serial}`;
+                    let sensorName = sensor.name || `Motion Sensor ${sensor.serial}`;
                     // Check if secret alerts are enabled
                     if (sensor.setting.off == 0 || sensor.setting.home == 0 || sensor.setting.away == 0) {
-                        this.log.warn(`Motion Sensor '${sensorName}' requires secret alerts to be enabled in SimpliSafe before you can add it to Homebridge.`);
+                        if (!addAndRemove) this.log.warn(`Motion Sensor '${sensorName}' requires secret alerts to be enabled in SimpliSafe before you can add it to Homebridge.`);
                         continue;
                     }
+                    let uuid = UUIDGen.generate(sensor.serial);
+                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!accessory) {
+                        if (this.debug) this.log(`Motion Sensor '${sensorName}' not found, adding...`);
                         const sensorAccessory = new MotionSensor(
                             sensorName,
                             sensor.serial,
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            this.api
+                            Service,
+                            Characteristic,
+                            UUIDGen
                         );
 
                         this.devices.push(sensorAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(sensorName, uuid);
+                            newAccessory.addService(Service.MotionSensor);
+                            sensorAccessory.setAccessory(newAccessory);
+                            this.addAccessory(sensorAccessory);
+                        }
                     }
                 } else {
                     this.log.warn(`Sensor not (yet) supported: ${sensor.name}`);
@@ -303,38 +385,50 @@ class SS3Platform {
                 let uuid = UUIDGen.generate(lock.serial);
 
                 if (this.debug) {
-                    this.log(`Discovered door lock '${lockName}' from SimpliSafe:`, JSON.stringify(lock));
+                    this.log(`Discovered door lock '${lockName}' from SimpliSafe`);
+                    this.log(lock);
                 }
 
                 let accessory = this.accessories.find(acc => acc.UUID === uuid);
                 if (!accessory) {
+                    if (this.debug) this.log(`Lock ${lockName} not found, adding...`);
                     const lockAccessory = new DoorLock(
                         lockName,
                         lock.serial,
                         this.log,
                         this.debug,
                         this.simplisafe,
-                        this.api
+                        Service,
+                        Characteristic,
+                        UUIDGen
                     );
 
                     this.devices.push(lockAccessory);
+
+                    if (addAndRemove) {
+                        let newAccessory = new Accessory(lockName, uuid);
+                        newAccessory.addService(Service.LockMechanism);
+                        lockAccessory.setAccessory(newAccessory);
+                        this.addAccessory(lockAccessory);
+                    }
                 }
 
             }
 
             if (this.enableCameras) {
                 let cameras = await this.simplisafe.getCameras();
-
                 for (let camera of cameras) {
                     let cameraName = camera.cameraSettings.cameraName || `Camera ${camera.uuid}`;
                     let uuid = UUIDGen.generate(camera.uuid);
 
                     if (this.debug) {
-                        this.log(`Discovered camera '${cameraName}' from SimpliSafe:`, JSON.stringify(camera));
+                        this.log(`Discovered camera '${cameraName}' from SimpliSafe`);
+                        this.log(camera);
                     }
 
                     let cameraAccessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!cameraAccessory) {
+                        if (this.debug) this.log(`Camera ${cameraName} (uuid ${uuid}) not found, adding...`);
                         const cameraAccessory = new Camera(
                             cameraName,
                             camera.uuid,
@@ -344,10 +438,24 @@ class SS3Platform {
                             this.debug,
                             this.simplisafe,
                             this.authManager,
-                            this.api
+                            Service,
+                            Characteristic,
+                            UUIDGen,
+                            CameraController
                         );
 
                         this.devices.push(cameraAccessory);
+
+                        if (addAndRemove) {
+                            let newAccessory = new Accessory(cameraName, uuid);
+                            newAccessory.addService(Service.MotionSensor);
+                            if (camera.model == 'SS002') { // SSO02 is doorbell cam
+                                newAccessory.addService(Service.Doorbell);
+                            }
+                            cameraAccessory.setAccessory(newAccessory);
+
+                            this.addAccessory(cameraAccessory);
+                        }
                     }
                 }
             }
@@ -374,14 +482,15 @@ class SS3Platform {
         try {
             await this.authManager.refreshCredentials();
             if (this.debug) this.log('Recovered from 403 rate limit!');
-            await this.discoverSimpliSafeDevices();
+            await this.refreshAccessories(false);
             this.cachedAccessoryConfig = [];
             for (let accessory of this.unreachableAccessories) {
                 accessory.clearAccessory();
                 this.configureAccessory(accessory.accessory);
             }
             await Promise.all(this.cachedAccessoryConfig);
-            this.createNewPlatformAccessories();
+            await this.refreshAccessories();
+
         } catch (err) {
             if (err instanceof RateLimitError) {
                 this.log.error('Credentials refresh attempt failed, still rate limited');
@@ -397,7 +506,11 @@ class SS3Platform {
 }
 
 const homebridge = homebridge => {
+    Accessory = homebridge.platformAccessory;
+    Service = homebridge.hap.Service;
+    Characteristic = homebridge.hap.Characteristic;
     UUIDGen = homebridge.hap.uuid;
+    CameraController = homebridge.hap.CameraController;
 
     homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, SS3Platform, true);
 };
