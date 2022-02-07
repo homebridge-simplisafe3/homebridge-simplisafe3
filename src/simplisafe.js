@@ -185,6 +185,7 @@ class SimpliSafe3 extends EventEmitter {
         } catch (err) {
             if (!err.response) {
                 let rateLimitError = new RateLimitError(err);
+                this.log.error('SSAPI request failed, request blocked (rate limit?).');
                 this._setRateLimitHandler();
                 throw rateLimitError;
             }
@@ -197,15 +198,9 @@ class SimpliSafe3 extends EventEmitter {
                         return this.request(params, true);
                     })
                     .catch(async err => {
-                        let statusCode = err.status;
-                        if (statusCode == 403) {
-                            this.log.error('SSAPI request failed, request blocked (rate limit?).');
-                            if (this.debug) this.log.error('SSAPI request received a response error with code 403:', err.response);
-                            this._setRateLimitHandler();
-                            throw new RateLimitError(err.response.data);
-                        } else {
-                            throw err;
-                        }
+                        this._setRateLimitHandler();
+                        if (this.debug) this.log.error('Credentials refresh failed with error:', err);
+                        throw err;
                     });
             } else if (statusCode == 403) {
                 this.log.error('SSAPI request failed, request blocked (rate limit?).');
