@@ -3,8 +3,6 @@ import {
     SENSOR_TYPES
 } from '../simplisafe';
 
-import AUTH_EVENTS from '../lib/authManager';
-
 const targetStateMaxRetries = 5;
 
 class SS3Alarm {
@@ -20,7 +18,7 @@ class SS3Alarm {
         this.nRetries = 0;
         this.nSocketConnectFailures = 0;
 
-        this.SS3_TO_HOMEKIT_CURRENT = {
+        this.CURRENT_SS3_TO_HOMEKIT = {
             'OFF': this.api.hap.Characteristic.SecuritySystemCurrentState.DISARMED,
             'HOME': this.api.hap.Characteristic.SecuritySystemCurrentState.STAY_ARM,
             'AWAY': this.api.hap.Characteristic.SecuritySystemCurrentState.AWAY_ARM,
@@ -30,7 +28,7 @@ class SS3Alarm {
             'ALARM': this.api.hap.Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
         };
 
-        this.SS3_TO_HOMEKIT_TARGET = {
+        this.TARGET_SS3_TO_HOMEKIT = {
             'OFF': this.api.hap.Characteristic.SecuritySystemTargetState.DISARM,
             'HOME': this.api.hap.Characteristic.SecuritySystemTargetState.STAY_ARM,
             'AWAY': this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM,
@@ -38,7 +36,7 @@ class SS3Alarm {
             'AWAY_COUNT': this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM
         };
 
-        this.HOMEKIT_TARGET_TO_SS3 = {
+        this.TARGET_HOMEKIT_TO_SS3 = {
             [this.api.hap.Characteristic.SecuritySystemTargetState.DISARM]: 'OFF',
             [this.api.hap.Characteristic.SecuritySystemTargetState.STAY_ARM]: 'HOME',
             [this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM]: 'AWAY'
@@ -57,33 +55,12 @@ class SS3Alarm {
             this.api.hap.Characteristic.SecuritySystemTargetState.DISARM
         ];
 
-        // SimpliSafe events
         this.startListening();
-
-        // handle authentication failures
-        this.simplisafe.authManager.on(AUTH_EVENTS.REFRESH_CREDENTIALS_SUCCESS, () => {
-            if (this.service) this.setFault(false);
-        });
-        this.simplisafe.authManager.on(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE, () => {
-            if (this.service) this.setFault();
-        });
-
-        this.simplisafe.subscribeToAlarmSystem(this.id, system => {
-            // update power outage status in case event was never received i.e. wifi out
-            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, system.powerOutage ? this.api.hap.Characteristic.StatusTampered.TAMPERED : this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED);
-        });
     }
 
     identify(callback) {
         if (this.debug) this.log(`Identify request for ${this.name}`);
         callback();
-    }
-
-    createAccessory() {
-        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
-        newAccessory.addService(this.api.hap.Service.SecuritySystem);
-        this.setAccessory(newAccessory);
-        return newAccessory;
     }
 
     setAccessory(accessory) {
@@ -131,8 +108,8 @@ class SS3Alarm {
         }
 
         try {
-            let state = await this.getAlarmState();
-            let homekitState = this.SS3_TO_HOMEKIT_CURRENT[state];
+            let state = await this.simplisafe.getAlarmState();
+            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
             if (this.debug) this.log(`Current alarm state is: ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
@@ -151,8 +128,8 @@ class SS3Alarm {
         }
 
         try {
-            let state = await this.getAlarmState();
-            let homekitState = this.SS3_TO_HOMEKIT_TARGET[state];
+            let state = await this.simplisafe.getAlarmState();
+            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
             if (this.debug) this.log(`Target alarm state is: ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
@@ -161,7 +138,7 @@ class SS3Alarm {
     }
 
     async setTargetState(homekitState, callback) {
-        let state = this.HOMEKIT_TARGET_TO_SS3[homekitState];
+        let state = this.TARGET_HOMEKIT_TO_SS3[homekitState];
         if (this.debug) this.log(`Setting target state to ${state}, ${homekitState}`);
 
         if (!this.service) {
@@ -245,18 +222,6 @@ class SS3Alarm {
             if (!this._validateEvent(EVENT_TYPES.AWAY_EXIT_DELAY, data)) return;
             this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM);
         });
-
-        this.simplisafe.on(EVENT_TYPES.POWER_OUTAGE, (data) => {
-            if (!this._validateEvent(EVENT_TYPES.POWER_OUTAGE, data)) return;
-            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, this.api.hap.Characteristic.StatusTampered.TAMPERED);
-            if (data.messageBody) this.log.warn(data.messageBody);
-        });
-
-        this.simplisafe.on(EVENT_TYPES.POWER_RESTORED, (data) => {
-            if (!this._validateEvent(EVENT_TYPES.POWER_RESTORED, data)) return;
-            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED);
-            if (data.messageBody) this.log.warn(data.messageBody);
-        });
     }
 
     _validateEvent(event, data) {
@@ -268,9 +233,9 @@ class SS3Alarm {
     async refreshState() {
         if (this.debug) this.log('Refreshing alarm state');
         try {
-            let state = await this.getAlarmState();
-            let currentHomekitState = this.SS3_TO_HOMEKIT_CURRENT[state];
-            let targetHomekitState = this.SS3_TO_HOMEKIT_TARGET[state];
+            let state = await this.simplisafe.getAlarmState();
+            let currentHomekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
+            let targetHomekitState = this.TARGET_SS3_TO_HOMEKIT[state];
             this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState, currentHomekitState);
             this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, targetHomekitState);
             if (this.debug) this.log(`Updated current state for ${this.name}: ${state}`);
@@ -280,27 +245,6 @@ class SS3Alarm {
             this.log.error(err);
             this.setFault();
         }
-    }
-
-    async getAlarmState(forceRefresh = false, retry = false) {
-        let system = await this.simplisafe.getAlarmSystem(forceRefresh);
-        this.setFault(false); // if above succeeded auth is working
-
-        if (system.isAlarming) {
-            return 'ALARM';
-        }
-
-        let alarmState = system.alarmState;
-        if (!Object.keys(this.SS3_TO_HOMEKIT_CURRENT).includes(alarmState)) {
-            if (!retry) {
-                let retriedState = await this.getAlarmState(true, true);
-                return retriedState;
-            } else {
-                throw new Error('Alarm state not understood');
-            }
-        }
-
-        return alarmState;
     }
 
     setFault(fault = true) {

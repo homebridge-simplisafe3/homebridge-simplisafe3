@@ -2,7 +2,7 @@
 // SimpliSafe 3 HomeBridge Plugin
 
 import SimpliSafe3, { SENSOR_TYPES, RateLimitError } from './simplisafe';
-import SimpliSafe3AuthenticationManager from './common/authManager.js';
+import SimpliSafe3AuthenticationManager from './lib/authManager.js';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
 import MotionSensor from './accessories/motionSensor';
@@ -17,7 +17,7 @@ import UnreachableAccessory from './accessories/unreachableAccessory';
 const PLUGIN_NAME = 'homebridge-simplisafe3';
 const PLATFORM_NAME = 'SimpliSafe 3';
 
-let Accessory, Service, Characteristic, UUIDGen, CameraController;
+let Accessory, Service, UUIDGen;
 
 class SS3Platform {
 
@@ -119,7 +119,7 @@ class SS3Platform {
                 .then(() => {
 
                     if (this.simplisafe.isBlocked) {
-                        let unreachableAccessory = new UnreachableAccessory(accessory, Service, Characteristic);
+                        let unreachableAccessory = new UnreachableAccessory(accessory, this.api);
                         this.unreachableAccessories.push(unreachableAccessory);
 
                         return resolve();
@@ -174,9 +174,7 @@ class SS3Platform {
                     this.log,
                     this.debug,
                     this.simplisafe,
-                    Service,
-                    Characteristic,
-                    UUIDGen
+                    this.api
                 );
 
                 this.devices.push(alarmAccessory);
@@ -198,8 +196,8 @@ class SS3Platform {
                 }
 
                 if (sensor.serial && this.excludedDevices.includes(sensor.serial)) {
-                  this.log.info(`Excluding sensor with serial '${sensor.serial}'`);
-                  continue;
+                    this.log.info(`Excluding sensor with serial '${sensor.serial}'`);
+                    continue;
                 }
 
                 if (sensor.type == SENSOR_TYPES.KEYPAD ||
@@ -224,9 +222,7 @@ class SS3Platform {
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            Service,
-                            Characteristic,
-                            UUIDGen
+                            this.api
                         );
 
                         this.devices.push(sensorAccessory);
@@ -250,9 +246,7 @@ class SS3Platform {
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            Service,
-                            Characteristic,
-                            UUIDGen
+                            this.api
                         );
 
                         this.devices.push(sensorAccessory);
@@ -276,9 +270,7 @@ class SS3Platform {
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            Service,
-                            Characteristic,
-                            UUIDGen
+                            this.api
                         );
 
                         this.devices.push(sensorAccessory);
@@ -302,9 +294,7 @@ class SS3Platform {
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            Service,
-                            Characteristic,
-                            UUIDGen
+                            this.api
                         );
 
                         this.devices.push(sensorAccessory);
@@ -328,9 +318,7 @@ class SS3Platform {
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            Service,
-                            Characteristic,
-                            UUIDGen
+                            this.api
                         );
 
                         this.devices.push(sensorAccessory);
@@ -359,9 +347,7 @@ class SS3Platform {
                             this.log,
                             this.debug,
                             this.simplisafe,
-                            Service,
-                            Characteristic,
-                            UUIDGen
+                            this.api
                         );
 
                         this.devices.push(sensorAccessory);
@@ -398,9 +384,7 @@ class SS3Platform {
                         this.log,
                         this.debug,
                         this.simplisafe,
-                        Service,
-                        Characteristic,
-                        UUIDGen
+                        this.api
                     );
 
                     this.devices.push(lockAccessory);
@@ -417,6 +401,7 @@ class SS3Platform {
 
             if (this.enableCameras) {
                 let cameras = await this.simplisafe.getCameras();
+
                 for (let camera of cameras) {
                     let cameraName = camera.cameraSettings.cameraName || `Camera ${camera.uuid}`;
                     let uuid = UUIDGen.generate(camera.uuid);
@@ -438,20 +423,13 @@ class SS3Platform {
                             this.debug,
                             this.simplisafe,
                             this.authManager,
-                            Service,
-                            Characteristic,
-                            UUIDGen,
-                            CameraController
+                            this.api
                         );
 
                         this.devices.push(cameraAccessory);
 
                         if (addAndRemove) {
                             let newAccessory = new Accessory(cameraName, uuid);
-                            newAccessory.addService(Service.MotionSensor);
-                            if (camera.model == 'SS002') { // SSO02 is doorbell cam
-                                newAccessory.addService(Service.Doorbell);
-                            }
                             cameraAccessory.setAccessory(newAccessory);
 
                             this.addAccessory(cameraAccessory);
@@ -508,9 +486,7 @@ class SS3Platform {
 const homebridge = homebridge => {
     Accessory = homebridge.platformAccessory;
     Service = homebridge.hap.Service;
-    Characteristic = homebridge.hap.Characteristic;
     UUIDGen = homebridge.hap.uuid;
-    CameraController = homebridge.hap.CameraController;
 
     homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, SS3Platform, true);
 };
