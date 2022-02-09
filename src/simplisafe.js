@@ -2,6 +2,7 @@
 // SimpliSafe 3 API Wrapper
 
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
 import io from 'socket.io-client';
 import fs from 'fs';
 import path from 'path';
@@ -18,6 +19,7 @@ const errorSuppressionDuration = 5 * 60 * 1000; // ms
 const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
 });
+axiosRetry(ssApi, { retries: 2 });
 
 const validAlarmStates = [
     'off',
