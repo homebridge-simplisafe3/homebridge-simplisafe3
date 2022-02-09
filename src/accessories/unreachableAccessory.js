@@ -3,10 +3,8 @@ class SS3UnreachableAccessory {
     // This is a dummy accessory used to let Homebridge know that the real
     // accessory is not reachable (due to rate limiting)
 
-    constructor(accessory, Service, Characteristic) {
-
-        this.Characteristic = Characteristic;
-        this.Service = Service;
+    constructor(accessory, api) {
+        this.api = api;
         this.setAccessory(accessory);
     }
 
@@ -20,7 +18,7 @@ class SS3UnreachableAccessory {
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
 
         for (let service of accessory.services) {
-            if (service.UUID == this.Service.AccessoryInformation.UUID) {
+            if (service.UUID == this.api.hap.Service.AccessoryInformation.UUID) {
                 // Don't mess with the accessory information
                 continue;
             }
@@ -41,7 +39,7 @@ class SS3UnreachableAccessory {
 
     clearAccessory() {
         for (let service of this.accessory.services) {
-            if (service.UUID == this.Service.AccessoryInformation.UUID) {
+            if (service.UUID == this.api.hap.Service.AccessoryInformation.UUID) {
                 // Don't mess with the accessory information
                 continue;
             }

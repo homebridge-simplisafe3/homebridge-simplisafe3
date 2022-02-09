@@ -27,7 +27,6 @@ const MAX_RETRIES = 3;
 const clientUuid = '4df55627-46b2-4e2c-866b-1521b395ded2';
 const clientUsername = `${clientUuid}.WebApp.simplisafe.com`;
 const clientPassword = '';
-const ssApiExpiry = 3600;
 
 const accountsFilename = 'simplisafe3auth.json';
 
@@ -78,15 +77,15 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
 
     _parseAccountsFile() {
         if (this.accountsFileExists()) {
-          let fileContents;
+            let fileContents;
 
-          try {
-            fileContents = (fs.readFileSync(path.join(this.storagePath, accountsFilename))).toString();
-          } catch {
-            fileContents = '{}';
-          }
+            try {
+                fileContents = (fs.readFileSync(path.join(this.storagePath, accountsFilename))).toString();
+            } catch {
+                fileContents = '{}';
+            }
 
-          return JSON.parse(fileContents);
+            return JSON.parse(fileContents);
         } else if (!this._storagePathExists()) {
             throw new Error(`Supplied path ${this.storagePath} does not exist`);
         }
@@ -95,15 +94,17 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     }
 
     _writeAccountsFile(account) {
-      try {
-          fs.writeFileSync(
-            path.join(this.storagePath, accountsFilename),
-            JSON.stringify(account)
-          );
-      } catch (err) {
-        throw err;
-      }
-   }
+        try {
+            fs.writeFileSync(
+                path.join(this.storagePath, accountsFilename),
+                JSON.stringify(account)
+            );
+            return true;
+        } catch (err) {
+            if (this.log !== undefined) this.log.error('Unable to write accounts file.', err);
+            return false;
+        }
+    }
 
     isAuthenticated() {
         return this.refreshToken !== null && Date.now() < this.expiry;
@@ -134,19 +135,19 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     }
 
     parseCodeFromURL(redirectURLStr) {
-      let code;
-      try {
-          const redirectURL = new URL(redirectURLStr);
-          const maybeCode = redirectURL.searchParams.get('code');
-          if (!maybeCode) {
-              throw new Error();
-          }
-          code = maybeCode;
-      } catch (error) {
-          throw new Error('Invalid redirect URL');
-      }
+        let code;
+        try {
+            const redirectURL = new URL(redirectURLStr);
+            const maybeCode = redirectURL.searchParams.get('code');
+            if (!maybeCode) {
+                throw new Error();
+            }
+            code = maybeCode;
+        } catch (error) {
+            throw new Error('Invalid redirect URL');
+        }
 
-      return code;
+        return code;
     }
 
     async getToken(authorizationCode) {
@@ -185,10 +186,10 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 refresh_token: this.refreshToken
             }, {
                 headers: { // SS seems to need these...
-                  'Host': 'auth.simplisafe.com',
-                  'Content-Type': 'application/json',
-                  'Content-Length': 186,
-                  'Auth0-Client': SS_OAUTH_AUTH0_CLIENT
+                    'Host': 'auth.simplisafe.com',
+                    'Content-Type': 'application/json',
+                    'Content-Length': 186,
+                    'Auth0-Client': SS_OAUTH_AUTH0_CLIENT
                 }
             });
 
@@ -220,8 +221,12 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             accessToken: this.accessToken,
             codeVerifier: this.codeVerifier,
             refreshToken: this.refreshToken
+        };
+        const fileWritten = await this._writeAccountsFile(account);
+        if (!fileWritten) {
+            if (this.log !== undefined) this.log.error('Unable to store token.');
+            return;
         }
-        await this._writeAccountsFile(account);
 
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
@@ -229,10 +234,10 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         this.refreshInterval = setInterval(() => {
             if (this.log !== undefined && this.debug) this.log('Preemptively authenticating with SimpliSafe');
             this.refreshCredentials()
-            .catch(err => {
-                // handled elsewhere, just log
-                if (this.log !== undefined) this.log.error(err);
-            })
+                .catch(err => {
+                    // handled elsewhere, just log
+                    if (this.log !== undefined) this.log.error(err);
+                });
         }, parseInt(token.expires_in) * 1000 - 300000);
     }
 
@@ -252,7 +257,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 auth: {
                     username: clientUsername,
                     password: clientPassword
-              }
+                }
             });
 
             let token = response.data;
@@ -276,10 +281,10 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 refresh_token: this.refreshToken,
                 grant_type: 'refresh_token'
             }, {
-              auth: {
-                  username: clientUsername,
-                  password: clientPassword
-              }
+                auth: {
+                    username: clientUsername,
+                    password: clientPassword
+                }
             });
 
             let token = response.data;
@@ -295,4 +300,4 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     }
 }
 
-module.exports = SimpliSafe3AuthenticationManager
+module.exports = SimpliSafe3AuthenticationManager;

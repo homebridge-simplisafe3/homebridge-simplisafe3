@@ -4,33 +4,30 @@ import {
 
 class SS3DoorLock {
 
-    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
-
-        this.Characteristic = Characteristic;
-        this.Service = Service;
+    constructor(name, id, log, debug, simplisafe, api) {
         this.id = id;
         this.log = log;
         this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
-        this.uuid = UUIDGen.generate(id);
-        this.nSocketConnectFailures = 0;
+        this.api = api;
+        this.uuid = this.api.hap.uuid.generate(id);
 
         this.CURRENT_SS3_TO_HOMEKIT = {
-            0: Characteristic.LockCurrentState.UNSECURED, // may not exist
-            1: Characteristic.LockCurrentState.SECURED,
-            2: Characteristic.LockCurrentState.UNSECURED
+            0: this.api.hap.Characteristic.LockCurrentState.UNSECURED, // may not exist
+            1: this.api.hap.Characteristic.LockCurrentState.SECURED,
+            2: this.api.hap.Characteristic.LockCurrentState.UNSECURED
         };
 
         this.TARGET_SS3_TO_HOMEKIT = {
-            0: Characteristic.LockTargetState.UNSECURED, // may not exist
-            1: Characteristic.LockTargetState.SECURED,
-            2: Characteristic.LockTargetState.UNSECURED
+            0: this.api.hap.Characteristic.LockTargetState.UNSECURED, // may not exist
+            1: this.api.hap.Characteristic.LockTargetState.SECURED,
+            2: this.api.hap.Characteristic.LockTargetState.UNSECURED
         };
 
         this.TARGET_HOMEKIT_TO_SS3 = {
-            [Characteristic.LockTargetState.SECURED]: 'lock',
-            [Characteristic.LockTargetState.UNSECURED]: 'unlock'
+            [this.api.hap.Characteristic.LockTargetState.SECURED]: 'lock',
+            [this.api.hap.Characteristic.LockTargetState.UNSECURED]: 'unlock'
         };
 
         this.startListening();
@@ -39,9 +36,9 @@ class SS3DoorLock {
             if (this.service) {
                 if (lock.flags) {
                     if (lock.flags.lowBattery) {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                     } else {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                     }
                 }
             }
@@ -57,16 +54,16 @@ class SS3DoorLock {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
 
-        this.accessory.getService(this.Service.AccessoryInformation)
-            .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
-            .setCharacteristic(this.Characteristic.Model, 'Smart Lock')
-            .setCharacteristic(this.Characteristic.SerialNumber, this.id);
+        this.accessory.getService(this.api.hap.Service.AccessoryInformation)
+            .setCharacteristic(this.api.hap.Characteristic.Manufacturer, 'SimpliSafe')
+            .setCharacteristic(this.api.hap.Characteristic.Model, 'Smart Lock')
+            .setCharacteristic(this.api.hap.Characteristic.SerialNumber, this.id);
 
-        this.service = this.accessory.getService(this.Service.LockMechanism);
+        this.service = this.accessory.getService(this.api.hap.Service.LockMechanism);
 
-        this.service.getCharacteristic(this.Characteristic.LockCurrentState)
+        this.service.getCharacteristic(this.api.hap.Characteristic.LockCurrentState)
             .on('get', async callback => this.getCurrentState(callback));
-        this.service.getCharacteristic(this.Characteristic.LockTargetState)
+        this.service.getCharacteristic(this.api.hap.Characteristic.LockTargetState)
             .on('get', async callback => this.getTargetState(callback))
             .on('set', async (state, callback) => this.setTargetState(state, callback));
 
@@ -114,7 +111,7 @@ class SS3DoorLock {
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.Characteristic.LockCurrentState);
+            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.LockCurrentState);
             return callback(null, characteristic.value);
         }
 
@@ -124,11 +121,11 @@ class SS3DoorLock {
             let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
 
             if (lock.status.lockJamState) {
-                homekitState = this.Characteristic.LockCurrentState.JAMMED;
+                homekitState = this.api.hap.Characteristic.LockCurrentState.JAMMED;
             }
 
             if (lock.status.lockDisabled) {
-                homekitState = this.Characteristic.LockCurrentState.UNKNOWN;
+                homekitState = this.api.hap.Characteristic.LockCurrentState.UNKNOWN;
             }
 
             if (this.debug) this.log(`Current lock state is: ${state}, ${homekitState}`);
@@ -145,7 +142,7 @@ class SS3DoorLock {
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.Characteristic.LockTargetState);
+            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.LockTargetState);
             return callback(null, characteristic.value);
         }
 
@@ -172,7 +169,7 @@ class SS3DoorLock {
         try {
             await this.simplisafe.setLockState(this.id, state);
             if (this.debug) this.log(`Updated lock state: ${state}`);
-            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, homekitState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.LockCurrentState, homekitState);
             callback(null);
         } catch (err) {
             callback(new Error(`An error occurred while setting the door lock state: ${err}`));
@@ -182,14 +179,14 @@ class SS3DoorLock {
     startListening() {
         this.simplisafe.on(EVENT_TYPES.DOORLOCK_UNLOCKED, (data) => {
             if (!this._validateEvent(EVENT_TYPES.DOORLOCK_UNLOCKED, data)) return;
-            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.UNSECURED);
-            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNSECURED);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.LockTargetState, this.api.hap.Characteristic.LockTargetState.UNSECURED);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.LockCurrentState, this.api.hap.Characteristic.LockCurrentState.UNSECURED);
         });
 
         this.simplisafe.on(EVENT_TYPES.DOORLOCK_LOCKED, (data) => {
             if (!this._validateEvent(EVENT_TYPES.DOORLOCK_LOCKED, data)) return;
-            this.service.updateCharacteristic(this.Characteristic.LockTargetState, this.Characteristic.LockTargetState.SECURED);
-            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.SECURED);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.LockTargetState, this.api.hap.Characteristic.LockTargetState.SECURED);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.LockCurrentState, this.api.hap.Characteristic.LockCurrentState.SECURED);
         });
 
         this.simplisafe.on(EVENT_TYPES.DOORLOCK_ERROR, (data) => {
@@ -197,9 +194,9 @@ class SS3DoorLock {
             try {
                 this.getLockInformation().then((lock) => {
                     if (lock.status.lockJamState) {
-                        this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.JAMMED);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.LockCurrentState, this.api.hap.Characteristic.LockCurrentState.JAMMED);
                     } else if (lock.status.lockDisabled) {
-                        this.service.updateCharacteristic(this.Characteristic.LockCurrentState, this.Characteristic.LockCurrentState.UNKNOWN);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.LockCurrentState, this.api.hap.Characteristic.LockCurrentState.UNKNOWN);
                     }
                 });
             } catch (err) {
@@ -221,13 +218,13 @@ class SS3DoorLock {
             let state = lock.status.lockState;
             let homekitCurrentState = this.CURRENT_SS3_TO_HOMEKIT[state];
             let homekitTargetState = this.TARGET_SS3_TO_HOMEKIT[state];
-            this.service.updateCharacteristic(this.Characteristic.LockCurrentState, homekitCurrentState);
-            this.service.updateCharacteristic(this.Characteristic.LockTargetState, homekitTargetState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.LockCurrentState, homekitCurrentState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.LockTargetState, homekitTargetState);
 
             let batteryLow = lock.flags.lowBattery;
-            let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+            let homekitBatteryState = batteryLow ? this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
 
-            this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
         } catch (err) {
             this.log.error('An error occurred while refreshing state');
             this.log.error(err);

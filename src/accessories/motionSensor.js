@@ -6,16 +6,14 @@ import {
 
 class SS3MotionSensor {
 
-    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
-
-        this.Characteristic = Characteristic;
-        this.Service = Service;
+    constructor(name, id, log, debug, simplisafe, api) {
         this.id = id;
         this.log = log;
         this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
-        this.uuid = UUIDGen.generate(id);
+        this.api = api;
+        this.uuid = this.api.hap.uuid.generate(id);
         this.reachable = true;
 
         this.startListening();
@@ -30,16 +28,16 @@ class SS3MotionSensor {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
 
-        this.accessory.getService(this.Service.AccessoryInformation)
-            .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
-            .setCharacteristic(this.Characteristic.Model, 'Motion Sensor')
-            .setCharacteristic(this.Characteristic.SerialNumber, this.id);
+        this.accessory.getService(this.api.hap.Service.AccessoryInformation)
+            .setCharacteristic(this.api.hap.Characteristic.Manufacturer, 'SimpliSafe')
+            .setCharacteristic(this.api.hap.Characteristic.Model, 'Motion Sensor')
+            .setCharacteristic(this.api.hap.Characteristic.SerialNumber, this.id);
 
-        this.service = this.accessory.getService(this.Service.MotionSensor);
-        this.service.getCharacteristic(this.Characteristic.MotionDetected)
+        this.service = this.accessory.getService(this.api.hap.Service.MotionSensor);
+        this.service.getCharacteristic(this.api.hap.Characteristic.MotionDetected)
             .on('get', callback => this.getState(callback));
 
-        this.service.getCharacteristic(this.Characteristic.StatusLowBattery)
+        this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery)
             .on('get', async callback => this.getBatteryStatus(callback));
     }
 
@@ -84,13 +82,13 @@ class SS3MotionSensor {
             return callback(new Error('Request blocked (rate limited)'));
         }
 
-        let characteristic = this.service.getCharacteristic(this.Characteristic.MotionDetected);
+        let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.MotionDetected);
         return callback(null, characteristic.value);
     }
 
     async getBatteryStatus(callback) {
         // No need to ping API for this and HomeKit is not very patient when waiting for it
-        let characteristic = this.service.getCharacteristic(this.Characteristic.StatusLowBattery);
+        let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery);
         return callback(null, characteristic.value);
     }
 
@@ -99,35 +97,35 @@ class SS3MotionSensor {
         try {
             await this.simplisafe.subscribeToEvents((event, data) => {
                 switch (event) {
-                    // Socket events
-                    case EVENT_TYPES.CONNECTED:
-                        if (this.debug) this.log(`${this.name} motion sensor now listening for real time events.`);
-                        this.nSocketConnectFailures = 0;
-                        break;
-                    case EVENT_TYPES.DISCONNECT:
-                        if (this.debug) this.log(`${this.name} motion sensor real time events disconnected.`);
-                        break;
-                    case EVENT_TYPES.CONNECTION_LOST:
-                        if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} motion sensor real time events connection lost. Attempting to reconnect...`);
-                        setTimeout(async () => {
-                            await this.startListening();
-                        }, SOCKET_RETRY_INTERVAL);
-                        break;
+                // Socket events
+                case EVENT_TYPES.CONNECTED:
+                    if (this.debug) this.log(`${this.name} motion sensor now listening for real time events.`);
+                    this.nSocketConnectFailures = 0;
+                    break;
+                case EVENT_TYPES.DISCONNECT:
+                    if (this.debug) this.log(`${this.name} motion sensor real time events disconnected.`);
+                    break;
+                case EVENT_TYPES.CONNECTION_LOST:
+                    if (this.debug && this.nSocketConnectFailures == 0) this.log(`${this.name} motion sensor real time events connection lost. Attempting to reconnect...`);
+                    setTimeout(async () => {
+                        await this.startListening();
+                    }, SOCKET_RETRY_INTERVAL);
+                    break;
                 }
 
                 if (data && this.id == data.sensorSerial) {
                     // Motion sensor events
                     if (this.debug) this.log(`${this.name} motion sensor received event: ${event}`);
                     switch (event) {
-                        case EVENT_TYPES.MOTION:
-                            this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, true);
-                            setTimeout(() => {
-                                this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.MotionDetected, false);
-                            }, 10000);
-                            break;
-                        default:
-                            if (this.debug) this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
-                            break;
+                    case EVENT_TYPES.MOTION:
+                        this.accessory.getService(this.api.hap.Service.MotionSensor).updateCharacteristic(this.api.hap.Characteristic.MotionDetected, true);
+                        setTimeout(() => {
+                            this.accessory.getService(this.api.hap.Service.MotionSensor).updateCharacteristic(this.api.hap.Characteristic.MotionDetected, false);
+                        }, 10000);
+                        break;
+                    default:
+                        if (this.debug) this.log(`Motion sensor ${this.id} received unknown event '${event}' with data:`, data);
+                        break;
                     }
                 }
             });
@@ -144,9 +142,9 @@ class SS3MotionSensor {
         this.simplisafe.subscribeToSensor(this.id, sensor => {
             if (sensor.flags) {
                 if (sensor.flags.lowBattery) {
-                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                    this.accessory.getService(this.api.hap.Service.MotionSensor).updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                 } else {
-                    this.accessory.getService(this.Service.MotionSensor).updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                    this.accessory.getService(this.api.hap.Service.MotionSensor).updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                 }
             }
         });

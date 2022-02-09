@@ -1,15 +1,13 @@
 class SS3WaterSensor {
 
-    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
-
-        this.Characteristic = Characteristic;
-        this.Service = Service;
+    constructor(name, id, log, debug, simplisafe, api) {
         this.id = id;
         this.log = log;
         this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
-        this.uuid = UUIDGen.generate(id);
+        this.api = api;
+        this.uuid = this.api.hap.uuid.generate(id);
         this.reachable = true;
 
         this.startListening();
@@ -24,16 +22,16 @@ class SS3WaterSensor {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
 
-        this.accessory.getService(this.Service.AccessoryInformation)
-            .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
-            .setCharacteristic(this.Characteristic.Model, 'Water Sensor')
-            .setCharacteristic(this.Characteristic.SerialNumber, this.id);
+        this.accessory.getService(this.api.hap.Service.AccessoryInformation)
+            .setCharacteristic(this.api.hap.Characteristic.Manufacturer, 'SimpliSafe')
+            .setCharacteristic(this.api.hap.Characteristic.Model, 'Water Sensor')
+            .setCharacteristic(this.api.hap.Characteristic.SerialNumber, this.id);
 
-        this.service = this.accessory.getService(this.Service.LeakSensor);
-        this.service.getCharacteristic(this.Characteristic.LeakDetected)
+        this.service = this.accessory.getService(this.api.hap.Service.LeakSensor);
+        this.service.getCharacteristic(this.api.hap.Characteristic.LeakDetected)
             .on('get', async callback => this.getState(callback));
 
-        this.service.getCharacteristic(this.Characteristic.StatusLowBattery)
+        this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery)
             .on('get', async callback => this.getBatteryStatus(callback));
 
         this.refreshState();
@@ -81,7 +79,7 @@ class SS3WaterSensor {
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.Characteristic.LeakDetected);
+            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.LeakDetected);
             return callback(null, characteristic.value);
         }
 
@@ -93,7 +91,7 @@ class SS3WaterSensor {
             }
 
             let leak = sensor.status.triggered;
-            let homekitState = leak ? this.Characteristic.LeakDetected.LEAK_DETECTED : this.Characteristic.LeakDetected.LEAK_NOT_DETECTED;
+            let homekitState = leak ? this.api.hap.Characteristic.LeakDetected.LEAK_DETECTED : this.api.hap.Characteristic.LeakDetected.LEAK_NOT_DETECTED;
             callback(null, homekitState);
 
         } catch (err) {
@@ -103,7 +101,7 @@ class SS3WaterSensor {
 
     async getBatteryStatus(callback) {
         // No need to ping API for this and HomeKit is not very patient when waiting for it
-        let characteristic = this.service.getCharacteristic(this.Characteristic.StatusLowBattery);
+        let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery);
         return callback(null, characteristic.value);
     }
 
@@ -112,17 +110,17 @@ class SS3WaterSensor {
             if (this.service) {
                 if (sensor.status) {
                     if (sensor.status.triggered) {
-                        this.service.updateCharacteristic(this.Characteristic.LeakDetected, this.Characteristic.LeakDetected.LEAK_DETECTED);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.LeakDetected, this.api.hap.Characteristic.LeakDetected.LEAK_DETECTED);
                     } else {
-                        this.service.updateCharacteristic(this.Characteristic.LeakDetected, this.Characteristic.LeakDetected.LEAK_NOT_DETECTED);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.LeakDetected, this.api.hap.Characteristic.LeakDetected.LEAK_NOT_DETECTED);
                     }
                 }
 
                 if (sensor.flags) {
                     if (sensor.flags.lowBattery) {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                     } else {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                     }
                 }
             }
@@ -138,13 +136,13 @@ class SS3WaterSensor {
             }
 
             let leak = sensor.status.triggered;
-            let homekitSensorState = leak ? this.Characteristic.LeakDetected.LEAK_DETECTED : this.Characteristic.LeakDetected.LEAK_NOT_DETECTED;
+            let homekitSensorState = leak ? this.api.hap.Characteristic.LeakDetected.LEAK_DETECTED : this.api.hap.Characteristic.LeakDetected.LEAK_NOT_DETECTED;
 
             let batteryLow = sensor.flags.lowBattery;
-            let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+            let homekitBatteryState = batteryLow ? this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
 
-            this.service.updateCharacteristic(this.Characteristic.LeakDetected, homekitSensorState);
-            this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.LeakDetected, homekitSensorState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
 
             if (this.debug) this.log(`Updated current state for ${this.name}: ${leak}, ${batteryLow}`);
 

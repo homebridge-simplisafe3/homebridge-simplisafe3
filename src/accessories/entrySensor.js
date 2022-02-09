@@ -1,15 +1,13 @@
 class SS3EntrySensor {
 
-    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
-
-        this.Characteristic = Characteristic;
-        this.Service = Service;
+    constructor(name, id, log, debug, simplisafe, api) {
         this.id = id;
         this.log = log;
         this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
-        this.uuid = UUIDGen.generate(id);
+        this.api = api;
+        this.uuid = this.api.hap.uuid.generate(id);
         this.reachable = true;
 
         this.startListening();
@@ -24,16 +22,16 @@ class SS3EntrySensor {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
 
-        this.accessory.getService(this.Service.AccessoryInformation)
-            .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
-            .setCharacteristic(this.Characteristic.Model, 'Entry Sensor')
-            .setCharacteristic(this.Characteristic.SerialNumber, this.id);
+        this.accessory.getService(this.api.hap.Service.AccessoryInformation)
+            .setCharacteristic(this.api.hap.Characteristic.Manufacturer, 'SimpliSafe')
+            .setCharacteristic(this.api.hap.Characteristic.Model, 'Entry Sensor')
+            .setCharacteristic(this.api.hap.Characteristic.SerialNumber, this.id);
 
-        this.service = this.accessory.getService(this.Service.ContactSensor);
-        this.service.getCharacteristic(this.Characteristic.ContactSensorState)
+        this.service = this.accessory.getService(this.api.hap.Service.ContactSensor);
+        this.service.getCharacteristic(this.api.hap.Characteristic.ContactSensorState)
             .on('get', async callback => this.getState(callback));
 
-        this.service.getCharacteristic(this.Characteristic.StatusLowBattery)
+        this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery)
             .on('get', async callback => this.getBatteryStatus(callback));
 
         this.refreshState();
@@ -81,7 +79,7 @@ class SS3EntrySensor {
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.Characteristic.ContactSensorState);
+            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.ContactSensorState);
             return callback(null, characteristic.value);
         }
 
@@ -93,7 +91,7 @@ class SS3EntrySensor {
             }
 
             let open = sensor.status.triggered;
-            let homekitState = open ? this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED : this.Characteristic.ContactSensorState.CONTACT_DETECTED;
+            let homekitState = open ? this.api.hap.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED : this.api.hap.Characteristic.ContactSensorState.CONTACT_DETECTED;
             callback(null, homekitState);
 
         } catch (err) {
@@ -103,7 +101,7 @@ class SS3EntrySensor {
 
     async getBatteryStatus(callback) {
         // No need to ping API for this and HomeKit is not very patient when waiting for it
-        let characteristic = this.service.getCharacteristic(this.Characteristic.StatusLowBattery);
+        let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery);
         return callback(null, characteristic.value);
     }
 
@@ -112,17 +110,17 @@ class SS3EntrySensor {
             if (this.service) {
                 if (sensor.status) {
                     if (sensor.status.triggered) {
-                        this.service.updateCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, this.api.hap.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED);
                     } else {
-                        this.service.updateCharacteristic(this.Characteristic.ContactSensorState, this.Characteristic.ContactSensorState.CONTACT_DETECTED);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, this.api.hap.Characteristic.ContactSensorState.CONTACT_DETECTED);
                     }
                 }
 
                 if (sensor.flags) {
                     if (sensor.flags.lowBattery) {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                     } else {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                     }
                 }
             }
@@ -138,13 +136,13 @@ class SS3EntrySensor {
             }
 
             let open = sensor.status.triggered;
-            let homekitSensorState = open ? this.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED : this.Characteristic.ContactSensorState.CONTACT_DETECTED;
+            let homekitSensorState = open ? this.api.hap.Characteristic.ContactSensorState.CONTACT_NOT_DETECTED : this.api.hap.Characteristic.ContactSensorState.CONTACT_DETECTED;
 
             let batteryLow = sensor.flags.lowBattery;
-            let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+            let homekitBatteryState = batteryLow ? this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
 
-            this.service.updateCharacteristic(this.Characteristic.ContactSensorState, homekitSensorState);
-            this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, homekitSensorState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
 
             if (this.debug) this.log(`Updated current state for ${this.name}: ${open}, ${batteryLow}`);
 

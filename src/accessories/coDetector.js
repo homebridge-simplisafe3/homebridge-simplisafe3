@@ -1,15 +1,13 @@
 class SS3CODetector {
 
-    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
-
-        this.Characteristic = Characteristic;
-        this.Service = Service;
+    constructor(name, id, log, debug, simplisafe, api) {
         this.id = id;
         this.log = log;
         this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
-        this.uuid = UUIDGen.generate(id);
+        this.api = api;
+        this.uuid = this.api.hap.uuid.generate(id);
         this.reachable = true;
 
         this.startListening();
@@ -24,22 +22,22 @@ class SS3CODetector {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
 
-        this.accessory.getService(this.Service.AccessoryInformation)
-            .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
-            .setCharacteristic(this.Characteristic.Model, 'Carbon Monoxide Detector')
-            .setCharacteristic(this.Characteristic.SerialNumber, this.id);
+        this.accessory.getService(this.api.hap.Service.AccessoryInformation)
+            .setCharacteristic(this.api.hap.Characteristic.Manufacturer, 'SimpliSafe')
+            .setCharacteristic(this.api.hap.Characteristic.Model, 'Carbon Monoxide Detector')
+            .setCharacteristic(this.api.hap.Characteristic.SerialNumber, this.id);
 
-        this.service = this.accessory.getService(this.Service.CarbonMonoxideSensor);
-        this.service.getCharacteristic(this.Characteristic.CarbonMonoxideDetected)
+        this.service = this.accessory.getService(this.api.hap.Service.CarbonMonoxideSensor);
+        this.service.getCharacteristic(this.api.hap.Characteristic.CarbonMonoxideDetected)
             .on('get', async callback => this.getState(callback, 'triggered'));
 
-        this.service.getCharacteristic(this.Characteristic.StatusTampered)
+        this.service.getCharacteristic(this.api.hap.Characteristic.StatusTampered)
             .on('get', async callback => this.getState(callback, 'tamper'));
 
-        this.service.getCharacteristic(this.Characteristic.StatusFault)
+        this.service.getCharacteristic(this.api.hap.Characteristic.StatusFault)
             .on('get', async callback => this.getState(callback, 'malfunction'));
 
-        this.service.getCharacteristic(this.Characteristic.StatusLowBattery)
+        this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery)
             .on('get', async callback => this.getBatteryStatus(callback));
 
         this.refreshState();
@@ -90,11 +88,11 @@ class SS3CODetector {
             let characteristic = null;
 
             if (parameter == 'triggered') {
-                characteristic = this.service.getCharacteristic(this.Characteristic.CarbonMonoxideDetected);
+                characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.CarbonMonoxideDetected);
             } else if (parameter == 'tamper') {
-                characteristic = this.service.getCharacteristic(this.Characteristic.StatusTampered);
+                characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusTampered);
             } else if (parameter == 'malfunction') {
-                characteristic = this.service.getCharacteristic(this.Characteristic.StatusFault);
+                characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusFault);
             } else {
                 throw new Error('Requested data type not understood');
             }
@@ -112,11 +110,11 @@ class SS3CODetector {
             let homekitState = null;
 
             if (parameter == 'triggered') {
-                homekitState = sensor.status.triggered ? this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL : this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL;
+                homekitState = sensor.status.triggered ? this.api.hap.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL : this.api.hap.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL;
             } else if (parameter == 'tamper') {
-                homekitState = sensor.status.tamper ? this.Characteristic.StatusTampered.TAMPERED : this.Characteristic.StatusTampered.NOT_TAMPERED;
+                homekitState = sensor.status.tamper ? this.api.hap.Characteristic.StatusTampered.TAMPERED : this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED;
             } else if (parameter == 'malfunction') {
-                homekitState = sensor.status.malfunction ? this.Characteristic.StatusFault.GENERAL_FAULT : this.Characteristic.StatusFault.NO_FAULT;
+                homekitState = sensor.status.malfunction ? this.api.hap.Characteristic.StatusFault.GENERAL_FAULT : this.api.hap.Characteristic.StatusFault.NO_FAULT;
             } else {
                 throw new Error('Requested data type not understood');
             }
@@ -130,7 +128,7 @@ class SS3CODetector {
 
     async getBatteryStatus(callback) {
         // No need to ping API for this and HomeKit is not very patient when waiting for it
-        let characteristic = this.service.getCharacteristic(this.Characteristic.StatusLowBattery);
+        let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery);
         return callback(null, characteristic.value);
     }
 
@@ -139,29 +137,29 @@ class SS3CODetector {
             if (this.service) {
                 if (sensor.status) {
                     if (sensor.status.triggered) {
-                        this.service.updateCharacteristic(this.Characteristic.CarbonMonoxideDetected, this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.CarbonMonoxideDetected, this.api.hap.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL);
                     } else {
-                        this.service.updateCharacteristic(this.Characteristic.CarbonMonoxideDetected, this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.CarbonMonoxideDetected, this.api.hap.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL);
                     }
 
                     if (sensor.status.tamper) {
-                        this.service.updateCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.TAMPERED);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, this.api.hap.Characteristic.StatusTampered.TAMPERED);
                     } else {
-                        this.service.updateCharacteristic(this.Characteristic.StatusTampered, this.Characteristic.StatusTampered.NOT_TAMPERED);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED);
                     }
 
                     if (sensor.status.malfunction) {
-                        this.service.updateCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.GENERAL_FAULT);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusFault, this.api.hap.Characteristic.StatusFault.GENERAL_FAULT);
                     } else {
-                        this.service.updateCharacteristic(this.Characteristic.StatusFault, this.Characteristic.StatusFault.NO_FAULT);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusFault, this.api.hap.Characteristic.StatusFault.NO_FAULT);
                     }
                 }
 
                 if (sensor.flags) {
                     if (sensor.flags.lowBattery) {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                     } else {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                     }
                 }
             }
@@ -176,17 +174,17 @@ class SS3CODetector {
                 throw new Error('Sensor response not understood');
             }
 
-            let homekitTriggeredState = sensor.status.triggered ? this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL : this.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL;
-            let homekitTamperState = sensor.status.tamper ? this.Characteristic.StatusTampered.TAMPERED : this.Characteristic.StatusTampered.NOT_TAMPERED;
-            let homekitFaultState = sensor.status.malfunction ? this.Characteristic.StatusFault.GENERAL_FAULT : this.Characteristic.StatusFault.NO_FAULT;
+            let homekitTriggeredState = sensor.status.triggered ? this.api.hap.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL : this.api.hap.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL;
+            let homekitTamperState = sensor.status.tamper ? this.api.hap.Characteristic.StatusTampered.TAMPERED : this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED;
+            let homekitFaultState = sensor.status.malfunction ? this.api.hap.Characteristic.StatusFault.GENERAL_FAULT : this.api.hap.Characteristic.StatusFault.NO_FAULT;
 
             let batteryLow = sensor.flags.lowBattery;
-            let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+            let homekitBatteryState = batteryLow ? this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
 
-            this.service.updateCharacteristic(this.Characteristic.CarbonMonoxideDetected, homekitTriggeredState);
-            this.service.updateCharacteristic(this.Characteristic.StatusTampered, homekitTamperState);
-            this.service.updateCharacteristic(this.Characteristic.StatusFault, homekitFaultState);
-            this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.CarbonMonoxideDetected, homekitTriggeredState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, homekitTamperState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusFault, homekitFaultState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
 
             if (this.debug) this.log(`Updated current state for ${this.name}: ${sensor.status.triggered}, ${sensor.status.tamper}, ${sensor.status.malfunction}, ${batteryLow}`);
 

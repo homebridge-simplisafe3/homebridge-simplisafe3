@@ -2,16 +2,14 @@ const fahrenheitToCelsius = f => (f - 32.0) * 5.0 / 9.0;
 
 class SS3FreezeSensor {
 
-    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
-
-        this.Characteristic = Characteristic;
-        this.Service = Service;
+    constructor(name, id, log, debug, simplisafe, api) {
         this.id = id;
         this.log = log;
         this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
-        this.uuid = UUIDGen.generate(id);
+        this.api = api;
+        this.uuid = this.api.hap.uuid.generate(id);
         this.reachable = true;
 
         this.startListening();
@@ -26,16 +24,16 @@ class SS3FreezeSensor {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
 
-        this.accessory.getService(this.Service.AccessoryInformation)
-            .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
-            .setCharacteristic(this.Characteristic.Model, 'Freeze Sensor')
-            .setCharacteristic(this.Characteristic.SerialNumber, this.id);
+        this.accessory.getService(this.api.hap.Service.AccessoryInformation)
+            .setCharacteristic(this.api.hap.Characteristic.Manufacturer, 'SimpliSafe')
+            .setCharacteristic(this.api.hap.Characteristic.Model, 'Freeze Sensor')
+            .setCharacteristic(this.api.hap.Characteristic.SerialNumber, this.id);
 
-        this.service = this.accessory.getService(this.Service.TemperatureSensor);
-        this.service.getCharacteristic(this.Characteristic.CurrentTemperature)
+        this.service = this.accessory.getService(this.api.hap.Service.TemperatureSensor);
+        this.service.getCharacteristic(this.api.hap.Characteristic.CurrentTemperature)
             .on('get', async callback => this.getState(callback));
 
-        this.service.getCharacteristic(this.Characteristic.StatusLowBattery)
+        this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery)
             .on('get', async callback => this.getBatteryStatus(callback));
 
         this.refreshState();
@@ -83,7 +81,7 @@ class SS3FreezeSensor {
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.Characteristic.CurrentTemperature);
+            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.CurrentTemperature);
             return callback(null, characteristic.value);
         }
 
@@ -104,7 +102,7 @@ class SS3FreezeSensor {
 
     async getBatteryStatus(callback) {
         // No need to ping API for this and HomeKit is not very patient when waiting for it
-        let characteristic = this.service.getCharacteristic(this.Characteristic.StatusLowBattery);
+        let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery);
         return callback(null, characteristic.value);
     }
 
@@ -113,14 +111,14 @@ class SS3FreezeSensor {
             if (this.service) {
                 if (sensor.status) {
                     let temperature = fahrenheitToCelsius(sensor.status.temperature);
-                    this.service.updateCharacteristic(this.Characteristic.CurrentTemperature, temperature);
+                    this.service.updateCharacteristic(this.api.hap.Characteristic.CurrentTemperature, temperature);
                 }
 
                 if (sensor.flags) {
                     if (sensor.flags.lowBattery) {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
                     } else {
-                        this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
                     }
                 }
             }
@@ -138,10 +136,10 @@ class SS3FreezeSensor {
             let temperature = fahrenheitToCelsius(sensor.status.temperature);
 
             let batteryLow = sensor.flags.lowBattery;
-            let homekitBatteryState = batteryLow ? this.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+            let homekitBatteryState = batteryLow ? this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
 
-            this.service.updateCharacteristic(this.Characteristic.CurrentTemperature, temperature);
-            this.service.updateCharacteristic(this.Characteristic.StatusLowBattery, homekitBatteryState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.CurrentTemperature, temperature);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
 
             if (this.debug) this.log(`Updated current state for ${this.name}: ${temperature}, ${batteryLow}`);
 

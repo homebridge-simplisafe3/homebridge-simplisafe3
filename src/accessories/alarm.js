@@ -7,54 +7,52 @@ const targetStateMaxRetries = 5;
 
 class SS3Alarm {
 
-    constructor(name, id, log, debug, simplisafe, Service, Characteristic, UUIDGen) {
-
-        this.Characteristic = Characteristic;
-        this.Service = Service;
+    constructor(name, id, log, debug, simplisafe, api) {
         this.id = id;
         this.log = log;
         this.debug = debug;
         this.name = name;
         this.simplisafe = simplisafe;
-        this.uuid = UUIDGen.generate(id);
+        this.api = api;
+        this.uuid = this.api.hap.uuid.generate(id);
         this.nRetries = 0;
         this.nSocketConnectFailures = 0;
 
         this.CURRENT_SS3_TO_HOMEKIT = {
-            'OFF': Characteristic.SecuritySystemCurrentState.DISARMED,
-            'HOME': Characteristic.SecuritySystemCurrentState.STAY_ARM,
-            'AWAY': Characteristic.SecuritySystemCurrentState.AWAY_ARM,
-            'HOME_COUNT': Characteristic.SecuritySystemCurrentState.DISARMED,
-            'AWAY_COUNT': Characteristic.SecuritySystemCurrentState.DISARMED,
-            'ALARM_COUNT': Characteristic.SecuritySystemCurrentState.AWAY_ARM,
-            'ALARM': Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
+            'OFF': this.api.hap.Characteristic.SecuritySystemCurrentState.DISARMED,
+            'HOME': this.api.hap.Characteristic.SecuritySystemCurrentState.STAY_ARM,
+            'AWAY': this.api.hap.Characteristic.SecuritySystemCurrentState.AWAY_ARM,
+            'HOME_COUNT': this.api.hap.Characteristic.SecuritySystemCurrentState.DISARMED,
+            'AWAY_COUNT': this.api.hap.Characteristic.SecuritySystemCurrentState.DISARMED,
+            'ALARM_COUNT': this.api.hap.Characteristic.SecuritySystemCurrentState.AWAY_ARM,
+            'ALARM': this.api.hap.Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
         };
 
         this.TARGET_SS3_TO_HOMEKIT = {
-            'OFF': Characteristic.SecuritySystemTargetState.DISARM,
-            'HOME': Characteristic.SecuritySystemTargetState.STAY_ARM,
-            'AWAY': Characteristic.SecuritySystemTargetState.AWAY_ARM,
-            'HOME_COUNT': Characteristic.SecuritySystemTargetState.STAY_ARM,
-            'AWAY_COUNT': Characteristic.SecuritySystemTargetState.AWAY_ARM
+            'OFF': this.api.hap.Characteristic.SecuritySystemTargetState.DISARM,
+            'HOME': this.api.hap.Characteristic.SecuritySystemTargetState.STAY_ARM,
+            'AWAY': this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM,
+            'HOME_COUNT': this.api.hap.Characteristic.SecuritySystemTargetState.STAY_ARM,
+            'AWAY_COUNT': this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM
         };
 
         this.TARGET_HOMEKIT_TO_SS3 = {
-            [Characteristic.SecuritySystemTargetState.DISARM]: 'OFF',
-            [Characteristic.SecuritySystemTargetState.STAY_ARM]: 'HOME',
-            [Characteristic.SecuritySystemTargetState.AWAY_ARM]: 'AWAY'
+            [this.api.hap.Characteristic.SecuritySystemTargetState.DISARM]: 'OFF',
+            [this.api.hap.Characteristic.SecuritySystemTargetState.STAY_ARM]: 'HOME',
+            [this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM]: 'AWAY'
         };
 
         this.VALID_CURRENT_STATE_VALUES = [
-            Characteristic.SecuritySystemCurrentState.STAY_ARM,
-            Characteristic.SecuritySystemCurrentState.AWAY_ARM,
-            Characteristic.SecuritySystemCurrentState.DISARMED,
-            Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
+            this.api.hap.Characteristic.SecuritySystemCurrentState.STAY_ARM,
+            this.api.hap.Characteristic.SecuritySystemCurrentState.AWAY_ARM,
+            this.api.hap.Characteristic.SecuritySystemCurrentState.DISARMED,
+            this.api.hap.Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
         ];
 
         this.VALID_TARGET_STATE_VALUES = [
-            Characteristic.SecuritySystemTargetState.STAY_ARM,
-            Characteristic.SecuritySystemTargetState.AWAY_ARM,
-            Characteristic.SecuritySystemTargetState.DISARM
+            this.api.hap.Characteristic.SecuritySystemTargetState.STAY_ARM,
+            this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM,
+            this.api.hap.Characteristic.SecuritySystemTargetState.DISARM
         ];
 
         this.startListening();
@@ -69,17 +67,17 @@ class SS3Alarm {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
 
-        this.accessory.getService(this.Service.AccessoryInformation)
-            .setCharacteristic(this.Characteristic.Manufacturer, 'SimpliSafe')
-            .setCharacteristic(this.Characteristic.Model, 'SimpliSafe 3')
-            .setCharacteristic(this.Characteristic.SerialNumber, this.id);
+        this.accessory.getService(this.api.hap.Service.AccessoryInformation)
+            .setCharacteristic(this.api.hap.Characteristic.Manufacturer, 'SimpliSafe')
+            .setCharacteristic(this.api.hap.Characteristic.Model, 'SimpliSafe 3')
+            .setCharacteristic(this.api.hap.Characteristic.SerialNumber, this.id);
 
-        this.service = this.accessory.getService(this.Service.SecuritySystem);
+        this.service = this.accessory.getService(this.api.hap.Service.SecuritySystem);
 
-        this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState)
+        this.service.getCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState)
             .setProps({ validValues: this.VALID_CURRENT_STATE_VALUES })
             .on('get', async callback => this.getCurrentState(callback));
-        this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState)
+        this.service.getCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState)
             .setProps({ validValues: this.VALID_TARGET_STATE_VALUES })
             .on('get', async callback => this.getTargetState(callback))
             .on('set', async (state, callback) => this.setTargetState(state, callback));
@@ -105,7 +103,7 @@ class SS3Alarm {
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.Characteristic.SecuritySystemCurrentState);
+            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState);
             return callback(null, characteristic.value);
         }
 
@@ -125,7 +123,7 @@ class SS3Alarm {
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.Characteristic.SecuritySystemTargetState);
+            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState);
             return callback(null, characteristic.value);
         }
 
@@ -153,7 +151,7 @@ class SS3Alarm {
             let data = await this.simplisafe.setAlarmState(state);
             if (this.debug) this.log(`Updated alarm state: ${JSON.stringify(data)}`);
             if (data.state == 'OFF') {
-                this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+                this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState, this.api.hap.Characteristic.SecuritySystemCurrentState.DISARMED);
             } else if (data.exitDelay && data.exitDelay > 0) {
                 setTimeout(async () => {
                     await this.refreshState();
@@ -182,47 +180,47 @@ class SS3Alarm {
     startListening() {
         this.simplisafe.on(EVENT_TYPES.ALARM_TRIGGER, (data) => {
             if (!this._validateEvent(EVENT_TYPES.ALARM_TRIGGER, data)) return;
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState, this.api.hap.Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED);
         });
 
         this.simplisafe.on(EVENT_TYPES.ALARM_DISARM, (data) => {
             if (!this._validateEvent(EVENT_TYPES.ALARM_DISARM, data)) return;
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, this.api.hap.Characteristic.SecuritySystemTargetState.DISARM);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState, this.api.hap.Characteristic.SecuritySystemCurrentState.DISARMED);
         });
 
         this.simplisafe.on(EVENT_TYPES.ALARM_CANCEL, (data) => {
             if (!this._validateEvent(EVENT_TYPES.ALARM_CANCEL, data)) return;
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, this.api.hap.Characteristic.SecuritySystemTargetState.DISARM);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState, this.api.hap.Characteristic.SecuritySystemCurrentState.DISARMED);
         });
 
         this.simplisafe.on(EVENT_TYPES.HOME_ARM, (data) => {
             if (!this._validateEvent(EVENT_TYPES.HOME_ARM, data)) return;
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.STAY_ARM);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, this.api.hap.Characteristic.SecuritySystemTargetState.STAY_ARM);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState, this.api.hap.Characteristic.SecuritySystemCurrentState.STAY_ARM);
         });
 
         this.simplisafe.on(EVENT_TYPES.ALARM_OFF, (data) => {
             if (!this._validateEvent(EVENT_TYPES.ALARM_OFF, data)) return;
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.DISARM);
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.DISARMED);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, this.api.hap.Characteristic.SecuritySystemTargetState.DISARM);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState, this.api.hap.Characteristic.SecuritySystemCurrentState.DISARMED);
         });
 
         this.simplisafe.on(EVENT_TYPES.AWAY_ARM, (data) => {
             if (!this._validateEvent(EVENT_TYPES.AWAY_ARM, data)) return;
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, this.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState, this.api.hap.Characteristic.SecuritySystemCurrentState.AWAY_ARM);
         });
 
         this.simplisafe.on(EVENT_TYPES.HOME_EXIT_DELAY, (data) => {
             if (!this._validateEvent(EVENT_TYPES.HOME_EXIT_DELAY, data)) return;
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.STAY_ARM);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, this.api.hap.Characteristic.SecuritySystemTargetState.STAY_ARM);
         });
 
         this.simplisafe.on(EVENT_TYPES.AWAY_EXIT_DELAY, (data) => {
             if (!this._validateEvent(EVENT_TYPES.AWAY_EXIT_DELAY, data)) return;
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, this.Characteristic.SecuritySystemTargetState.AWAY_ARM);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM);
         });
     }
 
@@ -238,8 +236,8 @@ class SS3Alarm {
             let state = await this.simplisafe.getAlarmState();
             let currentHomekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
             let targetHomekitState = this.TARGET_SS3_TO_HOMEKIT[state];
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemCurrentState, currentHomekitState);
-            this.service.updateCharacteristic(this.Characteristic.SecuritySystemTargetState, targetHomekitState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState, currentHomekitState);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, targetHomekitState);
             if (this.debug) this.log(`Updated current state for ${this.name}: ${state}`);
             this.setFault(false);
         } catch (err) {
@@ -250,7 +248,7 @@ class SS3Alarm {
     }
 
     setFault(fault = true) {
-        this.service.updateCharacteristic(this.Characteristic.StatusFault, fault ? this.Characteristic.StatusFault.GENERAL_FAULT : this.Characteristic.StatusFault.NO_FAULT);
+        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusFault, fault ? this.api.hap.Characteristic.StatusFault.GENERAL_FAULT : this.api.hap.Characteristic.StatusFault.NO_FAULT);
     }
 
 }

@@ -1,17 +1,17 @@
 const {Command, flags} = require('@oclif/command');
 const {cli} = require('cli-ux');
-const SimpliSafe3AuthenticationManager = require('../common/authManager.js');
+const SimpliSafe3AuthenticationManager = require('../lib/authManager.js');
 const path = require('path');
 const os = require('os');
 
 class Login extends Command {
     static flags = {
-      homebridgeDir: flags.string({
-        char: 'd',
-        default: path.join(os.homedir(), '.homebridge'),
-        description: 'The path to your Homebridge directory',
-      })
-    }
+        homebridgeDir: flags.string({
+            char: 'd',
+            default: path.join(os.homedir(), '.homebridge'),
+            description: 'The path to your Homebridge directory',
+        })
+    };
     authManager;
 
     async run() {
@@ -29,9 +29,9 @@ class Login extends Command {
         await cli.anykey();
 
         try {
-          await cli.open(loginURL);
+            await cli.open(loginURL);
         } catch (e) {
-          this.log('Unable to open automatically, please copy and paste the URL above into your web browser.');
+            this.log('Unable to open automatically, please copy and paste the URL above into your web browser.');
         }
 
         const redirectURLStr = (await cli.prompt('Redirect URL'));
@@ -39,16 +39,16 @@ class Login extends Command {
         let code = this.authManager.parseCodeFromURL(redirectURLStr);
 
         try {
-          await this.authManager.getToken(code);
+            await this.authManager.getToken(code);
 
-          this.log('\nCredentials retrieved successfully.');
-          this.log('accessToken: ' + this.authManager.accessToken);
-          this.log('refreshToken: ' + this.authManager.refreshToken);
-          this.log('Please restart Homebridge for changes to take effect.');
+            this.log('\nCredentials retrieved successfully.');
+            this.log('accessToken: ' + this.authManager.accessToken);
+            this.log('refreshToken: ' + this.authManager.refreshToken);
+            this.log('Please restart Homebridge for changes to take effect.');
         } catch (e) {
-          this.log('\nAn error occurred retrieving credentials:');
-          this.log(e);
-          this.exit(1);
+            this.log('\nAn error occurred retrieving credentials:');
+            this.log(e);
+            this.exit(1);
         }
 
         this.exit(0);

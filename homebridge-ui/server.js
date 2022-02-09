@@ -1,5 +1,5 @@
 const { HomebridgePluginUiServer } = require('@homebridge/plugin-ui-utils');
-const SimpliSafe3AuthenticationManager = require('../common/authManager.js');
+const SimpliSafe3AuthenticationManager = require('../lib/authManager.js');
 
 // your class MUST extend the HomebridgePluginUiServer
 class UiServer extends HomebridgePluginUiServer {
