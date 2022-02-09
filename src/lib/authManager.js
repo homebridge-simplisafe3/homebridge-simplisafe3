@@ -3,6 +3,7 @@
 
 const crypto = require('crypto');
 const axios = require('axios');
+const axiosRetry = require('axios-retry');
 const fs = require('fs');
 const path = require('path');
 const events = require('events');
@@ -10,6 +11,7 @@ const events = require('events');
 const ssOAuth = axios.create({
     baseURL: 'https://auth.simplisafe.com/oauth'
 });
+axiosRetry(ssOAuth, { retries: 3 });
 
 const ssApiV1 = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
@@ -21,7 +23,6 @@ const SS_OAUTH_AUTH0_CLIENT = 'eyJuYW1lIjoiQXV0aDAuc3dpZnQiLCJlbnYiOnsiaU9TIjoiM
 const SS_OAUTH_REDIRECT_URI = 'com.simplisafe.mobile://auth.simplisafe.com/ios/com.simplisafe.mobile/callback';
 const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
 const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
-const MAX_RETRIES = 3;
 
 // Retained for deprecated username / password login, for now
 const clientUuid = '4df55627-46b2-4e2c-866b-1521b395ded2';
@@ -41,7 +42,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     refreshInterval;
     log;
     debug;
-    nRetries = 0;
 
     // Retained for deprecated username / password login, for now
     username;
@@ -195,20 +195,15 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
 
             await this._storeToken(refreshTokenResponse.data);
             this.emit('refreshCredentialsSuccess');
-            this.nRetries = 0;
             if (this.log !== undefined && this.debug) this.log('Credentials refresh was successful');
         } catch (err) {
-            if (err.response && err.response.status == 500 && this.nRetries < MAX_RETRIES) {
-                // Lets try again in case it was simple connectivity
-                this.nRetries++;
-                if (this.log !== undefined && this.debug) this.log(`Initiating credentials refresh attempt #${this.nRetries}`);
-                await this.refreshCredentials();
-            } else {
-                this.emit('refreshCredentialsFailure');
-                this.nRetries = 0;
-                throw new Error('Failed refreshing token: ' + err.toString());
-            }
+            this.emit('refreshCredentialsFailure');
+            throw new Error('Failed refreshing token: ' + err.toString());
         }
+    }
+
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     async _storeToken(token) {
