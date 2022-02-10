@@ -34,13 +34,8 @@ class SS3DoorLock {
 
         this.simplisafe.subscribeToSensor(this.id, lock => {
             if (this.service) {
-                if (lock.flags) {
-                    if (lock.flags.lowBattery) {
-                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
-                    } else {
-                        this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
-                    }
-                }
+                let batteryStatus = lock.flags && lock.flags.lowBattery ? this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+                this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, batteryStatus);
             }
         });
     }
@@ -168,11 +163,11 @@ class SS3DoorLock {
 
         try {
             await this.simplisafe.setLockState(this.id, state);
-            if (this.debug) this.log(`Updated lock state: ${state}`);
-            this.service.updateCharacteristic(this.api.hap.Characteristic.LockCurrentState, homekitState);
+            if (this.debug) this.log(`Updated SS lock state: ${state}`);
+            this.service.updateCharacteristic(this.api.hap.Characteristic.LockTargetState, homekitState);
             callback(null);
         } catch (err) {
-            callback(new Error(`An error occurred while setting the door lock state: ${err}`));
+            callback(new Error(`An error occurred while setting the target door lock state: ${err}`));
         }
     }
 
@@ -221,9 +216,7 @@ class SS3DoorLock {
             this.service.updateCharacteristic(this.api.hap.Characteristic.LockCurrentState, homekitCurrentState);
             this.service.updateCharacteristic(this.api.hap.Characteristic.LockTargetState, homekitTargetState);
 
-            let batteryLow = lock.flags.lowBattery;
-            let homekitBatteryState = batteryLow ? this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
-
+            let homekitBatteryState = lock.flags && lock.flags.lowBattery ? this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
             this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
         } catch (err) {
             this.log.error('An error occurred while refreshing state');
