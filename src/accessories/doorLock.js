@@ -93,12 +93,12 @@ class SS3DoorLock {
             let lock = locks.find(l => l.serial === this.id);
 
             if (!lock) {
-                throw new Error('Could not find lock');
+                throw new Error(`Could not find lock ${this.name}`);
             }
 
             return lock;
         } catch (err) {
-            throw new Error(`An error occurred while getting lock: ${err}`);
+            throw new Error(`An error occurred while getting '${this.name}' lock information from SS: ${err}`);
         }
     }
 
@@ -125,7 +125,7 @@ class SS3DoorLock {
                 homekitState = this.api.hap.Characteristic.LockCurrentState.UNKNOWN;
             }
 
-            if (this.debug) this.log(`Current lock state is: ${state}, ${homekitState}`);
+            if (this.debug) this.log(`Current '${this.name}' lock state is: ${state}, ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
             callback(new Error(`An error occurred while getting the current door lock state: ${err}`));
@@ -147,16 +147,16 @@ class SS3DoorLock {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
             let homekitState = this.SS3_TO_HOMEKIT_TARGET[state];
-            if (this.debug) this.log(`Target lock state is: ${state}, ${homekitState}`);
+            if (this.debug) this.log(`Target '${this.name}' lock state is: ${state}, ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
-            callback(new Error(`An error occurred while getting the target door lock state: ${err}`));
+            callback(new Error(`An error occurred while getting the '${this.name}' target door lock state: ${err}`));
         }
     }
 
     async setTargetState(homekitState, callback) {
         let state = this.HOMEKIT_TARGET_TO_SS3[homekitState];
-        if (this.debug) this.log(`Setting target lock state to ${state}, ${homekitState}`);
+        if (this.debug) this.log(`Setting '${this.name}' target lock state to ${state}, ${homekitState}`);
 
         if (!this.service) {
             callback(new Error('Lock not linked to Homebridge service'));
@@ -165,11 +165,11 @@ class SS3DoorLock {
 
         try {
             await this.simplisafe.setLockState(this.id, state);
-            if (this.debug) this.log(`Updated SS lock state: ${state}`);
+            if (this.debug) this.log(`Updated SS lock state for '${this.name}': ${state}`);
             this.service.updateCharacteristic(this.api.hap.Characteristic.LockTargetState, homekitState);
             callback(null);
         } catch (err) {
-            callback(new Error(`An error occurred while setting the target door lock state: ${err}`));
+            callback(new Error(`An error occurred while setting the '${this.name}' target door lock state: ${err}`));
         }
     }
 
@@ -197,19 +197,19 @@ class SS3DoorLock {
                     }
                 });
             } catch (err) {
-                this.log.error(`An error occurred while updating ${this.name} lock error state: ${err}`);
+                this.log.error(`An error occurred while updating '${this.name}' lock error state: ${err}`);
             }
         });
     }
 
     _validateEvent(event, data) {
         let valid = this.service && data && data.sensorSerial && data.sensorSerial == this.id;
-        if (this.debug && valid) this.log(`${this.name} lock received event: ${event}`);
+        if (this.debug && valid) this.log(`Lock '${this.name}' received event: ${event}`);
         return valid;
     }
 
     async refreshState() {
-        if (this.debug) this.log('Refreshing door lock state');
+        if (this.debug) this.log(`Refreshing '${this.name}' door lock state`);
         try {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
