@@ -13,19 +13,21 @@ class SS3DoorLock {
         this.api = api;
         this.uuid = this.api.hap.uuid.generate(id);
 
-        this.CURRENT_SS3_TO_HOMEKIT = {
+        this.SS3_TO_HOMEKIT_CURRENT = {
             0: this.api.hap.Characteristic.LockCurrentState.UNSECURED, // may not exist
             1: this.api.hap.Characteristic.LockCurrentState.SECURED,
-            2: this.api.hap.Characteristic.LockCurrentState.UNSECURED
+            2: this.api.hap.Characteristic.LockCurrentState.UNSECURED,
+            99: this.api.hap.Characteristic.LockCurrentState.UNKNOWN
         };
 
-        this.TARGET_SS3_TO_HOMEKIT = {
+        this.SS3_TO_HOMEKIT_TARGET = {
             0: this.api.hap.Characteristic.LockTargetState.UNSECURED, // may not exist
             1: this.api.hap.Characteristic.LockTargetState.SECURED,
-            2: this.api.hap.Characteristic.LockTargetState.UNSECURED
+            2: this.api.hap.Characteristic.LockTargetState.UNSECURED,
+            99: this.api.hap.Characteristic.LockTargetState.UNSECURED
         };
 
-        this.TARGET_HOMEKIT_TO_SS3 = {
+        this.HOMEKIT_TARGET_TO_SS3 = {
             [this.api.hap.Characteristic.LockTargetState.SECURED]: 'lock',
             [this.api.hap.Characteristic.LockTargetState.UNSECURED]: 'unlock'
         };
@@ -113,7 +115,7 @@ class SS3DoorLock {
         try {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
-            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
+            let homekitState = this.SS3_TO_HOMEKIT_CURRENT[state];
 
             if (lock.status.lockJamState) {
                 homekitState = this.api.hap.Characteristic.LockCurrentState.JAMMED;
@@ -144,7 +146,7 @@ class SS3DoorLock {
         try {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
-            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
+            let homekitState = this.SS3_TO_HOMEKIT_TARGET[state];
             if (this.debug) this.log(`Target lock state is: ${state}, ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
@@ -153,7 +155,7 @@ class SS3DoorLock {
     }
 
     async setTargetState(homekitState, callback) {
-        let state = this.TARGET_HOMEKIT_TO_SS3[homekitState];
+        let state = this.HOMEKIT_TARGET_TO_SS3[homekitState];
         if (this.debug) this.log(`Setting target lock state to ${state}, ${homekitState}`);
 
         if (!this.service) {
@@ -211,8 +213,9 @@ class SS3DoorLock {
         try {
             let lock = await this.getLockInformation();
             let state = lock.status.lockState;
-            let homekitCurrentState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            let homekitTargetState = this.TARGET_SS3_TO_HOMEKIT[state];
+            let homekitCurrentState = this.SS3_TO_HOMEKIT_CURRENT[state];
+            if (lock.status.lockJamState) homekitCurrentState = this.api.hap.Characteristic.LockCurrentState.JAMMED;
+            let homekitTargetState = this.SS3_TO_HOMEKIT_TARGET[state];
             this.service.updateCharacteristic(this.api.hap.Characteristic.LockCurrentState, homekitCurrentState);
             this.service.updateCharacteristic(this.api.hap.Characteristic.LockTargetState, homekitTargetState);
 

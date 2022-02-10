@@ -18,7 +18,7 @@ class SS3Alarm {
         this.nRetries = 0;
         this.nSocketConnectFailures = 0;
 
-        this.CURRENT_SS3_TO_HOMEKIT = {
+        this.SS3_TO_HOMEKIT_CURRENT = {
             'OFF': this.api.hap.Characteristic.SecuritySystemCurrentState.DISARMED,
             'HOME': this.api.hap.Characteristic.SecuritySystemCurrentState.STAY_ARM,
             'AWAY': this.api.hap.Characteristic.SecuritySystemCurrentState.AWAY_ARM,
@@ -28,7 +28,7 @@ class SS3Alarm {
             'ALARM': this.api.hap.Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED
         };
 
-        this.TARGET_SS3_TO_HOMEKIT = {
+        this.SS3_TO_HOMEKIT_TARGET = {
             'OFF': this.api.hap.Characteristic.SecuritySystemTargetState.DISARM,
             'HOME': this.api.hap.Characteristic.SecuritySystemTargetState.STAY_ARM,
             'AWAY': this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM,
@@ -36,7 +36,7 @@ class SS3Alarm {
             'AWAY_COUNT': this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM
         };
 
-        this.TARGET_HOMEKIT_TO_SS3 = {
+        this.HOMEKIT_TARGET_TO_SS3 = {
             [this.api.hap.Characteristic.SecuritySystemTargetState.DISARM]: 'OFF',
             [this.api.hap.Characteristic.SecuritySystemTargetState.STAY_ARM]: 'HOME',
             [this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM]: 'AWAY'
@@ -109,7 +109,7 @@ class SS3Alarm {
 
         try {
             let state = await this.simplisafe.getAlarmState();
-            let homekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
+            let homekitState = this.SS3_TO_HOMEKIT_CURRENT[state];
             if (this.debug) this.log(`Current alarm state is: ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
@@ -129,7 +129,7 @@ class SS3Alarm {
 
         try {
             let state = await this.simplisafe.getAlarmState();
-            let homekitState = this.TARGET_SS3_TO_HOMEKIT[state];
+            let homekitState = this.SS3_TO_HOMEKIT_TARGET[state];
             if (this.debug) this.log(`Target alarm state is: ${homekitState}`);
             callback(null, homekitState);
         } catch (err) {
@@ -138,7 +138,7 @@ class SS3Alarm {
     }
 
     async setTargetState(homekitState, callback) {
-        let state = this.TARGET_HOMEKIT_TO_SS3[homekitState];
+        let state = this.HOMEKIT_TARGET_TO_SS3[homekitState];
         if (this.debug) this.log(`Setting target state to ${state}, ${homekitState}`);
 
         if (!this.service) {
@@ -234,8 +234,8 @@ class SS3Alarm {
         if (this.debug) this.log('Refreshing alarm state');
         try {
             let state = await this.simplisafe.getAlarmState();
-            let currentHomekitState = this.CURRENT_SS3_TO_HOMEKIT[state];
-            let targetHomekitState = this.TARGET_SS3_TO_HOMEKIT[state];
+            let currentHomekitState = this.SS3_TO_HOMEKIT_CURRENT[state];
+            let targetHomekitState = this.SS3_TO_HOMEKIT_TARGET[state];
             this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState, currentHomekitState);
             this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, targetHomekitState);
             if (this.debug) this.log(`Updated current state for ${this.name}: ${state}`);
