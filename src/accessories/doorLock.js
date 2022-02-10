@@ -166,7 +166,8 @@ class SS3DoorLock {
         try {
             await this.simplisafe.setLockState(this.id, state);
             if (this.debug) this.log(`Updated SS lock state for '${this.name}': ${state}`);
-            this.service.updateCharacteristic(this.api.hap.Characteristic.LockTargetState, homekitState);
+            // techincally this should be LockTargetState but this feels faster and has no apparent side-effects
+            this.service.updateCharacteristic(this.api.hap.Characteristic.LockCurrentState, homekitState);
             callback(null);
         } catch (err) {
             callback(new Error(`An error occurred while setting the '${this.name}' target door lock state: ${err}`));
