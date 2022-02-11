@@ -589,6 +589,12 @@ class SimpliSafe3 extends EventEmitter {
                 case 9703:
                     this.emit(EVENT_TYPES.DOORLOCK_ERROR, data);
                     break;
+                case 1350:
+                    this.log.error('Base station WiFi lost, this plugin cannot communicate with the base station until it is restored.');
+                    break;
+                case 3350:
+                    this.log.warn('Base station WiFi restored.');
+                    break;
                 case 1602:
                     // Automatic test
                     break;
