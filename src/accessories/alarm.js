@@ -3,6 +3,8 @@ import {
     SENSOR_TYPES
 } from '../simplisafe';
 
+import AUTH_EVENTS from '../lib/authManager';
+
 const targetStateMaxRetries = 5;
 
 class SS3Alarm {
@@ -55,7 +57,21 @@ class SS3Alarm {
             this.api.hap.Characteristic.SecuritySystemTargetState.DISARM
         ];
 
+        // SimpliSafe events
         this.startListening();
+
+        // handle authentication failures
+        this.simplisafe.authManager.on(AUTH_EVENTS.REFRESH_CREDENTIALS_SUCCESS, () => {
+            if (this.service) this.setFault(false);
+        });
+        this.simplisafe.authManager.on(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE, () => {
+            if (this.service) this.setFault();
+        });
+
+        this.simplisafe.subscribeToAlarmSystem(this.id, (system) => {
+            // update power outage status in case event was never received i.e. wifi out
+            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, system.powerOutage ? this.api.hap.Characteristic.StatusTampered.TAMPERED : this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED);
+        });
     }
 
     identify(callback) {
@@ -108,7 +124,7 @@ class SS3Alarm {
         }
 
         try {
-            let state = await this.simplisafe.getAlarmState();
+            let state = await this.getAlarmState();
             let homekitState = this.SS3_TO_HOMEKIT_CURRENT[state];
             if (this.debug) this.log(`Current alarm state is: ${homekitState}`);
             callback(null, homekitState);
@@ -128,7 +144,7 @@ class SS3Alarm {
         }
 
         try {
-            let state = await this.simplisafe.getAlarmState();
+            let state = await this.getAlarmState();
             let homekitState = this.SS3_TO_HOMEKIT_TARGET[state];
             if (this.debug) this.log(`Target alarm state is: ${homekitState}`);
             callback(null, homekitState);
@@ -222,6 +238,18 @@ class SS3Alarm {
             if (!this._validateEvent(EVENT_TYPES.AWAY_EXIT_DELAY, data)) return;
             this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState, this.api.hap.Characteristic.SecuritySystemTargetState.AWAY_ARM);
         });
+
+        this.simplisafe.on(EVENT_TYPES.POWER_OUTAGE, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.POWER_OUTAGE, data)) return;
+            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, this.api.hap.Characteristic.StatusTampered.TAMPERED);
+            if (data.messageBody) this.log.warn(data.messageBody);
+        });
+
+        this.simplisafe.on(EVENT_TYPES.POWER_RESTORED, (data) => {
+            if (!this._validateEvent(EVENT_TYPES.POWER_RESTORED, data)) return;
+            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED);
+            if (data.messageBody) this.log.warn(data.messageBody);
+        });
     }
 
     _validateEvent(event, data) {
@@ -233,7 +261,7 @@ class SS3Alarm {
     async refreshState() {
         if (this.debug) this.log('Refreshing alarm state');
         try {
-            let state = await this.simplisafe.getAlarmState();
+            let state = await this.getAlarmState();
             let currentHomekitState = this.SS3_TO_HOMEKIT_CURRENT[state];
             let targetHomekitState = this.SS3_TO_HOMEKIT_TARGET[state];
             this.service.updateCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState, currentHomekitState);
@@ -244,6 +272,25 @@ class SS3Alarm {
             this.log.error('An error occurred while refreshing state');
             this.log.error(err);
             this.setFault();
+        }
+    }
+
+    async getAlarmState(forceRefresh = false, retry = false) {
+        let system = await this.simplisafe.getAlarmSystem(forceRefresh);
+        this.setFault(false); // if above succeeded auth is working
+
+        if (system.isAlarming) {
+            return 'ALARM';
+        }
+
+        let alarmState = system.alarmState;
+        if (!Object.keys(this.SS3_TO_HOMEKIT_CURRENT).includes(alarmState)) {
+            if (!retry) {
+                let retriedState = await this.getAlarmState(true, true);
+                return retriedState;
+            } else {
+                throw new Error('Alarm state not understood');
+            }
         }
     }
 

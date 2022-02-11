@@ -8,6 +8,11 @@ const fs = require('fs');
 const path = require('path');
 const events = require('events');
 
+export const AUTH_EVENTS = {
+    REFRESH_CREDENTIALS_SUCCESS: 'REFRESH_CREDENTIALS_SUCCESS',
+    REFRESH_CREDENTIALS_FAILURE: 'REFRESH_CREDENTIALS_FAILURE'
+};
+
 const ssOAuth = axios.create({
     baseURL: 'https://auth.simplisafe.com/oauth'
 });
@@ -194,10 +199,10 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             });
 
             await this._storeToken(refreshTokenResponse.data);
-            this.emit('refreshCredentialsSuccess');
+            this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_SUCCESS);
             if (this.log !== undefined && this.debug) this.log('Credentials refresh was successful');
         } catch (err) {
-            this.emit('refreshCredentialsFailure');
+            this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE);
             throw new Error('Failed refreshing token: ' + err.toString());
         }
     }
@@ -295,4 +300,4 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     }
 }
 
-module.exports = SimpliSafe3AuthenticationManager;
+module.exports = SimpliSafe3AuthenticationManager, AUTH_EVENTS;
