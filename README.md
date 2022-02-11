@@ -104,7 +104,7 @@ Accepts a list of SimpliSafe device serial numbers (which can be found in the SS
 
 Device             | Supported          | Notes
 ------------------ | ------------------ | -------------------------------------------------
-Alarm arm/disarm   | :white_check_mark: | Home, away and off modes
+Alarm              | :white_check_mark: | Arming/disarming to home, away and off modes. Sets tamper property on power outage
 SimpliCam          | :white_check_mark: | Audio, video, motion*, no microphone
 Doorbell           | :white_check_mark: | Audio, video, motion, no microphone
 Outdoor Camera     | :x:                | Not supported yet, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
