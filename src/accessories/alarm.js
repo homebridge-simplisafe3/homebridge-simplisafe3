@@ -292,6 +292,8 @@ class SS3Alarm {
                 throw new Error('Alarm state not understood');
             }
         }
+        
+        return alarmState;
     }
 
     setFault(fault = true) {
