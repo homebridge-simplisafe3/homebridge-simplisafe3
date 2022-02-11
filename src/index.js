@@ -105,7 +105,7 @@ class SS3Platform {
     }
 
     configureAccessory(accessory) {
-        if (this.debug) this.log(`Configure existing accessory '${accessory.displayName}' (uuid ${accessory.UUID})`);
+        if (this.debug) this.log(`Configure existing accessory from cache: '${accessory.displayName}' (uuid ${accessory.UUID})`);
 
         let config = new Promise((resolve, reject) => {
             this.initialLoad
@@ -160,7 +160,7 @@ class SS3Platform {
             let alarm = this.accessories.find(acc => acc.UUID === uuid);
 
             if (!alarm) {
-                if (this.debug) this.log('Alarm not found, adding...');
+                if (this.debug) this.log('Adding Alarm...');
                 const alarmAccessory = new Alarm(
                     'SimpliSafe 3',
                     subscription.location.system.serial,
@@ -171,7 +171,6 @@ class SS3Platform {
                 );
 
                 this.devices.push(alarmAccessory);
-                this.alarmAccessory = alarmAccessory;
 
                 if (addAndRemove) {
                     let newAccessory = new Accessory('SimpliSafe 3', UUIDGen.generate(subscription.location.system.serial));
@@ -183,16 +182,6 @@ class SS3Platform {
 
             let sensors = await this.simplisafe.getSensors();
             for (let sensor of sensors) {
-                if (this.debug) {
-                    this.log(`Discovered sensor '${sensor.name}' from SimpliSafe.`);
-                    this.log(sensor);
-                }
-
-                if (sensor.serial && this.excludedDevices.includes(sensor.serial)) {
-                    this.log.info(`Excluding sensor with serial '${sensor.serial}'`);
-                    continue;
-                }
-
                 if (sensor.type == SENSOR_TYPES.KEYPAD ||
                     sensor.type == SENSOR_TYPES.KEYCHAIN ||
                     sensor.type == SENSOR_TYPES.PANIC_BUTTON ||
@@ -203,12 +192,25 @@ class SS3Platform {
                     sensor.type == SENSOR_TYPES.DOORLOCK_2) {
                     // Ignore as no data is provided by SimpliSafe
                     // Door locks are configured below
-                } else if (sensor.type == SENSOR_TYPES.ENTRY_SENSOR) {
-                    let sensorName = sensor.name || `Entry Sensor ${sensor.serial}`;
-                    let uuid = UUIDGen.generate(sensor.serial);
-                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+                    continue;
+                }
+
+                let uuid = UUIDGen.generate(sensor.serial);
+                let accessory = this.accessories.find(acc => acc.UUID === uuid);
+                let sensorName = sensor.name;
+                if (this.debug && !addAndRemove) {
+                    this.log(`Discovered sensor '${sensor.name}' from SimpliSafe:`, JSON.stringify(sensor));
+                }
+
+                if (sensor.serial && this.excludedDevices.includes(sensor.serial)) {
+                    this.log.info(`Excluding sensor with serial '${sensor.serial}'`);
+                    continue;
+                }
+
+                if (sensor.type == SENSOR_TYPES.ENTRY_SENSOR) {
                     if (!accessory) {
-                        if (this.debug) this.log(`Entry Sensor '${sensorName}' not found, adding...`);
+                        sensorName = sensorName || `Entry Sensor ${sensor.serial}`;
+                        if (this.debug) this.log(`Adding Entry Sensor '${sensorName}'...`);
                         const sensorAccessory = new EntrySensor(
                             sensorName,
                             sensor.serial,
@@ -228,11 +230,10 @@ class SS3Platform {
                         }
                     }
                 } else if (sensor.type == SENSOR_TYPES.CO_SENSOR) {
-                    let sensorName = sensor.name || `CO Detector ${sensor.serial}`;
-                    let uuid = UUIDGen.generate(sensor.serial);
-                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+                    accessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!accessory) {
-                        if (this.debug) this.log(`CO Detector '${sensorName}' not found, adding...`);
+                        sensorName = sensorName || `CO Detector ${sensor.serial}`;
+                        if (this.debug) this.log(`Adding CO Detector '${sensorName}'...`);
                         const sensorAccessory = new CODetector(
                             sensorName,
                             sensor.serial,
@@ -252,11 +253,10 @@ class SS3Platform {
                         }
                     }
                 } else if (sensor.type == SENSOR_TYPES.SMOKE_SENSOR) {
-                    let sensorName = sensor.name || `Smoke Detector ${sensor.serial}`;
-                    let uuid = UUIDGen.generate(sensor.serial);
-                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+                    accessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!accessory) {
-                        if (this.debug) this.log(`Smoke Detector '${sensorName}' not found, adding...`);
+                        sensorName = sensorName || `Smoke Detector ${sensor.serial}`;
+                        if (this.debug) this.log(`Adding Smoke Detector '${sensorName}'...`);
                         const sensorAccessory = new SmokeDetector(
                             sensorName,
                             sensor.serial,
@@ -276,11 +276,10 @@ class SS3Platform {
                         }
                     }
                 } else if (sensor.type == SENSOR_TYPES.WATER_SENSOR) {
-                    let sensorName = sensor.name || `Water Sensor ${sensor.serial}`;
-                    let uuid = UUIDGen.generate(sensor.serial);
-                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+                    accessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!accessory) {
-                        if (this.debug) this.log(`Water Sensor '${sensorName}' not found, adding...`);
+                        sensorName = sensorName || `Water Sensor ${sensor.serial}`;
+                        if (this.debug) this.log(`Adding Water Sensor '${sensorName}'...`);
                         const sensorAccessory = new WaterSensor(
                             sensorName,
                             sensor.serial,
@@ -300,11 +299,10 @@ class SS3Platform {
                         }
                     }
                 } else if (sensor.type == SENSOR_TYPES.FREEZE_SENSOR) {
-                    let sensorName = sensor.name || `Freeze Sensor ${sensor.serial}`;
-                    let uuid = UUIDGen.generate(sensor.serial);
-                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+                    accessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!accessory) {
-                        if (this.debug) this.log(`Freeze Sensor '${sensorName}' not found, adding...`);
+                        sensorName = sensorName || `Freeze Sensor ${sensor.serial}`;
+                        if (this.debug) this.log(`Adding Freeze Sensor '${sensorName}'...`);
                         const sensorAccessory = new FreezeSensor(
                             sensorName,
                             sensor.serial,
@@ -324,16 +322,15 @@ class SS3Platform {
                         }
                     }
                 } else if (sensor.type == SENSOR_TYPES.MOTION_SENSOR) {
-                    let sensorName = sensor.name || `Motion Sensor ${sensor.serial}`;
+                    sensorName = sensorName || `Motion Sensor ${sensor.serial}`;
                     // Check if secret alerts are enabled
                     if (sensor.setting.off == 0 || sensor.setting.home == 0 || sensor.setting.away == 0) {
                         if (!addAndRemove) this.log.warn(`Motion Sensor '${sensorName}' requires secret alerts to be enabled in SimpliSafe before you can add it to Homebridge.`);
                         continue;
                     }
-                    let uuid = UUIDGen.generate(sensor.serial);
-                    let accessory = this.accessories.find(acc => acc.UUID === uuid);
+                    accessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!accessory) {
-                        if (this.debug) this.log(`Motion Sensor '${sensorName}' not found, adding...`);
+                        if (this.debug) this.log(`Adding Motion Sensor '${sensorName}'...`);
                         const sensorAccessory = new MotionSensor(
                             sensorName,
                             sensor.serial,
@@ -363,14 +360,13 @@ class SS3Platform {
                 let lockName = lock.name || `Smart Lock ${lock.serial}`;
                 let uuid = UUIDGen.generate(lock.serial);
 
-                if (this.debug) {
-                    this.log(`Discovered door lock '${lockName}' from SimpliSafe`);
-                    this.log(lock);
+                if (this.debug && !addAndRemove) {
+                    this.log(`Discovered door lock '${lockName}' from SimpliSafe:`, JSON.stringify(lock));
                 }
 
                 let accessory = this.accessories.find(acc => acc.UUID === uuid);
                 if (!accessory) {
-                    if (this.debug) this.log(`Lock ${lockName} not found, adding...`);
+                    if (this.debug) this.log(`Adding Lock ${lockName}...`);
                     const lockAccessory = new DoorLock(
                         lockName,
                         lock.serial,
@@ -399,14 +395,13 @@ class SS3Platform {
                     let cameraName = camera.cameraSettings.cameraName || `Camera ${camera.uuid}`;
                     let uuid = UUIDGen.generate(camera.uuid);
 
-                    if (this.debug) {
-                        this.log(`Discovered camera '${cameraName}' from SimpliSafe`);
-                        this.log(camera);
+                    if (this.debug && !addAndRemove) {
+                        this.log(`Discovered camera '${cameraName}' from SimpliSafe:`, JSON.stringify(camera));
                     }
 
                     let cameraAccessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!cameraAccessory) {
-                        if (this.debug) this.log(`Camera ${cameraName} (uuid ${uuid}) not found, adding...`);
+                        if (this.debug) this.log(`Adding Camera ${cameraName} (uuid ${uuid})...`);
                         const cameraAccessory = new Camera(
                             cameraName,
                             camera.uuid,
