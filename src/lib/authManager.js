@@ -200,15 +200,11 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
 
             await this._storeToken(refreshTokenResponse.data);
             this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_SUCCESS);
-            if (this.log !== undefined && this.debug) this.log('Credentials refresh was successful');
+            if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh was successful');
         } catch (err) {
             this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE);
             throw new Error('Failed refreshing token: ' + err.toString());
         }
-    }
-
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     async _storeToken(token) {
