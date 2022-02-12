@@ -615,10 +615,6 @@ class SimpliSafe3 extends EventEmitter {
         this.nSocketConnectFailures++;
     }
 
-    isSocketConnected() {
-        return this.socket && this.socket.connected;
-    }
-
     _destroySocket() {
         if (this.socket) {
             this.socket.off();
