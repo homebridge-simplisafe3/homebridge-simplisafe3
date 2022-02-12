@@ -1,4 +1,4 @@
-import SimpliSafe3Accessory from './ss3Accessory.js';
+import SimpliSafe3Accessory from './ss3Accessory';
 
 class SS3CODetector extends SimpliSafe3Accessory {
 

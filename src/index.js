@@ -1,5 +1,5 @@
 import SimpliSafe3, { SENSOR_TYPES, RateLimitError } from './simplisafe';
-import SimpliSafe3AuthenticationManager from './lib/authManager.js';
+import SimpliSafe3AuthenticationManager from './lib/authManager';
 import Alarm from './accessories/alarm';
 import EntrySensor from './accessories/entrySensor';
 import MotionSensor from './accessories/motionSensor';

@@ -1,6 +1,6 @@
 const {Command, flags} = require('@oclif/command');
 const {cli} = require('cli-ux');
-const SimpliSafe3AuthenticationManager = require('../lib/authManager.js');
+const SimpliSafe3AuthenticationManager = require('../lib/authManager');
 const path = require('path');
 const os = require('os');
 

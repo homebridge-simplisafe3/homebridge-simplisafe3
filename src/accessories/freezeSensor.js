@@ -1,4 +1,4 @@
-import SimpliSafe3Accessory from './ss3Accessory.js';
+import SimpliSafe3Accessory from './ss3Accessory';
 
 const fahrenheitToCelsius = f => (f - 32.0) * 5.0 / 9.0;
 

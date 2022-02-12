@@ -1,12 +1,12 @@
 import ffmpegPath from 'ffmpeg-for-homebridge';
 import isDocker from 'is-docker';
 
-import SimpliSafe3Accessory from './ss3Accessory.js';
+import SimpliSafe3Accessory from './ss3Accessory';
 import {
     EVENT_TYPES
 } from '../simplisafe';
 
-import StreamingDelegate from '../lib/streamingDelegate.js';
+import StreamingDelegate from '../lib/streamingDelegate';
 
 class SS3SimpliCam extends SimpliSafe3Accessory {
     constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, authManager, api) {

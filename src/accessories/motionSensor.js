@@ -1,4 +1,4 @@
-import SimpliSafe3Accessory from './ss3Accessory.js';
+import SimpliSafe3Accessory from './ss3Accessory';
 import EVENT_TYPES from '../simplisafe';
 
 class SS3MotionSensor extends SimpliSafe3Accessory {
