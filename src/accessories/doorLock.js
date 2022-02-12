@@ -1,17 +1,13 @@
+import SimpliSafe3Accessory from './ss3Accessory.js';
 import {
     EVENT_TYPES
 } from '../simplisafe';
 
-class SS3DoorLock {
+class SS3DoorLock extends SimpliSafe3Accessory {
 
     constructor(name, id, log, debug, simplisafe, api) {
-        this.id = id;
-        this.log = log;
-        this.debug = debug;
-        this.name = name;
-        this.simplisafe = simplisafe;
-        this.api = api;
-        this.uuid = this.api.hap.uuid.generate(id);
+        super(name, id, log, debug, simplisafe, api);
+        this.services.push(this.api.hap.Service.LockMechanism);
 
         this.SS3_TO_HOMEKIT_CURRENT = {
             0: this.api.hap.Characteristic.LockCurrentState.UNSECURED, // may not exist
@@ -42,21 +38,8 @@ class SS3DoorLock {
         });
     }
 
-    identify(callback) {
-        if (this.debug) this.log(`Identify request for ${this.name}`);
-        callback();
-    }
-
-    createAccessory() {
-        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
-        newAccessory.addService(this.api.hap.Service.LockMechanism);
-        this.setAccessory(newAccessory);
-        return newAccessory;
-    }
-
     setAccessory(accessory) {
-        this.accessory = accessory;
-        this.accessory.on('identify', (paired, callback) => this.identify(callback));
+        super.setAccessory(accessory);
 
         this.accessory.getService(this.api.hap.Service.AccessoryInformation)
             .setCharacteristic(this.api.hap.Characteristic.Manufacturer, 'SimpliSafe')

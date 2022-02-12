@@ -1,24 +1,19 @@
 import ffmpegPath from 'ffmpeg-for-homebridge';
 import isDocker from 'is-docker';
 
+import SimpliSafe3Accessory from './ss3Accessory.js';
 import {
     EVENT_TYPES
 } from '../simplisafe';
 
 import StreamingDelegate from '../lib/streamingDelegate.js';
 
-class SS3SimpliCam {
+class SS3SimpliCam extends SimpliSafe3Accessory {
     constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, authManager, api) {
-        this.id = id;
+        super(name, id, log, debug, simplisafe, api);
         this.cameraDetails = cameraDetails;
         this.cameraOptions = cameraOptions;
-        this.log = log;
-        this.debug = debug;
-        this.name = name;
-        this.simplisafe = simplisafe;
         this.authManager = authManager;
-        this.api = api;
-        this.uuid = this.api.hap.uuid.generate(id);
         this.reachable = true;
         this.nSocketConnectFailures = 0;
 
@@ -34,20 +29,8 @@ class SS3SimpliCam {
         this.startListening();
     }
 
-    identify(callback) {
-        if (this.debug) this.log(`Identify request for ${this.name}`);
-        callback();
-    }
-
-    createAccessory() {
-        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
-        this.setAccessory(newAccessory);
-        return newAccessory;
-    }
-
     setAccessory(accessory) {
-        this.accessory = accessory;
-        this.accessory.on('identify', (paired, callback) => this.identify(callback));
+        super.setAccessory(accessory);
 
         this.accessory.getService(this.api.hap.Service.AccessoryInformation)
             .setCharacteristic(this.api.hap.Characteristic.Manufacturer, 'SimpliSafe')

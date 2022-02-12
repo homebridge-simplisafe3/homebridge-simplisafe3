@@ -1,35 +1,19 @@
+import SimpliSafe3Accessory from './ss3Accessory.js';
+
 const fahrenheitToCelsius = f => (f - 32.0) * 5.0 / 9.0;
 
-class SS3FreezeSensor {
+class SS3FreezeSensor extends SimpliSafe3Accessory {
 
     constructor(name, id, log, debug, simplisafe, api) {
-        this.id = id;
-        this.log = log;
-        this.debug = debug;
-        this.name = name;
-        this.simplisafe = simplisafe;
-        this.api = api;
-        this.uuid = this.api.hap.uuid.generate(id);
+        super(name, id, log, debug, simplisafe, api);
         this.reachable = true;
+        this.services.push(this.api.hap.Service.TemperatureSensor);
 
         this.startListening();
     }
 
-    identify(callback) {
-        if (this.debug) this.log(`Identify request for ${this.name}`);
-        callback();
-    }
-
-    createAccessory() {
-        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
-        newAccessory.addService(this.api.hap.Service.TemperatureSensor);
-        this.setAccessory(newAccessory);
-        return newAccessory;
-    }
-
     setAccessory(accessory) {
-        this.accessory = accessory;
-        this.accessory.on('identify', (paired, callback) => this.identify(callback));
+        super.setAccessory(accessory);
 
         this.accessory.getService(this.api.hap.Service.AccessoryInformation)
             .setCharacteristic(this.api.hap.Characteristic.Manufacturer, 'SimpliSafe')

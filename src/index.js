@@ -140,7 +140,7 @@ class SS3Platform {
             let existingAccessory = this.accessories.find(acc => acc.UUID == device.uuid);
             if (!existingAccessory) {
                 if (this.debug) this.log(`Initializing SS device '${device.name}' with new accessory...`);
-                let accessory = device.createAccessory();
+                let accessory = device.createAccessory(); // from SimpliSafe3Accessory
                 try {
                     this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
                     this.accessories.push(accessory);
