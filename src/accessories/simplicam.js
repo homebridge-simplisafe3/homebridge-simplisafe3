@@ -39,6 +39,12 @@ class SS3SimpliCam {
         callback();
     }
 
+    createAccessory() {
+        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
+        this.setAccessory(newAccessory);
+        return newAccessory;
+    }
+
     setAccessory(accessory) {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));

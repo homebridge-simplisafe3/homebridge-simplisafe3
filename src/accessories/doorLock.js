@@ -47,6 +47,13 @@ class SS3DoorLock {
         callback();
     }
 
+    createAccessory() {
+        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
+        newAccessory.addService(this.api.hap.Service.LockMechanism);
+        this.setAccessory(newAccessory);
+        return newAccessory;
+    }
+
     setAccessory(accessory) {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
@@ -222,6 +229,8 @@ class SS3DoorLock {
 
             let homekitBatteryState = lock.flags && lock.flags.lowBattery ? this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
             this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
+
+            if (this.debug) this.log(`Updated current state, target state, battery status for lock ${this.name}: ${homekitCurrentState}, ${homekitTargetState}, ${homekitBatteryState}`);
         } catch (err) {
             this.log.error('An error occurred while refreshing state');
             this.log.error(err);
