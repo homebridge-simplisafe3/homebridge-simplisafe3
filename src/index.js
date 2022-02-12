@@ -1,6 +1,3 @@
-// © 2019 Niccolò Zapponi
-// SimpliSafe 3 HomeBridge Plugin
-
 import SimpliSafe3, { SENSOR_TYPES, RateLimitError } from './simplisafe';
 import SimpliSafe3AuthenticationManager from './lib/authManager.js';
 import Alarm from './accessories/alarm';

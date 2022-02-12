@@ -1,6 +1,3 @@
-// © 2020 Niccolò Zapponi
-// SimpliSafe 3 API Wrapper
-
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import io from 'socket.io-client';
