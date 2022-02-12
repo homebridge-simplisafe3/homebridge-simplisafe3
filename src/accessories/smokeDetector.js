@@ -18,6 +18,13 @@ class SS3SmokeDetector {
         callback();
     }
 
+    createAccessory() {
+        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
+        newAccessory.addService(this.api.hap.Service.SmokeSensor);
+        this.setAccessory(newAccessory);
+        return newAccessory;
+    }
+
     setAccessory(accessory) {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
@@ -186,7 +193,7 @@ class SS3SmokeDetector {
             this.service.updateCharacteristic(this.api.hap.Characteristic.StatusFault, homekitFaultState);
             this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
 
-            if (this.debug) this.log(`Updated current state for ${this.name}: ${sensor.status.triggered}, ${sensor.status.tamper}, ${sensor.status.malfunction}, ${batteryLow}`);
+            if (this.debug) this.log(`Updated current triggered, tamper, fault, battery state for ${this.name}: ${sensor.status.triggered}, ${sensor.status.tamper}, ${sensor.status.malfunction}, ${batteryLow}`);
 
         } catch (err) {
             this.log.error('An error occurred while refreshing state');

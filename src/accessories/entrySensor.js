@@ -18,6 +18,13 @@ class SS3EntrySensor {
         callback();
     }
 
+    createAccessory() {
+        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
+        newAccessory.addService(this.api.hap.Service.ContactSensor);
+        this.setAccessory(newAccessory);
+        return newAccessory;
+    }
+
     setAccessory(accessory) {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
@@ -144,8 +151,7 @@ class SS3EntrySensor {
             this.service.updateCharacteristic(this.api.hap.Characteristic.ContactSensorState, homekitSensorState);
             this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
 
-            if (this.debug) this.log(`Updated current state for ${this.name}: ${open}, ${batteryLow}`);
-
+            if (this.debug) this.log(`Updated current open, battery state for ${this.name}: ${open}, ${batteryLow}`);
         } catch (err) {
             this.log.error('An error occurred while refreshing state');
             this.log.error(err);

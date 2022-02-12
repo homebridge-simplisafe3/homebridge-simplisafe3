@@ -24,6 +24,13 @@ class SS3MotionSensor {
         callback();
     }
 
+    createAccessory() {
+        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
+        newAccessory.addService(this.api.hap.Service.MotionSensor);
+        this.setAccessory(newAccessory);
+        return newAccessory;
+    }
+
     setAccessory(accessory) {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));

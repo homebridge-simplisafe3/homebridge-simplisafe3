@@ -20,6 +20,13 @@ class SS3FreezeSensor {
         callback();
     }
 
+    createAccessory() {
+        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
+        newAccessory.addService(this.api.hap.Service.TemperatureSensor);
+        this.setAccessory(newAccessory);
+        return newAccessory;
+    }
+
     setAccessory(accessory) {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
@@ -141,7 +148,7 @@ class SS3FreezeSensor {
             this.service.updateCharacteristic(this.api.hap.Characteristic.CurrentTemperature, temperature);
             this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
 
-            if (this.debug) this.log(`Updated current state for ${this.name}: ${temperature}, ${batteryLow}`);
+            if (this.debug) this.log(`Updated current temperature, battery state for ${this.name}: ${temperature}, ${batteryLow}`);
 
         } catch (err) {
             this.log.error('An error occurred while refreshing state');

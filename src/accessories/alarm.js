@@ -68,7 +68,7 @@ class SS3Alarm {
             if (this.service) this.setFault();
         });
 
-        this.simplisafe.subscribeToAlarmSystem(this.id, (system) => {
+        this.simplisafe.subscribeToAlarmSystem(this.id, system => {
             // update power outage status in case event was never received i.e. wifi out
             this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, system.powerOutage ? this.api.hap.Characteristic.StatusTampered.TAMPERED : this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED);
         });
@@ -77,6 +77,13 @@ class SS3Alarm {
     identify(callback) {
         if (this.debug) this.log(`Identify request for ${this.name}`);
         callback();
+    }
+
+    createAccessory() {
+        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
+        newAccessory.addService(this.api.hap.Service.SecuritySystem);
+        this.setAccessory(newAccessory);
+        return newAccessory;
     }
 
     setAccessory(accessory) {
@@ -292,7 +299,7 @@ class SS3Alarm {
                 throw new Error('Alarm state not understood');
             }
         }
-        
+
         return alarmState;
     }
 

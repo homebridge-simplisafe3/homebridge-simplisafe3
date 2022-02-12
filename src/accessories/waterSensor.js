@@ -18,6 +18,13 @@ class SS3WaterSensor {
         callback();
     }
 
+    createAccessory() {
+        let newAccessory = new this.api.platformAccessory(this.name, this.api.hap.uuid.generate(this.id));
+        newAccessory.addService(this.api.hap.Service.LeakSensor);
+        this.setAccessory(newAccessory);
+        return newAccessory;
+    }
+
     setAccessory(accessory) {
         this.accessory = accessory;
         this.accessory.on('identify', (paired, callback) => this.identify(callback));
@@ -144,7 +151,7 @@ class SS3WaterSensor {
             this.service.updateCharacteristic(this.api.hap.Characteristic.LeakDetected, homekitSensorState);
             this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
 
-            if (this.debug) this.log(`Updated current state for ${this.name}: ${leak}, ${batteryLow}`);
+            if (this.debug) this.log(`Updated current leak, battery state for ${this.name}: ${leak}, ${batteryLow}`);
 
         } catch (err) {
             this.log.error('An error occurred while refreshing state');
