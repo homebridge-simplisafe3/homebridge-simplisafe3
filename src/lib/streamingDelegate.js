@@ -81,8 +81,8 @@ class StreamingDelegate {
 
         if (!this.simplicam.motionIsTriggered && this.simplicam.cameraDetails.model == 'SS001') { // Model(s) with privacy shutter
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
-            let alarmState = await this.simplisafe.getAlarmState();
-            switch (alarmState) {
+            let alarmSystem = await this.simplisafe.getAlarmSystem();
+            switch (alarmSystem.alarmState) {
             case 'OFF':
                 if (this.cameraDetails.cameraSettings.shutterOff !== 'open') {
                     this._handlePrivacyShutterClosedSnapshotRequest(callback);
