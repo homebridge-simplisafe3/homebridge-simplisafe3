@@ -54,7 +54,6 @@ class SS3Platform {
             this.authManager.ssId = this.simplisafe.ssId;
         }
 
-        if (this.debug) this.log('Attempting intial SimpliSafe credentials refresh...');
         this.initialLoad = this.authManager.refreshCredentials()
             .then(() => {
                 return this.discoverSimpliSafeDevices();
@@ -72,8 +71,8 @@ class SS3Platform {
             });
 
         this.api.on('didFinishLaunching', () => {
-            if (this.debug) this.log(`Found ${this.cachedAccessoryConfig.length} cached accessories being configured`);
-
+            if (this.debug) this.log(`Found ${this.cachedAccessoryConfig.length} cached accessories to be configured.`);
+            if (this.debug) this.log('Attempting intial SimpliSafe credentials refresh.');
             this.initialLoad
                 .then(() => {
                     return Promise.all(this.cachedAccessoryConfig);
@@ -139,7 +138,7 @@ class SS3Platform {
         for (let device of this.devices) {
             let existingAccessory = this.accessories.find(acc => acc.UUID == device.uuid);
             if (!existingAccessory) {
-                if (this.debug) this.log(`Initializing SS device '${device.name}' with new accessory...`);
+                if (this.debug) this.log(`Initializing SS device '${device.name}' with new accessory.`);
                 let accessory = device.createAccessory(); // from SimpliSafe3Accessory
                 try {
                     this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);

@@ -172,7 +172,7 @@ class SS3Alarm extends SimpliSafe3Accessory {
                 if (this.debug) this.log(`${err.type} error while setting alarm state. nRetries: ${this.nRetries}`);
                 this.nRetries++;
                 setTimeout(async () => {
-                    if (this.debug) this.log('Retrying setTargetState...');
+                    if (this.debug) this.log('Retrying setTargetState.');
                     await this.setTargetState(homekitState, callback);
                 }, 1000); // wait 1  second and try again
             } else {
