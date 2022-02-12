@@ -277,7 +277,7 @@ class SimpliSafe3 extends EventEmitter {
         }
 
         if (forceRefresh || !this.lastSubscriptionRequests[subscriptionId]) {
-            this.lastSubscriptionRequests[subscriptionId] = this.request({
+            this.lastSubscriptionRequests[subscriptionId] = await this.request({
                 method: 'GET',
                 url: `/subscriptions/${subscriptionId}/`
             })
@@ -294,7 +294,7 @@ class SimpliSafe3 extends EventEmitter {
                 });
         }
 
-        let data = await this.lastSubscriptionRequests[subscriptionId];
+        let data = this.lastSubscriptionRequests[subscriptionId];
         return data.subscription;
     }
 
@@ -341,7 +341,7 @@ class SimpliSafe3 extends EventEmitter {
         }
 
         if (forceRefresh || !this.lastSensorRequest) {
-            this.lastSensorRequest = this.request({
+            this.lastSensorRequest = await this.request({
                 method: 'GET',
                 url: `/ss3/subscriptions/${this.subId}/sensors?forceUpdate=${forceUpdate ? 'true' : 'false'}`
             })
@@ -358,7 +358,7 @@ class SimpliSafe3 extends EventEmitter {
                 });
         }
 
-        let data = await this.lastSensorRequest;
+        let data = this.lastSensorRequest;
         return data.sensors;
     }
 
@@ -378,7 +378,7 @@ class SimpliSafe3 extends EventEmitter {
         }
 
         if (forceRefresh || !this.lastLockRequest) {
-            this.lastLockRequest = this.request({
+            this.lastLockRequest = await this.request({
                 method: 'GET',
                 url: `/doorlock/${this.subId}`
             })
@@ -395,7 +395,7 @@ class SimpliSafe3 extends EventEmitter {
                 });
         }
 
-        let data = await this.lastLockRequest;
+        let data = this.lastLockRequest;
         this.refreshLockoutEnabled = data.length > 0;
         return data;
 
