@@ -89,7 +89,7 @@
     "/simplisafe.js",
     "/accessories",
     "/commands",
-    "/common",
+    "/lib",
     "/homebridge-ui",
     "/config.schema.json",
     "/README.md"
