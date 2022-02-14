@@ -1,7 +1,7 @@
 # Change Log
 All notable changes are documented here.
 
-## 1.9.1 (2022-02-13)
+## 1.9.2 (2022-02-13)
 - PLEASE NOTE: this release contains significant changes to the inner workings of this plugin. You may want to delay updating and / or consider taking a backup of your Homebridge and HomeKit installations (e.g. using the Controller+ app). Thank you for your patience!
 - Show a 'privacy shutter closed' image for cameras with the shutter closed.
 - Door locks now properly update battery status and startup status.
