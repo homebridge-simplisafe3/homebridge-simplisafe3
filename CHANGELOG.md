@@ -8,7 +8,7 @@ All notable changes are documented here.
 - The plugin now sets the 'Tampered' property of the alarm when it detects a power failure.
 - Improve rate limit handling, re-authorization failures.
 - Real-time event handling has been reworked and should recover more gracefully.
-- Addresses two critical security vulnerabilities, see #281 #292, #293 and #394.
+- Addresses critical security vulnerabilities, see #281 #292, #293 and #394.
 
 ## 1.8.8 (2021-12-18)
 - Fixes an issue that could prevent alarm triggering in HomeKit.
