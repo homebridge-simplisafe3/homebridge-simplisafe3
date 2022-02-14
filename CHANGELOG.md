@@ -1,14 +1,14 @@
 # Change Log
 All notable changes are documented here.
 
-## 1.9.0 (2022-02-13)
+## 1.9.1 (2022-02-13)
 - PLEASE NOTE: this release contains significant changes to the inner workings of this plugin. You may want to delay updating and / or consider taking a backup of your Homebridge and HomeKit installations (e.g. using the Controller+ app). Thank you for your patience!
 - Show a 'privacy shutter closed' image for cameras with the shutter closed.
 - Door locks now properly update battery status and startup status.
 - The plugin now sets the 'Tampered' property of the alarm when it detects a power failure.
 - Improve rate limit handling, re-authorization failures.
 - Real-time event handling has been reworked and should recover more gracefully.
-- Addresses two critical security vulnerabilities, see #281 and #292.
+- Addresses two critical security vulnerabilities, see #281 #292, #293 and #394.
 
 ## 1.8.8 (2021-12-18)
 - Fixes an issue that could prevent alarm triggering in HomeKit.
