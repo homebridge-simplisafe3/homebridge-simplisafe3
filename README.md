@@ -54,7 +54,10 @@ If installing manually, add the following configuration to the `platforms` array
 ### SimpliSafe Authentication
 As of December 2021 and v1.8.0 of this plugin, SimpliSafe has transitioned to only supporting a protocol called OAuth for authentication. This requires the user to authenticate in a browser and it is not possible to circumvent this and authenticate directly against the API. This plugin provides two ways to obtain credentials:
 
-1. Users of [Config UI X](https://github.com/oznu/homebridge-config-ui-x) (which is included in many Homebridge installations) can initiate this process from the plugin settings. A button will launch the authentication process and you will have to copy and paste the final URL (begins with com.SimpliSafe.mobile://) back into the plugin settings.
+1. Users of [Config UI X](https://github.com/oznu/homebridge-config-ui-x) (which is included in many Homebridge installations) can initiate this process from the plugin settings. A button will launch the authentication process and you will have to copy and paste the final URL back into the plugin settings. This process involves a few steps:
+    1. Upon clicking the "Launch SimpliSafe Login" button you are taken to the SimpliSafe login page. If you are already logged in this step is skipped.
+    2. You will be redirected to a page requesting you to approve the login, either via email or 2FA.
+    3. After approval you will be redirected to a final URL (begins with *com.SimpliSafe.mobile://*) which you will need to copy & paste back into the Homebridge settings UI. See notes below about using certain browsers / platforms.
 
    - :information_source: Note that while Safari will redirect to the URL (and show an error) allowing you to easily copy and paste the URL from the address bar, **some browsers (e.g. Chrome) will not redirect you and will only show an error in the Console** (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.
 
