@@ -1,5 +1,5 @@
 import SimpliSafe3Accessory from './ss3Accessory';
-import EVENT_TYPES from '../simplisafe';
+import { EVENT_TYPES } from '../simplisafe';
 
 class SS3MotionSensor extends SimpliSafe3Accessory {
 
@@ -78,7 +78,7 @@ class SS3MotionSensor extends SimpliSafe3Accessory {
         return callback(null, characteristic.value);
     }
 
-    async startListening() {
+    startListening() {
         this.simplisafe.on(EVENT_TYPES.MOTION, (data) => {
             if (!this._validateEvent(EVENT_TYPES.MOTION, data)) return;
             this.accessory.getService(this.api.hap.Service.MotionSensor).updateCharacteristic(this.api.hap.Characteristic.MotionDetected, true);

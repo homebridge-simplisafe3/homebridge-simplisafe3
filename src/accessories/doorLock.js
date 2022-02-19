@@ -1,7 +1,5 @@
 import SimpliSafe3Accessory from './ss3Accessory';
-import {
-    EVENT_TYPES
-} from '../simplisafe';
+import { EVENT_TYPES } from '../simplisafe';
 
 class SS3DoorLock extends SimpliSafe3Accessory {
 
