@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.9.4 (2022-02-19)
+- Fixes an issue that prevented motion sensors from triggering, see #303. Thanks @betabob for reporting.
+- Other small improvements.
+
 ## 1.9.3 (2022-02-13)
 - PLEASE NOTE: this release contains significant changes to the inner workings of this plugin. You may want to delay updating and / or consider taking a backup of your Homebridge and HomeKit installations (e.g. using the Controller+ app). Thank you for your patience!
 - Show a 'privacy shutter closed' image for cameras with the shutter closed.
