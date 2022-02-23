@@ -225,17 +225,6 @@ class SimpliSafe3 extends EventEmitter {
         return this.userId;
     }
 
-    async getUserInfo() {
-        let userId = await this.getUserId();
-
-        let data = await this.request({
-            method: 'GET',
-            url: `/users/${userId}/loginInfo`
-        });
-
-        return data.loginInfo;
-    }
-
     async getSubscriptions() {
         let userId = await this.getUserId();
         let data = await this.request({
