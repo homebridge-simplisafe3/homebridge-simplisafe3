@@ -257,22 +257,17 @@ class SimpliSafe3 extends EventEmitter {
         return subscriptions;
     }
 
-    async getSubscription(subId = null, forceRefresh = false) {
-        let subscriptionId = subId;
+    async getSubscription(forceRefresh = false) {
+        let subscriptionId = this.subId;
 
         if (!subscriptionId) {
-            subscriptionId = this.subId;
-
-            if (!subscriptionId) {
-                let subs = await this.getSubscriptions();
-                if (subs.length == 1) {
-                    subscriptionId = subs[0].sid;
-                } else if (subs.length == 0) {
-                    throw new Error('No matching monitoring plans found. Check your account and ensure you have an active plan.');
-                } else {
-                    let accountNumbers = subs.map(s => s.location.account);
-                    throw new Error(`Multiple plans found. You must specify a plan in the plugin settings. See README for more info. The account numbers found were: ${accountNumbers.join(', ')}.`);
-                }
+            let subs = await this.getSubscriptions();
+            if (subs.length == 1) {
+                subscriptionId = subs[0].sid;
+            } else if (subs.length == 0) {
+                throw new Error('No matching monitoring plans found. Check your account and ensure you have an active plan.');
+            } else {
+                let accountNumbers = subs.map(s => s.location.account);
                 throw new Error(`Multiple accounts found. You must specify an account number in the plugin settings. See README https://github.com/homebridge-simplisafe3/homebridge-simplisafe3#subscriptionid-account-number for more info. The account numbers found were: ${accountNumbers.join(', ')}.`);
             }
         }
@@ -308,7 +303,7 @@ class SimpliSafe3 extends EventEmitter {
     }
 
     async getAlarmSystem(forceRefresh = false) {
-        let subscription = await this.getSubscription(null, forceRefresh);
+        let subscription = await this.getSubscription(forceRefresh);
 
         if (subscription.location && subscription.location.system) {
             return subscription.location.system;
