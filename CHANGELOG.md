@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.9.5 (2022-02-22)
+- Fixes an issue that prevented the plugin from finding the correct account for users with expired free trials, see #308. Thanks @nmagati for reporting.
+- Clarify error message when multiple accounts are found.
+
 ## 1.9.4 (2022-02-19)
 - Fixes an issue that prevented motion sensors from triggering, see #303. Thanks @betabob for reporting.
 - Other small improvements.
