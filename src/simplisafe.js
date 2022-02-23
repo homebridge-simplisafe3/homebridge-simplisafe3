@@ -273,6 +273,7 @@ class SimpliSafe3 extends EventEmitter {
                     let accountNumbers = subs.map(s => s.location.account);
                     throw new Error(`Multiple plans found. You must specify a plan in the plugin settings. See README for more info. The account numbers found were: ${accountNumbers.join(', ')}.`);
                 }
+                throw new Error(`Multiple accounts found. You must specify an account number in the plugin settings. See README https://github.com/homebridge-simplisafe3/homebridge-simplisafe3#subscriptionid-account-number for more info. The account numbers found were: ${accountNumbers.join(', ')}.`);
             }
         }
 
