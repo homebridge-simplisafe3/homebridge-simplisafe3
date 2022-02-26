@@ -3,12 +3,13 @@ const {cli} = require('cli-ux');
 const SimpliSafe3AuthenticationManager = require('../lib/authManager');
 const path = require('path');
 const os = require('os');
+const isDocker = require('is-docker');
 
 class Login extends Command {
     static flags = {
         homebridgeDir: flags.string({
             char: 'd',
-            default: path.join(os.homedir(), '.homebridge'),
+            default: isDocker() ? '/homebridge/' : path.join(os.homedir(), '.homebridge'),
             description: 'The path to your Homebridge directory',
         })
     };
