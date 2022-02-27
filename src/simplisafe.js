@@ -75,9 +75,9 @@ const sensorRefreshLockoutDuration = 20000; // ms
 const errorSuppressionDuration = 5 * 60 * 1000; // ms
 const alarmRefreshInterval = 62000; // ms, avoid overlap with sensor refresh
 
-const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15';
 const wsUrl = 'wss://socketlink.prd.aser.simplisafe.com';
 const wsRetryInterval = 1000; //ms
+const wsKeepaliveInterval = 5 * 60 * 1000; //ms
 
 const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
@@ -118,7 +118,8 @@ class SimpliSafe3 extends EventEmitter {
     ssId;
     storagePath;
     nSocketConnectFailures = 0;
-
+    socketKeepAliveInterval;
+    isReconnecting;
     isBlocked;
     nextBlockInterval = rateLimitInitialInterval;
     nextAttempt = 0;
@@ -424,7 +425,7 @@ class SimpliSafe3 extends EventEmitter {
                 'time': new Date().toISOString(),
                 'id': `ts:${Date.now()}`,
                 'specversion': '1.0',
-                'source': userAgent,
+                'source': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15',
                 'data': {
                     'auth': {
                         'schema': 'bearer',
@@ -448,19 +449,23 @@ class SimpliSafe3 extends EventEmitter {
         this.socket.on('message', (message) => {
             message = JSON.parse(message);
 
-            if (this.debug) this.log('SSAPI socket received message:', message);
+            if (this.debug && !['service', 'messagequeue'].includes(message.source)) this.log('SSAPI socket received message:', message);
+
+            this.resetSocketKeepAlive();
 
             if (message.source == 'service') {
                 switch (message.type) {
                 case 'com.simplisafe.service.hello':
-                    if (this.debug) this.log('Received socket hello.');
+                    if (this.debug) this.log('SSAPI socket hello.');
                     break;
                 case 'com.simplisafe.service.registered':
-                    if (this.debug) this.log('Received socket registered.');
+                    if (this.debug) this.log('SSAPI socket registered.');
                     break;
                 case 'com.simplisafe.namespace.subscribed':
-                    this.log('Now listening for real time SimpliSafe events.');
+                    if (!this.isReconnecting && !this.debug) this.log('Listening for real time SimpliSafe events.');
+                    else if (this.isReconnecting && this.debug) this.log('SSAPI socket subscribed.');
                     this.nSocketConnectFailures = 0;
+                    this.isReconnecting = false;
                     break;
                 default:
                     if (this.debug) this.log('Received unknown service message:', message)
@@ -478,6 +483,9 @@ class SimpliSafe3 extends EventEmitter {
                     break;
                 case 'alarmCancel':
                     this.emit(EVENT_TYPES.ALARM_OFF, data);
+                    break;
+                case 'cameraStatus':
+                    // nothing to do
                     break;
                 case 'activity':
                 case 'activityQuiet':
@@ -586,6 +594,15 @@ class SimpliSafe3 extends EventEmitter {
         this.socket.removeAllListeners();
         this.socket.terminate();
         this.socket = null;
+    }
+
+    resetSocketKeepAlive() {
+        clearInterval(this.socketKeepAliveInterval);
+        this.socketKeepAliveInterval = setInterval(() => {
+            this.isReconnecting = true;
+            this.destroySocket();
+            this.startListening();
+        }, wsKeepaliveInterval);
     }
 
     subscribeToSensor(id, callback) {
