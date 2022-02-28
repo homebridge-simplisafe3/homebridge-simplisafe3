@@ -455,7 +455,7 @@ class SimpliSafe3 extends EventEmitter {
             });
 
             this.socket.on('pong', () => {
-                if (this.debug) this.log('SSAPI `heartbeat`');
+                if (this.debug) this.log('SSAPI socket `heartbeat`');
                 this.socketIsAlive = true;
             });
 
@@ -481,7 +481,7 @@ class SimpliSafe3 extends EventEmitter {
                         // heartbeat
                         this.socketHeartbeatIntervalID = setInterval(() => {
                             if (!this.socketIsAlive) {
-                                if (this.debug) this.log('SSAPI heartbeat lost');
+                                if (this.debug) this.log('SSAPI socket heartbeat lost');
                                 this.handleSocketConnectionFailure();
                                 return;
                             } else {
