@@ -242,7 +242,7 @@ class SimpliSafe3 extends EventEmitter {
         }
 
         // Free trials can have same accountNumber but only one should be "activated"
-        if (subscriptions.length > 0) subscriptions = data.subscriptions.filter(s => s.activated > 0);
+        if (subscriptions.length > 0) subscriptions = subscriptions.filter(s => s.activated > 0);
 
         if (subscriptions.length == 1) {
             this.subId = subscriptions[0].sid;
