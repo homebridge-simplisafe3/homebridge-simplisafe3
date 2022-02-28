@@ -2,13 +2,15 @@ import ffmpegPath from 'ffmpeg-for-homebridge';
 import isDocker from 'is-docker';
 
 import SimpliSafe3Accessory from './ss3Accessory';
-import {
-    EVENT_TYPES
-} from '../simplisafe';
+import { EVENT_TYPES } from '../simplisafe';
 
 import StreamingDelegate from '../lib/streamingDelegate';
 
-class SS3SimpliCam extends SimpliSafe3Accessory {
+const unsupportedCameras = [
+    'SSOBCM4' // outdoor camera
+];
+
+class SS3Camera extends SimpliSafe3Accessory {
     constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, authManager, api) {
         super(name, id, log, debug, simplisafe, api);
         this.cameraDetails = cameraDetails;
@@ -81,6 +83,9 @@ class SS3SimpliCam extends SimpliSafe3Accessory {
         }
     }
 
+    isUnsupported() {
+        return unsupportedCameras.includes(this.cameraDetails.model);
+    }
 
     startListening() {
         this.simplisafe.on(EVENT_TYPES.CAMERA_MOTION, (data) => {
@@ -112,4 +117,4 @@ class SS3SimpliCam extends SimpliSafe3Accessory {
     }
 }
 
-export default SS3SimpliCam;
+export default SS3Camera;

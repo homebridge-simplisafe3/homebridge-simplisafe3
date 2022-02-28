@@ -13,15 +13,17 @@ const dnsLookup = promisify(dns.lookup);
 
 const privacyShutterImage = path.resolve(__dirname, '..', 'images', 'privacyshutter_snapshot.png');
 const privacyShutterImageInBytes = fs.readFileSync(privacyShutterImage);
+const unsupportedCameraImage = path.resolve(__dirname, '..', 'images', 'unsupportedcamera_snapshot.png');
+const unsupportedCameraImageInBytes = fs.readFileSync(unsupportedCameraImage);
 
 class StreamingDelegate {
-    constructor(simplicam) {
-        this.simplicam = simplicam;
-        this.simplisafe = simplicam.simplisafe;
-        this.log = simplicam.log;
-        this.api = simplicam.api;
-        this.cameraOptions = simplicam.cameraOptions;
-        this.cameraDetails = simplicam.cameraDetails;
+    constructor(ss3Camera) {
+        this.ss3Camera = ss3Camera;
+        this.simplisafe = ss3Camera.simplisafe;
+        this.log = ss3Camera.log;
+        this.api = ss3Camera.api;
+        this.cameraOptions = ss3Camera.cameraOptions;
+        this.cameraDetails = ss3Camera.cameraDetails;
 
         this.pendingSessions = {};
         this.ongoingSessions = {};
@@ -77,29 +79,34 @@ class StreamingDelegate {
         }
 
         let resolution = `${request.width}x${request.height}`;
-        if (this.simplicam.debug) this.log(`Handling camera snapshot for '${this.cameraDetails.cameraSettings.cameraName}' at ${resolution}`);
+        if (this.ss3Camera.debug) this.log(`Handling camera snapshot for '${this.cameraDetails.cameraSettings.cameraName}' at ${resolution}`);
 
-        if (!this.simplicam.motionIsTriggered && this.simplicam.cameraDetails.model == 'SS001') { // Model(s) with privacy shutter
+        if (this.ss3Camera.isUnsupported()) {
+            this.handleUnsupportedCameraSnapshotRequest(callback);
+            return;
+        }
+
+        if (!this.ss3Camera.motionIsTriggered && this.ss3Camera.cameraDetails.model == 'SS001') { // Model(s) with privacy shutter
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
             let alarmSystem = await this.simplisafe.getAlarmSystem();
             switch (alarmSystem.alarmState) {
             case 'OFF':
                 if (this.cameraDetails.cameraSettings.shutterOff !== 'open') {
-                    this._handlePrivacyShutterClosedSnapshotRequest(callback);
+                    this.handlePrivacyShutterClosedSnapshotRequest(callback);
                     return;
                 }
                 break;
 
             case 'HOME':
                 if (this.cameraDetails.cameraSettings.shutterHome !== 'open') {
-                    this._handlePrivacyShutterClosedSnapshotRequest(callback);
+                    this.handlePrivacyShutterClosedSnapshotRequest(callback);
                     return;
                 }
                 break;
 
             case 'AWAY':
                 if (this.cameraDetails.cameraSettings.shutterAway !== 'open') {
-                    this._handlePrivacyShutterClosedSnapshotRequest(callback);
+                    this.handlePrivacyShutterClosedSnapshotRequest(callback);
                     return;
                 }
                 break;
@@ -116,30 +123,35 @@ class StreamingDelegate {
         }
 
         const url = {
-            url: `https://${this.serverIpAddress}/v1/${this.simplicam.cameraDetails.uuid}/mjpg?x=${request.width}&fr=1`,
+            url: `https://${this.serverIpAddress}/v1/${this.ss3Camera.cameraDetails.uuid}/mjpg?x=${request.width}&fr=1`,
             headers: {
-                'Authorization': `Bearer ${this.simplicam.authManager.accessToken}`
+                'Authorization': `Bearer ${this.ss3Camera.authManager.accessToken}`
             },
             rejectUnauthorized: false // OK because we are using IP and just polled DNS
         };
 
         jpegExtract(url).then(img => {
-            if (this.simplicam.debug) this.log(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(img.length/1000)}kB image`);
+            if (this.ss3Camera.debug) this.log(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(img.length/1000)}kB image`);
             callback(undefined, img);
         }).catch(err => {
             this.log.error('An error occurred while making snapshot request:', err.statusCode ? err.statusCode : '', err.statusMessage ? err.statusMessage : '');
-            if (this.simplicam.debug) this.log.error(err);
+            if (this.ss3Camera.debug) this.log.error(err);
             callback(err);
         });
     }
 
-    _handlePrivacyShutterClosedSnapshotRequest(callback) {
-        if (this.simplicam.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
+    handlePrivacyShutterClosedSnapshotRequest(callback) {
+        if (this.ss3Camera.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' privacy shutter closed`);
         callback(undefined, privacyShutterImageInBytes);
     }
 
+    handleUnsupportedCameraSnapshotRequest(callback) {
+        if (this.ss3Camera.debug) this.log(`Camera snapshot request ignored, '${this.cameraDetails.cameraSettings.cameraName}' is not supported`);
+        callback(undefined, unsupportedCameraImageInBytes);
+    }
+
     prepareStream(request, callback) {
-        if (this.simplicam.debug) this.log('Prepare stream with request:', request);
+        if (this.ss3Camera.debug) this.log('Prepare stream with request:', request);
         let response = {};
         let sessionInfo = {
             address: request.targetAddress
@@ -199,7 +211,15 @@ class StreamingDelegate {
     }
 
     async handleStreamRequest(request, callback) {
-        if (this.simplicam.debug) this.log('handleStreamRequest with request:', request);
+        if (this.ss3Camera.debug) this.log('handleStreamRequest with request:', request);
+
+        if (this.ss3Camera.isUnsupported()) {
+            let err = new Error(`Camera ${this.ss3Camera.name} is unsupported`);
+            this.log.error(err);
+            callback(err);
+            return;
+        }
+
         let sessionId = request.sessionID;
         if (sessionId) {
             let sessionIdentifier = this.api.hap.uuid.unparse(sessionId);
@@ -244,8 +264,8 @@ class StreamingDelegate {
 
                     let sourceArgs = [
                         ['-re'],
-                        ['-headers', `Authorization: Bearer ${this.simplicam.authManager.accessToken}`],
-                        ['-i', `https://${this.serverIpAddress}/v1/${this.simplicam.cameraDetails.uuid}/flv?x=${width}&audioEncoding=AAC`]
+                        ['-headers', `Authorization: Bearer ${this.ss3Camera.authManager.accessToken}`],
+                        ['-i', `https://${this.serverIpAddress}/v1/${this.ss3Camera.cameraDetails.uuid}/flv?x=${width}&audioEncoding=AAC`]
                     ];
 
                     let videoArgs = [
@@ -285,8 +305,8 @@ class StreamingDelegate {
                         [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=188`]
                     ];
 
-                    if (isDocker() && (!this.simplicam.cameraOptions || !this.simplicam.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
-                        if (this.simplicam.debug) this.log('Detected running in docker container with bundled binary, limiting to 720px wide');
+                    if (isDocker() && (!this.ss3Camera.cameraOptions || !this.ss3Camera.cameraOptions.ffmpegPath)) { // if docker and no custom binary specified
+                        if (this.ss3Camera.debug) this.log('Detected running in docker container with bundled binary, limiting to 720px wide');
                         width = Math.min(width, 720);
                         let vFilterArg = videoArgs.find(arg => arg[0] == '-vf');
                         vFilterArg[1] = `scale=${width}:-2`;
@@ -302,8 +322,8 @@ class StreamingDelegate {
                         audioArgs.splice(audioArgs.indexOf(profileArg), 1);
                     }
 
-                    if (this.simplicam.cameraOptions) {
-                        if (this.simplicam.cameraOptions.enableHwaccelRpi) {
+                    if (this.ss3Camera.cameraOptions) {
+                        if (this.ss3Camera.cameraOptions.enableHwaccelRpi) {
                             let iArg = sourceArgs.find(arg => arg[0] == '-i');
                             sourceArgs.splice(sourceArgs.indexOf(iArg), 0, ['-vcodec', 'h264_mmal']);
                             let vCodecArg = videoArgs.find(arg => arg[0] == '-vcodec');
@@ -312,9 +332,9 @@ class StreamingDelegate {
                             videoArgs = videoArgs.filter(arg => arg[0] !== '-preset');
                         }
 
-                        if (this.simplicam.cameraOptions.sourceOptions) {
-                            let options = (typeof this.simplicam.cameraOptions.sourceOptions === 'string') ? Object.fromEntries(this.simplicam.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
-                                : this.simplicam.cameraOptions.sourceOptions; // support old config schema
+                        if (this.ss3Camera.cameraOptions.sourceOptions) {
+                            let options = (typeof this.ss3Camera.cameraOptions.sourceOptions === 'string') ? Object.fromEntries(this.ss3Camera.cameraOptions.sourceOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
+                                : this.ss3Camera.cameraOptions.sourceOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = sourceArgs.find(arg => arg[0] === key);
@@ -330,9 +350,9 @@ class StreamingDelegate {
                             }
                         }
 
-                        if (this.simplicam.cameraOptions.videoOptions) {
-                            let options = (typeof this.simplicam.cameraOptions.videoOptions === 'string') ? Object.fromEntries(this.simplicam.cameraOptions.videoOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
-                                : this.simplicam.cameraOptions.videoOptions; // support old config schema
+                        if (this.ss3Camera.cameraOptions.videoOptions) {
+                            let options = (typeof this.ss3Camera.cameraOptions.videoOptions === 'string') ? Object.fromEntries(this.ss3Camera.cameraOptions.videoOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
+                                : this.ss3Camera.cameraOptions.videoOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = videoArgs.find(arg => arg[0] === key);
@@ -348,9 +368,9 @@ class StreamingDelegate {
                             }
                         }
 
-                        if (this.simplicam.cameraOptions.audioOptions) {
-                            let options = (typeof this.simplicam.cameraOptions.audioOptions === 'string') ? Object.fromEntries(this.simplicam.cameraOptions.audioOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
-                                : this.simplicam.cameraOptions.audioOptions; // support old config schema
+                        if (this.ss3Camera.cameraOptions.audioOptions) {
+                            let options = (typeof this.ss3Camera.cameraOptions.audioOptions === 'string') ? Object.fromEntries(this.ss3Camera.cameraOptions.audioOptions.split('-').filter(x => x).map(arg => '-' + arg).map(a => a.split(' ').filter(x => x)))
+                                : this.ss3Camera.cameraOptions.audioOptions; // support old config schema
                             for (let key in options) {
                                 let value = options[key];
                                 let existingArg = audioArgs.find(arg => arg[0] === key);
@@ -371,7 +391,7 @@ class StreamingDelegate {
                     let video = [].concat(...videoArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
                     let audio = [].concat(...audioArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
 
-                    let cmd = spawn(this.simplicam.ffmpegPath, [
+                    let cmd = spawn(this.ss3Camera.ffmpegPath, [
                         ...source,
                         ...video,
                         ...audio
@@ -379,19 +399,19 @@ class StreamingDelegate {
                         env: process.env
                     });
 
-                    if (this.simplicam.debug) {
-                        this.log(`Start streaming video for camera '${this.cameraDetails.cameraSettings.cameraName}'`);
-                        this.log([this.simplicam.ffmpegPath, source.join(' '), video.join(' '), audio.join(' ')].join(' '));
+                    if (this.ss3Camera.debug) {
+                        this.log(`Start streaming video for camera '${this.ss3Camera.name}'`);
+                        this.log([this.ss3Camera.ffmpegPath, source.join(' '), video.join(' '), audio.join(' ')].join(' '));
                     }
 
                     let started = false;
                     cmd.stderr.on('data', data => {
                         if (!started) {
                             started = true;
-                            if (this.simplicam.debug) this.log('FFMPEG received first frame');
+                            if (this.ss3Camera.debug) this.log('FFMPEG received first frame');
                             callback(); // do not forget to execute callback once set up
                         }
-                        if (this.simplicam.debug) {
+                        if (this.ss3Camera.debug) {
                             this.log(data.toString());
                         }
                     });
@@ -406,10 +426,10 @@ class StreamingDelegate {
                         case null:
                         case 0:
                         case 255:
-                            if (this.simplicam.debug) this.log('Camera stopped streaming');
+                            if (this.ss3Camera.debug) this.log('Camera stopped streaming');
                             break;
                         default:
-                            if (this.simplicam.debug) this.log(`Error: FFmpeg exited with code ${code}`);
+                            if (this.ss3Camera.debug) this.log(`Error: FFmpeg exited with code ${code}`);
                             if (!started) {
                                 callback(new Error(`Error: FFmpeg exited with code ${code}`));
                             } else {
@@ -432,7 +452,7 @@ class StreamingDelegate {
                     }
                 } catch (e) {
                     this.log.error('Error occurred terminating the video process!');
-                    if (this.simplicam.debug) this.log.error(e);
+                    if (this.ss3Camera.debug) this.log.error(e);
                 }
 
                 delete this.ongoingSessions[sessionIdentifier];
