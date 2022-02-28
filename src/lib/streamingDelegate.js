@@ -86,7 +86,7 @@ class StreamingDelegate {
             return;
         }
 
-        if (!this.ss3Camera.motionIsTriggered && this.ss3Camera.hasPrivacyShutter()) {
+        if (!this.ss3Camera.motionIsTriggered && this.ss3Camera.supportsPrivacyShutter()) {
             // Because if privacy shutter is closed we dont want snapshots triggering it to open
             let alarmSystem = await this.simplisafe.getAlarmSystem();
             switch (alarmSystem.alarmState) {
