@@ -474,7 +474,7 @@ class SimpliSafe3 extends EventEmitter {
                         if (this.debug) this.log('SSAPI socket `registered`');
                         break;
                     case 'com.simplisafe.namespace.subscribed':
-                        if (this.debug) this.log('SSAPI socket `subscribed');
+                        if (this.debug) this.log('SSAPI socket `subscribed`');
                         this.log('Listening for real time SimpliSafe events.');
                         this.nSocketConnectFailures = 0;
                         this.socketIsAlive = true;
