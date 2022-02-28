@@ -10,12 +10,11 @@ Created by [Niccolò Zapponi](https://twitter.com/nzapponi) and [Michael Shamoon
 [![npm-downloads](https://badgen.net/npm/dt/homebridge-simplisafe3)](https://www.npmjs.com/package/homebridge-simplisafe3)
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 
-A complete (unofficial) [Homebridge](https://github.com/homebridge/homebridge) plugin to integrate the SimpliSafe 3 home security system with HomeKit.
+An [unofficial] [Homebridge](https://github.com/homebridge/homebridge) plugin to integrate the SimpliSafe 3 home security system with HomeKit.
 
 </span>
 
 ## Requirements
-- :warning: **You must be signed up for a SimpliSafe monitoring or self-monitoring plan that enables you to use the mobile app for this plugin to work.** An active monitoring plan enables API access to SimpliSafe.
 - Works with native Homebridge and [oznu/docker-homebridge](https://github.com/oznu/docker-homebridge).
 - Compatible with the official [Config UI X plugin](https://github.com/oznu/homebridge-config-ui-x) which is **recommended for easiest usage**.
 
@@ -24,7 +23,8 @@ Supercharge your SimpliSafe system and integrate with HomeKit the right way!
 This plugin supports:
 - **Real time event streaming:** get immediate notifications anytime the alarm is armed / disarmed / triggered.
 - **Sensors:** always be on top of your home with immediate access to the sensor status. Create smart automations directly from the Home app (e.g. when the front door is opened, turn the lights on).
-- **Cameras:** view your SimpliCams directly from the Home app, receive doorbell notifications and motion snapshots.
+- **Door locks:** lock, unlock and monitor the battery status of your smart door locks.
+- **Cameras:** view your indoor or doorbell cameras directly from the Home app, receive doorbell notifications and motion snapshots.
 - **Battery monitoring:** the Home app will notify you if the battery level of one of your sensors is low.
 
 Here are some example screenshots:
@@ -78,7 +78,7 @@ Type: boolean (default `false`)
 
 Switch this on to get more details about your sensors and plugin behavior in your Homebridge logs. This can be useful if you are having trouble or need to report an issue.
 
-#### `subscriptionId` (Account Number)
+#### `subscriptionId` (aka Account Number)
 Type: string
 
 Add this parameter in case you have multiple protected locations or accounts with SimpliSafe, this is your "account number" in Simplisafe. The best way to ensure you have the correct number is to check under the [SimpliSafe web control panel > View Account](https://webapp.simplisafe.com/#/account) and look for **account #** next to the correct plan. For most users this is the same as the serial number at the bottom of your base unit.
@@ -131,7 +131,7 @@ Using the "Secret Alert" setting will allow for motion events at all times but n
 All devices also support low battery warnings.
 
 ### Camera Support
-To enable camera support, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin). Currently only the SimpliCam and Doorbell camera are supported.
+To enable camera support, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin). Currently only the SimpliCam and Video Doorbell Pro are supported.
 
 #### Camera Options
 This plugin includes [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) to automatically include a compatible build of ffmpeg and thus the plugin works "out of the box" without requiring a custom ffmpeg build.
@@ -161,6 +161,6 @@ To remove a default argument, define it with `false` as its value, e.g. `"-tune 
 - Due to transcoding requirements, when using a Raspberry Pi 3b video feeds will disconnect after ~20 seconds. RPi 4 or newer is recommended. See [issue #147](https://github.com/nzapponi/homebridge-simplisafe3/issues/147)
 
 ## Help & Support
-All feedback is welcomed. For bugs, feature requests, etc. you may open an issue here.
+All feedback is welcomed. For bugs please open an issue here. For feature requests or questions please use discussions.
 
-The official [Homebridge Discord server](https://discord.gg/kqNCe2D) and [Reddit community](https://www.reddit.com/r/homebridge/) are another great place to ask for help.
+The official [Homebridge Discord server](https://discord.gg/kqNCe2D) and [Reddit community](https://www.reddit.com/r/homebridge/) are other great places to ask for help.
