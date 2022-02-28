@@ -1,6 +1,12 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.9.6 (2022-02-27)
+- Better handle using the authentication command on Docker, see #311. Thanks to @warrengottlieb for reporting.
+- Handle unsupported cameras better (still not supported =)
+- Support privacy shutter for new model 'SS003' of indoor camera. Thanks to @jdmtv001 for reporting.
+- Modifies a change that prevented free plans from working, see #315. Thanks to @ampilogov for reporting.
+
 ## 1.9.5 (2022-02-22)
 - Fixes an issue that prevented the plugin from finding the correct account for users with expired free trials, see #308. Thanks @nmagati for reporting.
 - Clarify error message when multiple accounts are found.
