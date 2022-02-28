@@ -83,6 +83,11 @@ class SS3Camera extends SimpliSafe3Accessory {
         }
     }
 
+    hasPrivacyShutter() {
+        // so far SS001 & SS003
+        return this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.privacyShutter;
+    }
+
     isUnsupported() {
         return unsupportedCameras.includes(this.cameraDetails.model);
     }
