@@ -120,6 +120,7 @@ class SimpliSafe3 extends EventEmitter {
     nSocketConnectFailures = 0;
     socketHeartbeatIntervalID;
     socketIsAlive;
+    isAwaitingSocketReconnect;
     isBlocked;
     nextBlockInterval = rateLimitInitialInterval;
     nextAttempt = 0;
@@ -604,20 +605,23 @@ class SimpliSafe3 extends EventEmitter {
     }
 
     handleSocketConnectionFailure() {
-        this.destroySocket();
-        let retryInterval = (2 ** this.nSocketConnectFailures) * socketRetryInterval;
-        if (this.debug) this.log(`SSAPI socket connection lost. Next attempt will be in ${retryInterval/1000}s.`);
-        setTimeout(async () => {
-            await this.startListening();
-        }, retryInterval);
-        this.nSocketConnectFailures++;
-    }
+        if (this.isAwaitingSocketReconnect) return; // a reconnect attempt is pending
 
-    destroySocket() {
-        clearTimeout(this.socketHeartbeatIntervalID);
         this.socket.removeAllListeners();
         this.socket.terminate();
         this.socket = null;
+
+        clearTimeout(this.socketHeartbeatIntervalID);
+        this.socketIsAlive = false;
+
+        let retryInterval = (2 ** this.nSocketConnectFailures) * socketRetryInterval;
+        if (this.debug) this.log(`SSAPI socket connection lost. Next attempt will be in ${retryInterval/1000}s.`);
+        setTimeout(async () => {
+            this.isAwaitingSocketReconnect = false;
+            await this.startListening();
+        }, retryInterval);
+        this.nSocketConnectFailures++;
+        this.isAwaitingSocketReconnect = true;
     }
 
     subscribeToSensor(id, callback) {
