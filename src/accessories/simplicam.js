@@ -6,10 +6,6 @@ import { EVENT_TYPES } from '../simplisafe';
 
 import StreamingDelegate from '../lib/streamingDelegate';
 
-const unsupportedCameras = [
-    'SSOBCM4' // outdoor camera
-];
-
 class SS3Camera extends SimpliSafe3Accessory {
     constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, authManager, api) {
         super(name, id, log, debug, simplisafe, api);
@@ -89,7 +85,8 @@ class SS3Camera extends SimpliSafe3Accessory {
     }
 
     isUnsupported() {
-        return unsupportedCameras.includes(this.cameraDetails.model);
+        // so far SSOBCM4
+        return this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.providers && this.cameraDetails.supportedFeatures.providers.recording !== 'simplisafe';
     }
 
     startListening() {

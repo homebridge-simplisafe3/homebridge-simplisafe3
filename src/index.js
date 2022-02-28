@@ -342,6 +342,7 @@ class SS3Platform {
                             this.authManager,
                             this.api
                         );
+                        if (cameraAccessory.isUnsupported()) this.log.warn(`Detected unsupported camera ${cameraName}, some features will be disabled.`);
 
                         this.devices.push(cameraAccessory);
                     }
