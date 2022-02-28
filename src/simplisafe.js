@@ -477,7 +477,18 @@ class SimpliSafe3 extends EventEmitter {
                         this.log('Listening for real time SimpliSafe events.');
                         this.nSocketConnectFailures = 0;
                         this.socketIsAlive = true;
-                        this.resetHeartbeatChecker();
+                        
+                        // heartbeat
+                        this.socketHeartbeatIntervalID = setInterval(() => {
+                            if (!this.socketIsAlive) {
+                                if (this.debug) this.log('SSAPI heartbeat lost');
+                                this.handleSocketConnectionFailure();
+                                return;
+                            } else {
+                                this.socketIsAlive = false;
+                                this.socket.ping();
+                            }
+                        }, socketHeartbeatInterval);
                         break;
                     default:
                         if (this.debug) this.log('Received unknown service message:', message)
@@ -590,21 +601,6 @@ class SimpliSafe3 extends EventEmitter {
                 }
             });
         }
-    }
-
-    resetHeartbeatChecker() {
-        clearInterval(this.socketHeartbeatIntervalID);
-
-        this.socketHeartbeatIntervalID = setInterval(() => {
-            if (!this.socketIsAlive) {
-                if (this.debug) this.log('SSAPI heartbeat lost');
-                this.handleSocketConnectionFailure();
-                return;
-            } else {
-                this.socketIsAlive = false;
-                this.socket.ping();
-            }
-        }, socketHeartbeatInterval);
     }
 
     handleSocketConnectionFailure() {
