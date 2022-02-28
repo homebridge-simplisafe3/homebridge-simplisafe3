@@ -120,7 +120,6 @@ class SimpliSafe3 extends EventEmitter {
     nSocketConnectFailures = 0;
     socketHeartbeatIntervalID;
     socketIsAlive;
-    isReconnecting;
     isBlocked;
     nextBlockInterval = rateLimitInitialInterval;
     nextAttempt = 0;
@@ -421,7 +420,7 @@ class SimpliSafe3 extends EventEmitter {
             let userId = await this.getUserId();
 
             this.socket.on('open', () => {
-                if (this.debug) this.log('SSAPI socket opened.');
+                if (this.debug) this.log('SSAPI socket `open`');
                 this.socket.send(JSON.stringify({
                     'datacontenttype': 'application/json',
                     'type': 'com.simplisafe.connection.identify',
@@ -439,16 +438,16 @@ class SimpliSafe3 extends EventEmitter {
                 }));
             });
 
-            this.socket.on('error', () => {
+            this.socket.on('close', () => {
                 this.handleSocketConnectionFailure();
-                if (this.debug) this.log.error('SSAPI socket closed.');
-                this.log.warn('SimpliSafe real time events disconnected.');
+                if (this.debug) this.log.error('SSAPI socket `closed`');
+                this.log.warn('SimpliSafe real time events disconnected');
             });
 
-            this.socket.on('close', (err) => {
+            this.socket.on('error', (err) => {
                 this.handleSocketConnectionFailure();
-                if (this.debug) this.log.error('SSAPI socket error:', err);
-                this.log.warn('SimpliSafe real time events disconnected.');
+                if (this.debug) this.log.error('SSAPI socket `error`:', err);
+                this.log.warn('SimpliSafe real time events disconnected');
             });
 
             this.socket.on('unexpected-response', (reason) => {
@@ -456,7 +455,7 @@ class SimpliSafe3 extends EventEmitter {
             });
 
             this.socket.on('pong', () => {
-                if (this.debug) this.log('SSAPI heartbeat.');
+                if (this.debug) this.log('SSAPI `heartbeat`');
                 this.socketIsAlive = true;
             });
 
@@ -468,16 +467,15 @@ class SimpliSafe3 extends EventEmitter {
                 if (message.source == 'service') {
                     switch (message.type) {
                     case 'com.simplisafe.service.hello':
-                        if (this.debug) this.log('SSAPI socket hello.');
+                        if (this.debug) this.log('SSAPI socket `hello`');
                         break;
                     case 'com.simplisafe.service.registered':
-                        if (this.debug) this.log('SSAPI socket registered.');
+                        if (this.debug) this.log('SSAPI socket `registered`');
                         break;
                     case 'com.simplisafe.namespace.subscribed':
-                        if (!this.isReconnecting && !this.debug) this.log('Listening for real time SimpliSafe events.');
-                        else if (this.debug) this.log('SSAPI socket subscribed.');
+                        if (this.debug) this.log('SSAPI socket `subscribed');
+                        this.log('Listening for real time SimpliSafe events.');
                         this.nSocketConnectFailures = 0;
-                        this.isReconnecting = false;
                         this.socketIsAlive = true;
                         this.resetHeartbeatChecker();
                         break;
@@ -599,8 +597,7 @@ class SimpliSafe3 extends EventEmitter {
 
         this.socketHeartbeatIntervalID = setInterval(() => {
             if (!this.socketIsAlive) {
-                if (this.debug) this.log('SSAPI heartbeat lost.');
-                this.isReconnecting = true;
+                if (this.debug) this.log('SSAPI heartbeat lost');
                 this.handleSocketConnectionFailure();
                 return;
             } else {
