@@ -8,7 +8,7 @@ import CODetector from './accessories/coDetector';
 import WaterSensor from './accessories/waterSensor';
 import FreezeSensor from './accessories/freezeSensor';
 import DoorLock from './accessories/doorLock';
-import Camera from './accessories/simplicam';
+import Camera from './accessories/camera';
 import UnreachableAccessory from './accessories/unreachableAccessory';
 
 const PLUGIN_NAME = 'homebridge-simplisafe3';
