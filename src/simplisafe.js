@@ -232,12 +232,17 @@ class SimpliSafe3 extends EventEmitter {
             url: `/users/${userId}/subscriptions?activeOnly=false`
         });
 
-        // sStatus 7: Self-Monitoring with Camera Recording (5 cameras)
-        let subscriptions = data.subscriptions.filter(s => [7, 10, 20].includes(s.sStatus) && s.activated > 0);
+        // sStatus 7: Unmonitored & self-monitoring
+        // sStatus 10: Standard
+        // sStatus 20: Interactive
+        let subscriptions = data.subscriptions.filter(s => [7, 10, 20].includes(s.sStatus));
 
         if (this.accountNumber) {
             subscriptions = subscriptions.filter(s => s.location.account === this.accountNumber);
         }
+
+        // Free trials can have same accountNumber but only one should be "activated"
+        if (subscriptions.length > 0) subscriptions = data.subscriptions.filter(s => s.activated > 0);
 
         if (subscriptions.length == 1) {
             this.subId = subscriptions[0].sid;
