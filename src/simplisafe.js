@@ -441,13 +441,13 @@ class SimpliSafe3 extends EventEmitter {
 
             this.socket.on('close', () => {
                 if (this.debug) this.log.error('SSAPI socket `closed`');
-                this.log.warn('SimpliSafe real time events disconnected');
+                this.log.warn('SimpliSafe real time events disconnected.');
                 this.handleSocketConnectionFailure();
             });
 
             this.socket.on('error', (err) => {
                 if (this.debug) this.log.error('SSAPI socket `error`:', err);
-                this.log.warn('SimpliSafe real time events disconnected');
+                this.log.warn('SimpliSafe real time events disconnected.');
                 this.handleSocketConnectionFailure();
             });
 
@@ -476,7 +476,7 @@ class SimpliSafe3 extends EventEmitter {
                         break;
                     case 'com.simplisafe.namespace.subscribed':
                         if (this.debug) this.log('SSAPI socket `subscribed`');
-                        this.log('Listening for real time SimpliSafe events.');
+                        this.log('SimpliSafe real time  events connected.');
                         this.nSocketConnectFailures = 0;
                         this.socketIsAlive = true;
                         
