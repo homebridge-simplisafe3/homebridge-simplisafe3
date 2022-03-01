@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.9.8 (2022-03-01)
+- Fixes (another) issue with subscription filtering. Thanks to @chowielin for reporting.
+
 ## 1.9.7 (2022-02-27)
 - Better handle using the authentication command on Docker, see #311. Thanks to @warrengottlieb for reporting.
 - Handle unsupported cameras better (still not supported =)
