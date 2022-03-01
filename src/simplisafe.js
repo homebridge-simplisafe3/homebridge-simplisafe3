@@ -440,19 +440,20 @@ class SimpliSafe3 extends EventEmitter {
             });
 
             this.socket.on('close', () => {
-                this.handleSocketConnectionFailure();
                 if (this.debug) this.log.error('SSAPI socket `closed`');
                 this.log.warn('SimpliSafe real time events disconnected');
+                this.handleSocketConnectionFailure();
             });
 
             this.socket.on('error', (err) => {
-                this.handleSocketConnectionFailure();
                 if (this.debug) this.log.error('SSAPI socket `error`:', err);
                 this.log.warn('SimpliSafe real time events disconnected');
+                this.handleSocketConnectionFailure();
             });
 
             this.socket.on('unexpected-response', (reason) => {
                 if (this.debug) this.log('SSAPI socket received unexpected-response:', reason);
+                this.handleSocketConnectionFailure();
             });
 
             this.socket.on('pong', () => {
