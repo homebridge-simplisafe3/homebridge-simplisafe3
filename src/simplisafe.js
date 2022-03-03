@@ -4,7 +4,6 @@ import WebSocket from 'ws';
 import fs from 'fs';
 import path from 'path';
 import EventEmitter from 'events';
-import { clearInterval } from 'timers';
 
 export const VALID_ALARM_STATES = [
     'off',
@@ -447,7 +446,7 @@ class SimpliSafe3 extends EventEmitter {
                     break;
                 case 'com.simplisafe.namespace.subscribed':
                     if (this.debug) this.log('SSAPI socket `subscribed`');
-                    this.log('SimpliSafe real time  events connected.');
+                    this.log('SimpliSafe real time events connected.');
                     this.nSocketConnectFailures = 0;
                     this.socketIsAlive = true;
                     
