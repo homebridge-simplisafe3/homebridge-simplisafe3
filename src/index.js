@@ -51,7 +51,6 @@ class SS3Platform {
             // this will flag authManager to try username / pw login
             this.authManager.username = config.auth.username;
             this.authManager.password = config.auth.password;
-            this.authManager.ssId = this.simplisafe.ssId;
         }
 
         this.initialLoad = this.authManager.refreshCredentials()

@@ -36,6 +36,18 @@ const clientPassword = '';
 
 const accountsFilename = 'simplisafe3auth.json';
 
+const generateSimplisafeId = () => {
+    const supportedCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz0123456789';
+    let id = [];
+    while (id.length < 10) {
+        id.push(supportedCharacters[Math.floor(Math.random() * supportedCharacters.length)]);
+    }
+
+    id = id.join('');
+
+    return `${id.substring(0, 5)}-${id.substring(5)}`;
+};
+
 class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     storagePath;
     accessToken;
@@ -51,7 +63,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     // Retained for deprecated username / password login, for now
     username;
     password;
-    ssId;
 
     constructor(storagePath, log, debug) {
         super();
@@ -240,6 +251,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     // Deprecated login with username / password
     async _loginWithUsernamePassword() {
         try {
+            let ssId = generateSimplisafeId();
             if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please re-authenticate using newest method. See README for more info.');
             if (this.log && this.debug) this.log('Attempting to login with username / password.');
             const response = await ssApiV1.post('/api/token', {
@@ -247,7 +259,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 password: this.password,
                 grant_type: 'password',
                 client_id: clientUsername,
-                device_id: `Homebridge; useragent="Homebridge-SimpliSafe3 (SS-ID: ${this.ssId})"; uuid="${clientUuid}"; id="${this.ssId}"`,
+                device_id: `Homebridge; useragent="Homebridge-SimpliSafe3 (SS-ID: ${ssId})"; uuid="${clientUuid}"; id="${ssId}"`,
                 scope: ''
             }, {
                 auth: {

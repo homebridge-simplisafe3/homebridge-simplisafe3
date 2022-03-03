@@ -68,7 +68,6 @@ export class RateLimitError extends Error {
 
 const subscriptionCacheTime = 3000; // ms
 const sensorCacheTime = 3000; // ms
-const internalConfigFileName = 'simplisafe3config.json';
 const rateLimitInitialInterval = 60000; // ms
 const rateLimitMaxInterval = 2 * 60 * 60 * 1000; // ms
 const sensorRefreshLockoutDuration = 20000; // ms
@@ -82,18 +81,6 @@ const socketHeartbeatInterval = 60 * 1000; //ms
 const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
 });
-
-const generateSimplisafeId = () => {
-    const supportedCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz0123456789';
-    let id = [];
-    while (id.length < 10) {
-        id.push(supportedCharacters[Math.floor(Math.random() * supportedCharacters.length)]);
-    }
-
-    id = id.join('');
-
-    return `${id.substring(0, 5)}-${id.substring(5)}`;
-};
 
 class SimpliSafe3 extends EventEmitter {
 
@@ -114,7 +101,6 @@ class SimpliSafe3 extends EventEmitter {
     sensorSubscriptions = [];
     errorSupperessionTimeoutID;
     nSuppressedErrors;
-    ssId;
     storagePath;
     nSocketConnectFailures = 0;
     socketHeartbeatIntervalID;
@@ -133,28 +119,6 @@ class SimpliSafe3 extends EventEmitter {
         this.authManager = authManager;
         
         axiosRetry(ssApi, { retries: 2 });
-
-        let internalConfigFile = path.join(this.storagePath, internalConfigFileName);
-        if (fs.existsSync(internalConfigFile) && resetConfig) {
-            fs.unlinkSync(internalConfigFile);
-        }
-
-        // Load IDs from internal config file
-        if (fs.existsSync(internalConfigFile)) {
-            let configFile = fs.readFileSync(internalConfigFile);
-            let config = JSON.parse(configFile);
-            this.ssId = config.ssId;
-        } else {
-            this.ssId = generateSimplisafeId();
-
-            try {
-                fs.writeFileSync(internalConfigFile, JSON.stringify({
-                    ssId: this.ssId
-                }));
-            } catch (err) {
-                this.log.warn('Warning: could not save SS config file. SS-ID will vary');
-            }
-        }
 
         this.resetRateLimitHandler();
     }
