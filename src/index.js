@@ -25,7 +25,6 @@ class SS3Platform {
         this.cameraOptions = config.cameraOptions || null;
         this.debug = config.debug || false;
         this.persistAccessories = config.persistAccessories !== undefined ? config.persistAccessories : true;
-        this.resetId = config.resetSimpliSafeId || false;
         this.excludedDevices = config.excludedDevices || [];
         this.devices = [];
         this.accessories = [];
@@ -40,7 +39,7 @@ class SS3Platform {
         }
 
         this.authManager = new SimpliSafe3AuthenticationManager(this.api.user.storagePath(), log, this.debug);
-        this.simplisafe = new SimpliSafe3(refreshInterval, this.resetId, this.authManager, this.api.user.storagePath(), log, this.debug);
+        this.simplisafe = new SimpliSafe3(refreshInterval, this.authManager, this.api.user.storagePath(), log, this.debug);
 
         if (config.subscriptionId) {
             if (this.debug) this.log(`Specifying account number: ${config.subscriptionId}`);

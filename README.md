@@ -93,11 +93,6 @@ Type: boolean (default `true`)
 
 By default, the plugin will persist accessories to avoid losing automations etc. Set this to `false` to remove old accessories that no longer exist in SimpliSafe from HomeKit.
 
-#### `resetSimpliSafeId`
-Type: boolean (default `false`)
-
-Upon first start, the plugin generates an ID which it uses to identify itself with SimpliSafe. If you wish to reset it, set this to `true`.
-
 #### `excludedDevices`
 Type: array
 

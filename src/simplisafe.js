@@ -109,7 +109,7 @@ class SimpliSafe3 extends EventEmitter {
     nextBlockInterval = rateLimitInitialInterval;
     nextAttempt = 0;
 
-    constructor(sensorRefreshTime = 15000, resetConfig = false, authManager, storagePath, log, debug) {
+    constructor(sensorRefreshTime = 15000, authManager, storagePath, log, debug) {
         super();
         this.sensorRefreshTime = sensorRefreshTime;
         this.log = log || console.log;

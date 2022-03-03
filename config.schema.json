@@ -38,11 +38,6 @@
         "type": "boolean",
         "default": true
       },
-      "resetSimpliSafeId": {
-        "title": " Reset Generated SimpliSafe ID",
-        "type": "boolean",
-        "default": false
-      },
       "cameraOptions": {
         "type": "object",
         "properties": {
