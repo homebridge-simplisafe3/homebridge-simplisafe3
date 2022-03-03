@@ -416,193 +416,193 @@ class SimpliSafe3 extends EventEmitter {
     }
 
     async startListening() {
-        if (!this.socket) {
-            this.socket = new WebSocket(wsUrl);
-            let userId = await this.getUserId();
+        if (this.socket) return;
+        
+        this.socket = new WebSocket(wsUrl);
+        let userId = await this.getUserId();
 
-            this.socket.on('open', () => {
-                if (this.debug) this.log('SSAPI socket `open`');
-                this.socket.send(JSON.stringify({
-                    'datacontenttype': 'application/json',
-                    'type': 'com.simplisafe.connection.identify',
-                    'time': new Date().toISOString(),
-                    'id': `ts:${Date.now()}`,
-                    'specversion': '1.0',
-                    'source': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15',
-                    'data': {
-                        'auth': {
-                            'schema': 'bearer',
-                            'token': this.authManager.accessToken,
-                        },
-                        'join': [`uid:${userId}`]
-                    }
-                }));
-            });
+        this.socket.on('open', () => {
+            if (this.debug) this.log('SSAPI socket `open`');
+            this.socket.send(JSON.stringify({
+                'datacontenttype': 'application/json',
+                'type': 'com.simplisafe.connection.identify',
+                'time': new Date().toISOString(),
+                'id': `ts:${Date.now()}`,
+                'specversion': '1.0',
+                'source': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15',
+                'data': {
+                    'auth': {
+                        'schema': 'bearer',
+                        'token': this.authManager.accessToken,
+                    },
+                    'join': [`uid:${userId}`]
+                }
+            }));
+        });
 
-            this.socket.on('close', () => {
-                if (this.debug) this.log.error('SSAPI socket `closed`');
-                this.log.warn('SimpliSafe real time events disconnected.');
-                this.handleSocketConnectionFailure();
-            });
+        this.socket.on('close', () => {
+            if (this.debug) this.log.error('SSAPI socket `closed`');
+            this.log.warn('SimpliSafe real time events disconnected.');
+            this.handleSocketConnectionFailure();
+        });
 
-            this.socket.on('error', (err) => {
-                if (this.debug) this.log.error('SSAPI socket `error`:', err);
-                this.log.warn('SimpliSafe real time events disconnected.');
-                this.handleSocketConnectionFailure();
-            });
+        this.socket.on('error', (err) => {
+            if (this.debug) this.log.error('SSAPI socket `error`:', err);
+            this.log.warn('SimpliSafe real time events disconnected.');
+            this.handleSocketConnectionFailure();
+        });
 
-            this.socket.on('unexpected-response', (reason) => {
-                if (this.debug) this.log('SSAPI socket received unexpected-response:', reason);
-                this.handleSocketConnectionFailure();
-            });
+        this.socket.on('unexpected-response', (reason) => {
+            if (this.debug) this.log('SSAPI socket received unexpected-response:', reason);
+            this.handleSocketConnectionFailure();
+        });
 
-            this.socket.on('pong', () => {
-                if (this.debug) this.log('SSAPI socket `heartbeat`');
-                this.socketIsAlive = true;
-            });
+        this.socket.on('pong', () => {
+            if (this.debug) this.log('SSAPI socket `heartbeat`');
+            this.socketIsAlive = true;
+        });
 
-            this.socket.on('message', (message) => {
-                message = JSON.parse(message);
+        this.socket.on('message', (message) => {
+            message = JSON.parse(message);
 
-                if (this.debug && !['service', 'messagequeue'].includes(message.source)) this.log('SSAPI socket received message:', message);
+            if (this.debug && !['service', 'messagequeue'].includes(message.source)) this.log('SSAPI socket received message:', message);
 
-                if (message.source == 'service') {
-                    switch (message.type) {
-                    case 'com.simplisafe.service.hello':
-                        if (this.debug) this.log('SSAPI socket `hello`');
+            if (message.source == 'service') {
+                switch (message.type) {
+                case 'com.simplisafe.service.hello':
+                    if (this.debug) this.log('SSAPI socket `hello`');
+                    break;
+                case 'com.simplisafe.service.registered':
+                    if (this.debug) this.log('SSAPI socket `registered`');
+                    break;
+                case 'com.simplisafe.namespace.subscribed':
+                    if (this.debug) this.log('SSAPI socket `subscribed`');
+                    this.log('SimpliSafe real time  events connected.');
+                    this.nSocketConnectFailures = 0;
+                    this.socketIsAlive = true;
+                    
+                    // heartbeat
+                    this.socketHeartbeatIntervalID = setInterval(() => {
+                        if (!this.socketIsAlive) {
+                            if (this.debug) this.log('SSAPI socket heartbeat lost');
+                            this.handleSocketConnectionFailure();
+                            return;
+                        } else {
+                            this.socketIsAlive = false;
+                            this.socket.ping();
+                        }
+                    }, socketHeartbeatInterval);
+                    break;
+                default:
+                    if (this.debug) this.log('Received unknown service message:', message)
+                }
+            } else if (message.source == 'messagequeue') {
+                let data = message.data;
+                if (data.sid != this.subId) {
+                    // Ignore event as it doesn't relate to this account
+                    return;
+                }
+
+                switch (data.eventType) {
+                case 'alarm':
+                    this.emit(EVENT_TYPES.ALARM_TRIGGER, data);
+                    break;
+                case 'alarmCancel':
+                    this.emit(EVENT_TYPES.ALARM_OFF, data);
+                    break;
+                case 'cameraStatus':
+                    // nothing to do
+                    break;
+                case 'activity':
+                case 'activityQuiet':
+                default:
+                    // if it's not an alarm event, check by eventCid
+                    switch (data.eventCid) {
+                    case 1400:
+                    case 1407:
+                        // 1400 is disarmed with Master PIN, 1407 is disarmed with Remote
+                        this.emit(EVENT_TYPES.ALARM_DISARM, data);
+                        this.handleSensorRefreshLockout();
                         break;
-                    case 'com.simplisafe.service.registered':
-                        if (this.debug) this.log('SSAPI socket `registered`');
+                    case 1406:
+                        this.emit(EVENT_TYPES.ALARM_CANCEL, data);
+                        this.handleSensorRefreshLockout();
                         break;
-                    case 'com.simplisafe.namespace.subscribed':
-                        if (this.debug) this.log('SSAPI socket `subscribed`');
-                        this.log('SimpliSafe real time  events connected.');
-                        this.nSocketConnectFailures = 0;
-                        this.socketIsAlive = true;
-                        
-                        // heartbeat
-                        this.socketHeartbeatIntervalID = setInterval(() => {
-                            if (!this.socketIsAlive) {
-                                if (this.debug) this.log('SSAPI socket heartbeat lost');
-                                this.handleSocketConnectionFailure();
-                                return;
-                            } else {
-                                this.socketIsAlive = false;
-                                this.socket.ping();
-                            }
-                        }, socketHeartbeatInterval);
+                    case 1409:
+                        this.emit(EVENT_TYPES.MOTION, data);
                         break;
-                    default:
-                        if (this.debug) this.log('Received unknown service message:', message)
-                    }
-                } else if (message.source == 'messagequeue') {
-                    let data = message.data;
-                    if (data.sid != this.subId) {
-                        // Ignore event as it doesn't relate to this account
-                        return;
-                    }
-
-                    switch (data.eventType) {
-                    case 'alarm':
+                    case 9441:
+                        this.emit(EVENT_TYPES.HOME_EXIT_DELAY, data);
+                        break;
+                    case 3441:
+                    case 3491:
+                        this.emit(EVENT_TYPES.HOME_ARM, data);
+                        this.handleSensorRefreshLockout();
+                        break;
+                    case 9401:
+                    case 9407:
+                        // 9401 is for Keypad, 9407 is for Remote
+                        this.emit(EVENT_TYPES.AWAY_EXIT_DELAY, data);
+                        break;
+                    case 3401:
+                    case 3407:
+                    case 3487:
+                    case 3481:
+                        // 3401 is for Keypad, 3407 is for Remote
+                        this.emit(EVENT_TYPES.AWAY_ARM, data);
+                        this.handleSensorRefreshLockout();
+                        break;
+                    case 1429:
+                        this.emit(EVENT_TYPES.ENTRY, data);
+                        break;
+                    case 1110:
+                    case 1154:
+                    case 1159:
+                    case 1162:
+                    case 1132:
+                    case 1134:
+                    case 1120:
                         this.emit(EVENT_TYPES.ALARM_TRIGGER, data);
                         break;
-                    case 'alarmCancel':
-                        this.emit(EVENT_TYPES.ALARM_OFF, data);
+                    case 1170:
+                        this.emit(EVENT_TYPES.CAMERA_MOTION, data);
                         break;
-                    case 'cameraStatus':
-                        // nothing to do
+                    case 1301:
+                        this.emit(EVENT_TYPES.POWER_OUTAGE, data);
                         break;
-                    case 'activity':
-                    case 'activityQuiet':
+                    case 3301:
+                        this.emit(EVENT_TYPES.POWER_RESTORED, data);
+                        break;
+                    case 1458:
+                        this.emit(EVENT_TYPES.DOORBELL, data);
+                        break;
+                    case 9700:
+                        this.emit(EVENT_TYPES.DOORLOCK_UNLOCKED, data);
+                        break;
+                    case 9701:
+                        this.emit(EVENT_TYPES.DOORLOCK_LOCKED, data);
+                        break;
+                    case 9703:
+                        this.emit(EVENT_TYPES.DOORLOCK_ERROR, data);
+                        break;
+                    case 1350:
+                        this.log.error('Base station WiFi lost, this plugin cannot communicate with the base station until it is restored.');
+                        break;
+                    case 3350:
+                        this.log.warn('Base station WiFi restored.');
+                        break;
+                    case 1602:
+                        // Automatic test
+                        break;
                     default:
-                        // if it's not an alarm event, check by eventCid
-                        switch (data.eventCid) {
-                        case 1400:
-                        case 1407:
-                            // 1400 is disarmed with Master PIN, 1407 is disarmed with Remote
-                            this.emit(EVENT_TYPES.ALARM_DISARM, data);
-                            this.handleSensorRefreshLockout();
-                            break;
-                        case 1406:
-                            this.emit(EVENT_TYPES.ALARM_CANCEL, data);
-                            this.handleSensorRefreshLockout();
-                            break;
-                        case 1409:
-                            this.emit(EVENT_TYPES.MOTION, data);
-                            break;
-                        case 9441:
-                            this.emit(EVENT_TYPES.HOME_EXIT_DELAY, data);
-                            break;
-                        case 3441:
-                        case 3491:
-                            this.emit(EVENT_TYPES.HOME_ARM, data);
-                            this.handleSensorRefreshLockout();
-                            break;
-                        case 9401:
-                        case 9407:
-                            // 9401 is for Keypad, 9407 is for Remote
-                            this.emit(EVENT_TYPES.AWAY_EXIT_DELAY, data);
-                            break;
-                        case 3401:
-                        case 3407:
-                        case 3487:
-                        case 3481:
-                            // 3401 is for Keypad, 3407 is for Remote
-                            this.emit(EVENT_TYPES.AWAY_ARM, data);
-                            this.handleSensorRefreshLockout();
-                            break;
-                        case 1429:
-                            this.emit(EVENT_TYPES.ENTRY, data);
-                            break;
-                        case 1110:
-                        case 1154:
-                        case 1159:
-                        case 1162:
-                        case 1132:
-                        case 1134:
-                        case 1120:
-                            this.emit(EVENT_TYPES.ALARM_TRIGGER, data);
-                            break;
-                        case 1170:
-                            this.emit(EVENT_TYPES.CAMERA_MOTION, data);
-                            break;
-                        case 1301:
-                            this.emit(EVENT_TYPES.POWER_OUTAGE, data);
-                            break;
-                        case 3301:
-                            this.emit(EVENT_TYPES.POWER_RESTORED, data);
-                            break;
-                        case 1458:
-                            this.emit(EVENT_TYPES.DOORBELL, data);
-                            break;
-                        case 9700:
-                            this.emit(EVENT_TYPES.DOORLOCK_UNLOCKED, data);
-                            break;
-                        case 9701:
-                            this.emit(EVENT_TYPES.DOORLOCK_LOCKED, data);
-                            break;
-                        case 9703:
-                            this.emit(EVENT_TYPES.DOORLOCK_ERROR, data);
-                            break;
-                        case 1350:
-                            this.log.error('Base station WiFi lost, this plugin cannot communicate with the base station until it is restored.');
-                            break;
-                        case 3350:
-                            this.log.warn('Base station WiFi restored.');
-                            break;
-                        case 1602:
-                            // Automatic test
-                            break;
-                        default:
-                            // Unknown event
-                            if (this.debug) this.log('Unknown SSAPI event:', data);
-                            break;
-                        }
+                        // Unknown event
+                        if (this.debug) this.log('Unknown SSAPI event:', data);
                         break;
                     }
+                    break;
                 }
-            });
-        }
+            }
+        });
     }
 
     handleSocketConnectionFailure() {
