@@ -82,7 +82,6 @@ const socketHeartbeatInterval = 60 * 1000; //ms
 const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
 });
-axiosRetry(ssApi, { retries: 2 });
 
 const generateSimplisafeId = () => {
     const supportedCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz0123456789';
@@ -132,6 +131,8 @@ class SimpliSafe3 extends EventEmitter {
         this.debug = debug;
         this.storagePath = storagePath;
         this.authManager = authManager;
+        
+        axiosRetry(ssApi, { retries: 2 });
 
         let internalConfigFile = path.join(this.storagePath, internalConfigFileName);
         if (fs.existsSync(internalConfigFile) && resetConfig) {
@@ -417,7 +418,7 @@ class SimpliSafe3 extends EventEmitter {
 
     async startListening() {
         if (this.socket) return;
-        
+
         this.socket = new WebSocket(wsUrl);
         let userId = await this.getUserId();
 
