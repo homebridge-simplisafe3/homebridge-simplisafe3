@@ -27,13 +27,6 @@ class SS3DoorLock extends SimpliSafe3Accessory {
         };
 
         this.startListening();
-
-        this.simplisafe.subscribeToSensor(this.id, lock => {
-            if (this.service) {
-                let batteryStatus = lock.flags && lock.flags.lowBattery ? this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
-                this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, batteryStatus);
-            }
-        });
     }
 
     setAccessory(accessory) {
@@ -189,6 +182,12 @@ class SS3DoorLock extends SimpliSafe3Accessory {
                 this.log.error(`An error occurred while updating '${this.name}' lock error state: ${err}`);
             }
         });
+
+        this.simplisafe.subscribeToSensor(this.id, lock => {
+            if (this.service) {
+                this.refreshState(lock);
+            }
+        });
     }
 
     _validateEvent(event, data) {
@@ -197,10 +196,10 @@ class SS3DoorLock extends SimpliSafe3Accessory {
         return valid;
     }
 
-    async refreshState() {
-        if (this.debug) this.log(`Refreshing '${this.name}' door lock state`);
+    async refreshState(lock = undefined) {
+        if (this.debug && !lock) this.log(`Refreshing '${this.name}' door lock state`);
         try {
-            let lock = await this.getLockInformation();
+            if (lock == undefined) lock = await this.getLockInformation();
             let state = lock.status.lockState;
             let homekitCurrentState = this.SS3_TO_HOMEKIT_CURRENT[state];
             if (lock.status.lockJamState) homekitCurrentState = this.api.hap.Characteristic.LockCurrentState.JAMMED;
@@ -211,7 +210,7 @@ class SS3DoorLock extends SimpliSafe3Accessory {
             let homekitBatteryState = lock.flags && lock.flags.lowBattery ? this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : this.api.hap.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
             this.service.updateCharacteristic(this.api.hap.Characteristic.StatusLowBattery, homekitBatteryState);
 
-            if (this.debug) this.log(`Updated current state, target state, battery status for lock ${this.name}: ${homekitCurrentState}, ${homekitTargetState}, ${homekitBatteryState}`);
+            if (this.debug && !lock) this.log(`Updated current state, target state, battery status for lock ${this.name}: ${homekitCurrentState}, ${homekitTargetState}, ${homekitBatteryState}`);
         } catch (err) {
             this.log.error('An error occurred while refreshing state');
             this.log.error(err);
