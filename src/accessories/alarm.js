@@ -64,11 +64,6 @@ class SS3Alarm extends SimpliSafe3Accessory {
         this.simplisafe.authManager.on(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE, () => {
             if (this.service) this.setFault();
         });
-
-        this.simplisafe.subscribeToAlarmSystem(this.id, system => {
-            // update power outage status in case event was never received i.e. wifi out
-            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, system.powerOutage ? this.api.hap.Characteristic.StatusTampered.TAMPERED : this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED);
-        });
     }
 
     setAccessory(accessory) {
@@ -240,6 +235,11 @@ class SS3Alarm extends SimpliSafe3Accessory {
             if (!this._validateEvent(EVENT_TYPES.POWER_RESTORED, data)) return;
             this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED);
             if (data.messageBody) this.log.warn(data.messageBody);
+        });
+
+        this.simplisafe.subscribeToAlarmSystem(this.id, system => {
+            // update power outage status in case event was never received i.e. wifi out
+            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, system.powerOutage ? this.api.hap.Characteristic.StatusTampered.TAMPERED : this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED);
         });
     }
 
