@@ -102,7 +102,7 @@ class SS3Platform {
                     let device = this.devices.find(device => device.uuid === accessory.UUID);
 
                     if (device) {
-                        if (this.debug) this.log(`Initializing SS device '${device.name ? device.name : device.uuid}' with cached accessory`);
+                        if (this.debug) this.log(`Initializing SS device ${device.constructor.name} '${device.name ? device.name : device.uuid}' with cached accessory`);
                         device.setAccessory(accessory);
                         this.accessories.push(accessory);
                     } else {
