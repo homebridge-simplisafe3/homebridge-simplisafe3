@@ -387,8 +387,10 @@ class SimpliSafe3 extends EventEmitter {
     async startListening() {
         if (this.socket) return;
 
-        this.socket = new WebSocket(wsUrl);
         let userId = await this.getUserId();
+        this.socket = new WebSocket(wsUrl, {
+            handshakeTimeout: 5000
+        });
 
         this.socket.on('open', () => {
             if (this.debug) this.log('SSAPI socket `open`');
