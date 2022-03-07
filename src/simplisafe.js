@@ -575,10 +575,14 @@ class SimpliSafe3 extends EventEmitter {
     }
 
     handleSocketConnectionFailure() {
-        if (this.isAwaitingSocketReconnect) return; // a reconnect attempt is pending
+        if (this.isAwaitingSocketReconnect || this.socket.readyState === WebSocket.CONNECTING) return; // a reconnect attempt is pending / running
 
-        this.socket.removeAllListeners();
-        this.socket.terminate();
+        try {
+            this.socket.removeAllListeners();
+            this.socket.terminate();
+        } catch (error) {
+            if (this.debug) this.log.warn('SSAPI socket error occurred during termination, perhaps socket was not yet established.', error);
+        }
         this.socket = null;
 
         clearTimeout(this.socketHeartbeatIntervalID);
