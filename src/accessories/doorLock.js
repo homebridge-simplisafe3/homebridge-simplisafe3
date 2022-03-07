@@ -26,7 +26,14 @@ class SS3DoorLock extends SimpliSafe3Accessory {
             [this.api.hap.Characteristic.LockTargetState.UNSECURED]: 'unlock'
         };
 
+        // SimpliSafe events
         this.startListening();
+
+        this.simplisafe.subscribeToSensor(this.id, lock => {
+            if (this.service) {
+                this.refreshState(lock);
+            }
+        });
     }
 
     setAccessory(accessory) {
@@ -180,12 +187,6 @@ class SS3DoorLock extends SimpliSafe3Accessory {
                 });
             } catch (err) {
                 this.log.error(`An error occurred while updating '${this.name}' lock error state: ${err}`);
-            }
-        });
-
-        this.simplisafe.subscribeToSensor(this.id, lock => {
-            if (this.service) {
-                this.refreshState(lock);
             }
         });
     }
