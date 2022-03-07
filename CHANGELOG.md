@@ -1,6 +1,11 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.9.10 (2022-03-07)
+- Addresses an error that could cause Homebridge to crash when events connection fails. See #317. Thanks to @lmcquade for reporting
+- Adds a fallback for retrieving door lock state if a 'real-time' event was missed.
+- Other minor improvements to log output
+
 ## 1.9.9 (2022-03-03)
 - This release implements a siginificant rewrite of the way the plugin receives 'real-time' events. The old method is expected to be deprecated soon. This change was tested as much as possible, thank you for your patience with this release. As always, consider taking a backup first. Please note that logging will be quite verbose if you have `debug` enabled.
 - The `simplisafe3config.json` file and `resetSimpliSafeId` config option are no longer used.
