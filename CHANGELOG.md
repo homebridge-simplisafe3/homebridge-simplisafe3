@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.9.11 (2022-03-11)
+- Fixes (another) issue with subscription filtering. Thanks to @bigchrisatx for reporting.
+
 ## 1.9.10 (2022-03-07)
 - Addresses an error that could cause Homebridge to crash when events connection fails. See #317. Thanks to @lmcquade for reporting
 - Adds a fallback for retrieving door lock state if a 'real-time' event was missed.
