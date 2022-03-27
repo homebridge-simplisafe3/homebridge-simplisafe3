@@ -57,9 +57,9 @@ class SS3Alarm extends SimpliSafe3Accessory {
         // SimpliSafe events
         this.startListening();
 
-        this.simplisafe.subscribeToAlarmSystem(this.id, system => {
+        this.simplisafe.subscribeToAlarmSystem(this.id, (system) => {
             // update power outage status in case event was never received i.e. wifi out
-            this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, system.powerOutage ? this.api.hap.Characteristic.StatusTampered.TAMPERED : this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED);
+            if (this.service) this.service.updateCharacteristic(this.api.hap.Characteristic.StatusTampered, system.powerOutage ? this.api.hap.Characteristic.StatusTampered.TAMPERED : this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED);
         });
 
         // handle authentication failures
