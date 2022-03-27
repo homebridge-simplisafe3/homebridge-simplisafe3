@@ -1,8 +1,6 @@
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import WebSocket from 'ws';
-import fs from 'fs';
-import path from 'path';
 import EventEmitter from 'events';
 
 export const VALID_ALARM_STATES = [
@@ -165,10 +163,16 @@ class SimpliSafe3 extends EventEmitter {
                     await this.authManager.refreshCredentials();
                     if (this.debug) this.log('Credentials refreshed successfully after failed request');
                     return this.request(params, true);
-                } catch (err) {
-                    this.setRateLimitHandler();
-                    if (this.debug) this.log.error('Credentials refresh failed with error:', err);
-                    throw err;
+                } catch (credentialsErr) {
+                    if (credentialsErr.response && credentialsErr.response.status == 403) {
+                        if (this.debug) this.log.error('Credentials refresh failed with error 403 (rate liimiting?):', err);
+                        this.setRateLimitHandler();
+                        if (this.debug) this.log.info(`Next attempt will be in ${this.nextBlockInterval / 1000}s`);
+                        throw new RateLimitError(credentialsErr.response.data);
+                    } else {
+                        if (this.debug) this.log.error('Credentials refresh failed with error:', err);
+                        throw credentialsErr;
+                    }
                 }
             } else if (statusCode == 403) {
                 this.log.error('SSAPI request failed, request blocked (rate limit?).');
