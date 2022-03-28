@@ -1,22 +1,25 @@
-const {Command, flags} = require('@oclif/command');
-const {cli} = require('cli-ux');
+const { Command, Flags, CliUx } = require('@oclif/core');
 const SimpliSafe3AuthenticationManager = require('../lib/authManager');
 const path = require('path');
 const os = require('os');
 const isDocker = require('is-docker');
 
+export const homebridgeDir = Flags.build({
+    char: 'd',
+    description: 'The path to your Homebridge directory',
+    default: () => {
+        return isDocker() ? '/homebridge/' : path.join(os.homedir(), '.homebridge');
+    }
+})
+
 class Login extends Command {
     static flags = {
-        homebridgeDir: flags.string({
-            char: 'd',
-            default: isDocker() ? '/homebridge/' : path.join(os.homedir(), '.homebridge'),
-            description: 'The path to your Homebridge directory',
-        })
+        homebridgeDir: homebridgeDir()
     };
     authManager;
 
     async run() {
-        const {flags} = this.parse(Login);
+        const {flags} = await this.parse(Login);
         this.authManager = new SimpliSafe3AuthenticationManager(flags.homebridgeDir);
 
         const loginURL = this.authManager.getSSAuthURL();
@@ -27,15 +30,15 @@ class Login extends Command {
         this.log('\nNote that in some browsers (e.g. Chrome) the browser will not redirect you and will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.');
         this.log('\nAlso please note that this task cannot be performed on an iOS device that has the SimpliSafe app installed (authenticating will launch the app).\n');
 
-        await cli.anykey();
+        await CliUx.ux.anykey();
 
         try {
-            await cli.open(loginURL);
+            await CliUx.ux.open(loginURL);
         } catch (e) {
             this.log('Unable to open automatically, please copy and paste the URL above into your web browser.');
         }
 
-        const redirectURLStr = (await cli.prompt('Redirect URL'));
+        const redirectURLStr = (await CliUx.ux.prompt('Redirect URL'));
 
         let code = this.authManager.parseCodeFromURL(redirectURLStr);
 
