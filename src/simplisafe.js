@@ -631,7 +631,7 @@ class SimpliSafe3 extends EventEmitter {
                     if (!(err instanceof RateLimitError)) { // never log rate limit errors as they are handled elsewhere
                         if (this.debug) {
                             if (err.statusCode == 409) {
-                                this.log.warn('Sensor refresh received a SettingsInProgress error from the SimpliSafe API.');
+                                this.log.debug('Sensor refresh received SettingsInProgress error from the SimpliSafe API. Note this does not necessarily indicate a problem, just that the base station was busy.');
                             } else {
                                 this.log.error('Sensor refresh received an error from the SimpliSafe API:', err);
                             }
@@ -699,7 +699,7 @@ class SimpliSafe3 extends EventEmitter {
         if (!this.errorSupperessionTimeoutID) {
             this.nSuppressedErrors = 1;
             this.errorSupperessionTimeoutID = setTimeout(() => {
-                if (!this.debug && this.nSuppressedErrors > 0) this.log.warn(`${this.nSuppressedErrors} error${this.nSuppressedErrors > 1 ? 's were' : ' was'} received from the SimpliSafe API while refereshing sensors in the last ${errorSuppressionDuration / 60000} minutes. Enable debug logging for detailed output.`);
+                if (!this.debug && this.nSuppressedErrors > 0) this.log.warn(`${this.nSuppressedErrors} error${this.nSuppressedErrors > 1 ? 's were' : ' was'} received from the SimpliSafe API while refereshing sensors in the last ${errorSuppressionDuration / 60000} minutes. These can usually be ignored if everything is working. Otherwise, enable debug logging for homebridge and the plugin to see detailed output.`);
                 clearTimeout(this.errorSupperessionTimeoutID);
                 this.errorSupperessionTimeoutID = undefined;
             }, errorSuppressionDuration);

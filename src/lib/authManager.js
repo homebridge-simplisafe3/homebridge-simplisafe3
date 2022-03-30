@@ -213,8 +213,12 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_SUCCESS);
             if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh was successful');
         } catch (err) {
-            this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE);
             if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh failed');
+            if (err.response && (err.response.status == 401 || err.response.data == 'Unauthorized')) {
+                // this is a true auth failure
+                this.refreshToken = null;
+                this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE);
+            }
             throw err; // just pass it along
         }
     }
