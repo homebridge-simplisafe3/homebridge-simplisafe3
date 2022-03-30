@@ -158,20 +158,24 @@ class SimpliSafe3 extends EventEmitter {
             }
 
             let statusCode = err.response.status;
-            if (statusCode == 401 && !tokenRefreshed) {
+            if ((statusCode == 401 || err.response.data == 'Unauthorized') && !tokenRefreshed) {
                 try {
                     await this.authManager.refreshCredentials();
                     if (this.debug) this.log('Credentials refreshed successfully after failed request');
                     return this.request(params, true);
                 } catch (credentialsErr) {
                     if (credentialsErr.response && credentialsErr.response.status == 403) {
-                        if (this.debug) this.log.error('Credentials refresh failed with error 403 (rate liimiting?):', err);
+                        if (this.debug) this.log.error('Credentials refresh failed with error 403 (rate liimiting?):', credentialsErr.response);
                         this.setRateLimitHandler();
                         if (this.debug) this.log.info(`Next attempt will be in ${this.nextBlockInterval / 1000}s`);
                         throw new RateLimitError(credentialsErr.response.data);
                     } else {
-                        if (this.debug) this.log.error('Credentials refresh failed with error:', err);
-                        throw credentialsErr;
+                        if (this.debug) this.log.error('Credentials refresh failed with error:', credentialsErr.response);
+                        if (credentialsErr.isAxiosError) {
+                            throw new Error(credentialsErr.response);
+                        } else {
+                            throw credentialsErr;
+                        }
                     }
                 }
             } else if (statusCode == 403) {
@@ -466,7 +470,7 @@ class SimpliSafe3 extends EventEmitter {
                             this.socketIsAlive = false;
                             this.socket.ping();
                         }
-                    }, socketHeartbeatInterval);
+                    }, socketHeartbeatInterval + (5000 * Math.random()));
                     break;
                 default:
                     if (this.debug) this.log('Received unknown service message:', message)
@@ -626,7 +630,11 @@ class SimpliSafe3 extends EventEmitter {
                 } catch (err) {
                     if (!(err instanceof RateLimitError)) { // never log rate limit errors as they are handled elsewhere
                         if (this.debug) {
-                            this.log.error('Sensor refresh received an error from the SimpliSafe API:', err);
+                            if (err.statusCode == 409) {
+                                this.log.warn('Sensor refresh received a SettingsInProgress error from the SimpliSafe API.');
+                            } else {
+                                this.log.error('Sensor refresh received an error from the SimpliSafe API:', err);
+                            }
                         } else {
                             this.handleErrorSuppression();
                         }
@@ -666,7 +674,11 @@ class SimpliSafe3 extends EventEmitter {
                 } catch (err) {
                     if (!(err instanceof RateLimitError)) { // never log rate limit errors as they are handled elsewhere
                         if (this.debug) {
-                            this.log.error('Alarm system refresh received an error from the SimpliSafe API:', err);
+                            if (err.statusCode == 409) {
+                                this.log.warn('Alarm system refresh received a SettingsInProgress error from the SimpliSafe API.');
+                            } else {
+                                this.log.error('Alarm system refresh received an error from the SimpliSafe API:', err);
+                            }
                         } else {
                             this.handleErrorSuppression();
                         }

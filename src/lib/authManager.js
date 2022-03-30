@@ -214,6 +214,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh was successful');
         } catch (err) {
             this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE);
+            if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh failed');
             throw err; // just pass it along
         }
     }
@@ -242,9 +243,9 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             if (this.log !== undefined && this.debug) this.log('Preemptively authenticating with SimpliSafe');
             this.refreshCredentials()
                 .catch(err => {
-                    if (this.log !== undefined) this.log.error(err);
-                    if (err.response && err.response.status == 403) {
-                        clearInterval(this.refreshInterval); // rate-limited, just disable until next successful one
+                    if (this.log !== undefined) this.log.error(err.response ? err.response : err);
+                    if (err.response && (err.response.status == 403 || err.response.data == 'Unauthorized')) {
+                        clearInterval(this.refreshInterval); // just disable until next successful one
                     }
                 });
         }, parseInt(token.expires_in) * 1000 - 300000);
