@@ -315,5 +315,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     }
 }
 
+module.exports.SimpliSafe3AuthenticationManager = SimpliSafe3AuthenticationManager;
 module.exports.AUTH_EVENTS = AUTH_EVENTS;
 export default SimpliSafe3AuthenticationManager;
