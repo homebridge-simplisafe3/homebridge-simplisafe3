@@ -165,14 +165,14 @@ class SimpliSafe3 extends EventEmitter {
                     return this.request(params, true);
                 } catch (credentialsErr) {
                     if (credentialsErr.response && credentialsErr.response.status == 403) {
-                        if (this.debug) this.log.error('Credentials refresh failed with error 403 (rate liimiting?):', credentialsErr.response);
+                        if (this.debug) this.log.error('Credentials refresh failed with error 403 (rate liimiting?):', credentialsErr.response.statusText);
                         this.setRateLimitHandler();
                         if (this.debug) this.log.info(`Next attempt will be in ${this.nextBlockInterval / 1000}s`);
                         throw new RateLimitError(credentialsErr.response.data);
                     } else {
-                        if (this.debug) this.log.error('Credentials refresh failed with error:', credentialsErr.response);
+                        if (this.debug) this.log.error('Credentials refresh failed with error:', credentialsErr.toJSON ? credentialsErr.toJSON() : credentialsErr);
                         if (credentialsErr.isAxiosError) {
-                            throw new Error(credentialsErr.response);
+                            throw new Error(`${credentialsErr.response.status}: ${credentialsErr.response.statusText}`);
                         } else {
                             throw credentialsErr;
                         }
@@ -180,7 +180,7 @@ class SimpliSafe3 extends EventEmitter {
                 }
             } else if (statusCode == 403) {
                 this.log.error('SSAPI request failed, request blocked (rate limit?).');
-                if (this.debug) this.log.error('SSAPI request received a response error with code 403:', err.response);
+                if (this.debug) this.log.error('SSAPI request received a response error with code 403:', err.response.statusText);
                 this.setRateLimitHandler();
                 throw new RateLimitError(err.response.data);
             } else {

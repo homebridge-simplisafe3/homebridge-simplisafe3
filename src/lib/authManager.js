@@ -204,7 +204,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 headers: { // SS seems to need these...
                     'Host': 'auth.simplisafe.com',
                     'Content-Type': 'application/json',
-                    'Content-Length': 186,
                     'Auth0-Client': SS_OAUTH_AUTH0_CLIENT
                 }
             });
@@ -247,7 +246,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             if (this.log !== undefined && this.debug) this.log('Preemptively authenticating with SimpliSafe');
             this.refreshCredentials()
                 .catch(err => {
-                    if (this.log !== undefined) this.log.error(err.response ? err.response : err);
+                    if (this.log !== undefined) this.log.error(err.toJSON ? err.toJSON() : err);
                     if (err.response && (err.response.status == 403 || err.response.data == 'Unauthorized')) {
                         clearInterval(this.refreshInterval); // just disable until next successful one
                     }

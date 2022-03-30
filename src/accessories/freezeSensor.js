@@ -62,7 +62,7 @@ class SS3FreezeSensor extends SimpliSafe3Accessory {
 
             return sensor;
         } catch (err) {
-            throw new Error('An error occurred while getting sensor:', err.response ? err.response : err);
+            throw new Error('An error occurred while getting sensor:', err.toJSON ? err.toJSON() : err);
         }
     }
 
