@@ -5,7 +5,7 @@ import {
     SENSOR_TYPES
 } from '../simplisafe';
 
-import AUTH_EVENTS from '../lib/authManager';
+import { AUTH_EVENTS } from '../lib/authManager';
 
 const targetStateMaxRetries = 5;
 
