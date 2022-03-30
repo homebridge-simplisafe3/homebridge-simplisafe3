@@ -22,6 +22,14 @@ const ssApiV1 = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
 });
 
+
+// const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com/authorize';
+// const SS_OAUTH_CLIENT_ID = 'DWkIUe6LC38xLomvfG6LXesCCaKJGl24';
+// const SS_OAUTH_AUTH0_CLIENT = 'eyJuYW1lIjoiYXV0aDAtc3BhLWpzIiwidmVyc2lvbiI6IjEuMjAuMSJ9';
+// const SS_OAUTH_REDIRECT_URI = 'https://webapp.simplisafe.com/new';
+// const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
+// const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
+
 const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com/authorize';
 const SS_OAUTH_CLIENT_ID = '42aBZ5lYrVW12jfOuu3CQROitwxg9sN5';
 const SS_OAUTH_AUTH0_CLIENT = 'eyJuYW1lIjoiQXV0aDAuc3dpZnQiLCJlbnYiOnsiaU9TIjoiMTUuMCIsInN3aWZ0IjoiNS54In0sInZlcnNpb24iOiIxLjMzLjAifQ';
@@ -125,18 +133,21 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     isAuthenticated() {
         return this.refreshToken !== null && Date.now() < this.expiry;
     }
-
+    
     getSSAuthURL() {
-        const loginURL = new URL(SS_OAUTH_AUTH_URL);
-        loginURL.searchParams.append('client_id', SS_OAUTH_CLIENT_ID);
-        loginURL.searchParams.append('scope', 'SCOPE'); // otherwise this gets URI encoded
-        loginURL.searchParams.append('response_type', 'code');
-        loginURL.searchParams.append('redirect_uri', SS_OAUTH_REDIRECT_URI);
-        loginURL.searchParams.append('code_challenge_method', 'S256');
-        loginURL.searchParams.append('code_challenge', this.codeChallenge);
-        loginURL.searchParams.append('audience', 'AUDIENCE');
-        loginURL.searchParams.append('auth0Client', SS_OAUTH_AUTH0_CLIENT);
-        return loginURL.toString().replace('SCOPE', SS_OAUTH_SCOPE).replace('AUDIENCE', SS_OAUTH_AUDIENCE);
+        let loginURL = { url: SS_OAUTH_AUTH_URL };
+        loginURL.params = [
+            `client_id=${SS_OAUTH_CLIENT_ID}`,
+            `scope=${SS_OAUTH_SCOPE}`,
+            'response_type=code',
+            'response_mode=query',
+            `redirect_uri=${SS_OAUTH_REDIRECT_URI}`,
+            'code_challenge_method=S256',
+            `code_challenge=${this.codeChallenge}`,
+            `audience=${SS_OAUTH_AUDIENCE}`,
+            `auth0Client=${SS_OAUTH_AUTH0_CLIENT}`,
+        ]
+        return loginURL;
     }
 
     base64URLEncode(str) {
