@@ -269,9 +269,8 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                         auth0.get(awaitLoginVerificationUrl, {
                             maxRedirects: 5
                         }).then(loginVerificationCheckResponse => {
-                            // <form method="post" action="https://auth.simplisafe.com/continue?state=***" id="success-form">\n' +
-                            // <input type="hidden" name="token" value="***" />
                             if (loginVerificationCheckResponse.data && loginVerificationCheckResponse.data.indexOf('Verification Successful') > -1) {
+                                this.emit(AUTH_EVENTS.LOGIN_STEP, 'Detected verification completed...');
                                 resolve(loginVerificationCheckResponse);
                                 clearInterval(interval);
                             } else if (triesLeft <= 1) {
@@ -286,7 +285,8 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             
             return checkLoginVerified(3000, (15 * 60 * 1000) / 3); // wait up to 15 minutes
         }).then(loginVerificationCheckResponse => {
-            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Detected verification success...');
+            // <form method="post" action="https://auth.simplisafe.com/continue?state=***" id="success-form">\n' +
+            // <input type="hidden" name="token" value="***" />
             const continueUrlMatch = loginVerificationCheckResponse.data.match(/https:\/\/auth\.simplisafe\.com\/continue\?[^"]*/g);
             const tokenRegExp = new RegExp(/name="token" value="([^"]*)"/, 'g');
             const tokenMatch = tokenRegExp.exec(loginVerificationCheckResponse.data);
@@ -300,10 +300,12 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                         'Cookie': cookies
                     }
                 });
+            } else {
+                throw Error('Unable to parse token from continue form');
             }
         }).then(verificationRedirectResponse => {
-            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Verification form submission successful...');
             const finalAuthPath = verificationRedirectResponse.headers['location'];
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Verification form submission successful, loading final auth redirect...');
             return auth0.get(finalAuthPath, {
                 maxRedirects: 0,
                 headers: {
@@ -311,20 +313,13 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 }
             });
         }).then(finalRedirectReponse => {
-            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Received final auth URL.');
-            const finalRedirectUrl = finalRedirectReponse.headers['location'];
-            let code;
-            try {
-                const redirectURL = new URL(finalRedirectUrl);
-                const maybeCode = redirectURL.searchParams.get('code');
-                if (!maybeCode) {
-                    throw new Error();
-                }
-                code = maybeCode;
-            } catch (error) {
-                throw new Error('Invalid redirect URL');
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to parse code from final callback URL...');
+            const redirectURL = new URL(finalRedirectReponse.headers['location']);
+            const code = redirectURL.searchParams.get('code');
+            if (!code) {
+                throw new Error('Unable to retrieve code from final redirect URL');
             }
-            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to obtain token...');
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to obtain auth token...');
             return this.getToken(code);
         }).then(token => {
             if (token) this.emit(AUTH_EVENTS.LOGIN_COMPLETE);
