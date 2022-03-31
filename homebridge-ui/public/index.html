@@ -1,23 +1,25 @@
 <div class="card">
   <div class="card-body text-center">
+    <h4 class="card-title">SimpliSafe Authentication</h4>
     <div id="auth-exists">
       <p class="mb-0">
         <strong>Authentication has been setup already.</strong> <a id="show-auth" href="#auth">Show Authentication Form.</a>
       </p>
     </div>
-    <div id="auth-loading" class="mx-5 my-2">
+    <div id="auth-loading" class="mx-md-5 my-2">
       <div class="spinner-border spinner-border-sm d-inline-block" role="status">
         <span class="sr-only">Auth in progress...</span>
       </div>
       <p id="message" class="d-inline pl-2"></p>
     </div>
     <div id="auth">
-      <form id="ss-login-form" class="pt-4">
-        <p class="form-text small">
-          Click the button below to start the SimpliSafe login process. Once you verify via email this will automatically complete.<br/>
+      <form id="ss-login-form" class="pt-2">
+        <p class="form-text small px-md-5 mx-md-5">
+          Click the button below to start the SimpliSafe authentication process.
+          Once you verify the login via email this will automatically complete.
           See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md#simplisafe-authentication'>README</a> for more information.
         </p>
-        <div class="text-left mx-8 px-5">
+        <div class="text-left mx-md-8 px-md-5">
           <div class="form-group">
             <label for="username">SimpliSafe Email</label>
             <input type="email" required placeholder="name@example.com" class="form-control" id="username">
@@ -28,16 +30,18 @@
             <small id="password" class="form-text text-muted">Password is not stored.</small>
           </div>
         </div>
-        <button type="submit" id="ss-login-button" class="btn btn-primary btn-lg">Launch SimpliSafe Login</button>
+        <button type="submit" id="ss-login-button" class="btn btn-primary">Start Authentication</button>
       </form>
     </div>
   </div>
 </div>
 
 <style type="text/css">
-  .mx-8 {
-    margin-left: 8rem !important;
-    margin-right: 8rem !important;
+  @media (min-width: 768px) {
+    .mx-md-8 {
+      margin-left: 8rem !important;
+      margin-right: 8rem !important;
+    }
   }
 </style>
 
@@ -67,8 +71,10 @@
 
   homebridge.addEventListener('login-step', (event) => {
     if (event.data.isError) {
-      $('#auth-loading #message').text()
-      $('#auth-loading').slideUp(0)
+      clearInterval(mfaCheckIntervalID);
+      $('#auth-loading #message').text();
+      $('#auth-loading').slideUp(0);
+      $('#show-auth').click();
       homebridge.toast.error(event.data.message);
     } else $('#auth-loading #message').text(event.data.message)
   });
@@ -103,8 +109,6 @@
           $('#auth-loading').slideUp(0);
           $('#auth-exists').slideDown();
           homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
-        } else if (authCheck.error) {
-          homebridge.toast.error('Please try again.', 'Authentication Failure');
         }
       }, 3300);
     } else {
