@@ -18,6 +18,7 @@ class Login extends Command {
     };
     authManager;
     authComplete;
+    errorMessage;
 
     async run() {
         const {flags} = await this.parse(Login);
@@ -25,8 +26,8 @@ class Login extends Command {
         this.authManager = new SimpliSafe3AuthenticationManager(flags.homebridgeDir);
         this.authManager.on(AUTH_EVENTS.LOGIN_STEP, (message, isError) => {
             if (isError) {
-                this.warn('Error during authentication');
-                this.error(message);
+                // picked up by waitFor
+                this.errorMessage = message;
             } else {
                 this.log(message);
             }
@@ -38,13 +39,14 @@ class Login extends Command {
             this.log('accessToken: ' + this.authManager.accessToken);
             this.log('refreshToken: ' + this.authManager.refreshToken);
             this.log('\nPlease restart Homebridge for changes to take effect.');
+            // picked up by waitFor
             this.authComplete = true;
         });
         
         this.log('\n******* Simplisafe Authentication *******');
         const email = await CliUx.ux.prompt('SimpliSafe Email')
         const password = await CliUx.ux.prompt('SimpliSafe Password', {type: 'hide'})
-        CliUx.ux.action.start('Authenticating with Simplisafe');
+        CliUx.ux.action.start('Authenticating with SimpliSafe');
         
         this.authManager.loginAuth(email, password);
 
@@ -53,11 +55,13 @@ class Login extends Command {
             while(!f()) await sleep(1000);
             return f();
         };
-        await waitFor(() => this.authComplete)
-        this.exit(0);
+        await waitFor(() => this.authComplete || this.errorMessage).then(() => {
+            if (this.errorMessage) this.error(this.errorMessage);
+            else this.exit(0);
+        })
     }
 }
 
-Login.description = 'Command to login to SimpliSafe';
+Login.description = 'Login and authenticate with SimpliSafe';
 
 module.exports = Login;
