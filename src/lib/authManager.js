@@ -10,17 +10,25 @@ const events = require('events');
 
 export const AUTH_EVENTS = {
     REFRESH_CREDENTIALS_SUCCESS: 'REFRESH_CREDENTIALS_SUCCESS',
-    REFRESH_CREDENTIALS_FAILURE: 'REFRESH_CREDENTIALS_FAILURE'
+    REFRESH_CREDENTIALS_FAILURE: 'REFRESH_CREDENTIALS_FAILURE',
+    LOGIN_STEP: 'LOGIN_STEP',
+    LOGIN_COMPLETE: 'LOGIN_COMPLETE',
 };
+
+export const N_LOGIN_STEPS = 9;
 
 const ssOAuth = axios.create({
     baseURL: 'https://auth.simplisafe.com/oauth'
 });
 axiosRetry(ssOAuth, { retries: 3 });
 
-const ssApiV1 = axios.create({
-    baseURL: 'https://api.simplisafe.com/v1'
-});
+// Web app:
+// const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com/authorize';
+// const SS_OAUTH_CLIENT_ID = 'DWkIUe6LC38xLomvfG6LXesCCaKJGl24';
+// const SS_OAUTH_AUTH0_CLIENT = 'eyJuYW1lIjoiYXV0aDAtc3BhLWpzIiwidmVyc2lvbiI6IjEuMjAuMSJ9';
+// const SS_OAUTH_REDIRECT_URI = 'https://webapp.simplisafe.com/new';
+// const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
+// const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
 
 const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com/authorize';
 const SS_OAUTH_CLIENT_ID = '42aBZ5lYrVW12jfOuu3CQROitwxg9sN5';
@@ -29,24 +37,7 @@ const SS_OAUTH_REDIRECT_URI = 'com.simplisafe.mobile://auth.simplisafe.com/ios/c
 const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
 const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
 
-// Retained for deprecated username / password login, for now
-const clientUuid = '4df55627-46b2-4e2c-866b-1521b395ded2';
-const clientUsername = `${clientUuid}.WebApp.simplisafe.com`;
-const clientPassword = '';
-
 const accountsFilename = 'simplisafe3auth.json';
-
-const generateSimplisafeId = () => {
-    const supportedCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz0123456789';
-    let id = [];
-    while (id.length < 10) {
-        id.push(supportedCharacters[Math.floor(Math.random() * supportedCharacters.length)]);
-    }
-
-    id = id.join('');
-
-    return `${id.substring(0, 5)}-${id.substring(5)}`;
-};
 
 class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     storagePath;
@@ -59,10 +50,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     refreshInterval;
     log;
     debug;
-
-    // Retained for deprecated username / password login, for now
-    username;
-    password;
 
     constructor(storagePath, log, debug) {
         super();
@@ -125,18 +112,21 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     isAuthenticated() {
         return this.refreshToken !== null && Date.now() < this.expiry;
     }
-
+    
     getSSAuthURL() {
-        const loginURL = new URL(SS_OAUTH_AUTH_URL);
-        loginURL.searchParams.append('client_id', SS_OAUTH_CLIENT_ID);
-        loginURL.searchParams.append('scope', 'SCOPE'); // otherwise this gets URI encoded
-        loginURL.searchParams.append('response_type', 'code');
-        loginURL.searchParams.append('redirect_uri', SS_OAUTH_REDIRECT_URI);
-        loginURL.searchParams.append('code_challenge_method', 'S256');
-        loginURL.searchParams.append('code_challenge', this.codeChallenge);
-        loginURL.searchParams.append('audience', 'AUDIENCE');
-        loginURL.searchParams.append('auth0Client', SS_OAUTH_AUTH0_CLIENT);
-        return loginURL.toString().replace('SCOPE', SS_OAUTH_SCOPE).replace('AUDIENCE', SS_OAUTH_AUDIENCE);
+        let loginURL = { url: SS_OAUTH_AUTH_URL };
+        loginURL.params = [
+            `client_id=${SS_OAUTH_CLIENT_ID}`,
+            `scope=${SS_OAUTH_SCOPE}`,
+            'response_type=code',
+            'response_mode=query',
+            `redirect_uri=${SS_OAUTH_REDIRECT_URI}`,
+            'code_challenge_method=S256',
+            `code_challenge=${this.codeChallenge}`,
+            `audience=${SS_OAUTH_AUDIENCE}`,
+            `auth0Client=${SS_OAUTH_AUTH0_CLIENT}`,
+        ]
+        return loginURL;
     }
 
     base64URLEncode(str) {
@@ -148,22 +138,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
 
     sha256(buffer) {
         return crypto.createHash('sha256').update(buffer).digest();
-    }
-
-    parseCodeFromURL(redirectURLStr) {
-        let code;
-        try {
-            const redirectURL = new URL(redirectURLStr);
-            const maybeCode = redirectURL.searchParams.get('code');
-            if (!maybeCode) {
-                throw new Error();
-            }
-            code = maybeCode;
-        } catch (error) {
-            throw new Error('Invalid redirect URL');
-        }
-
-        return code;
     }
 
     async getToken(authorizationCode) {
@@ -184,15 +158,8 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     }
 
     async refreshCredentials() {
-        if (!this.accountsFileExists()) {
-            if (this.username !== undefined && this.password !== undefined) {
-                // support old username / password, for now...
-                if (this.refreshToken == undefined) await this._loginWithUsernamePassword();
-                else await this._refreshWithUsernamePassword();
-                return;
-            } else if (this.refreshToken == undefined) {
-                throw new Error('No authentication credentials detected.');
-            }
+        if (!this.accountsFileExists() && this.refreshToken == undefined) {
+            throw new Error('No authentication credentials detected.');
         }
 
         try {
@@ -204,7 +171,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 headers: { // SS seems to need these...
                     'Host': 'auth.simplisafe.com',
                     'Content-Type': 'application/json',
-                    'Content-Length': 186,
                     'Auth0-Client': SS_OAUTH_AUTH0_CLIENT
                 }
             });
@@ -213,7 +179,12 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_SUCCESS);
             if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh was successful');
         } catch (err) {
-            this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE);
+            if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh failed');
+            if (err.response && (err.response.status == 401 || err.response.data == 'Unauthorized')) {
+                // this is a true auth failure
+                this.refreshToken = null;
+                this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE);
+            }
             throw err; // just pass it along
         }
     }
@@ -242,72 +213,125 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             if (this.log !== undefined && this.debug) this.log('Preemptively authenticating with SimpliSafe');
             this.refreshCredentials()
                 .catch(err => {
-                    if (this.log !== undefined) this.log.error(err);
-                    if (err.response && err.response.status == 403) {
-                        clearInterval(this.refreshInterval); // rate-limited, just disable until next successful one
+                    if (this.log !== undefined) this.log.error(err.toJSON ? err.toJSON() : err);
+                    if (err.response && (err.response.status == 403 || err.response.data == 'Unauthorized')) {
+                        clearInterval(this.refreshInterval); // just disable until next successful one
                     }
                 });
         }, parseInt(token.expires_in) * 1000 - 300000);
     }
+    
+    async loginAndAuthorize(username, password) {
+        const initialAuthUrl = this.getSSAuthURL();
+        let cookies;
 
-    // Deprecated login with username / password
-    async _loginWithUsernamePassword() {
-        try {
-            let ssId = generateSimplisafeId();
-            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please re-authenticate using newest method. See README for more info.');
-            if (this.log && this.debug) this.log('Attempting to login with username / password.');
-            const response = await ssApiV1.post('/api/token', {
-                username: this.username,
-                password: this.password,
-                grant_type: 'password',
-                client_id: clientUsername,
-                device_id: `Homebridge; useragent="Homebridge-SimpliSafe3 (SS-ID: ${ssId})"; uuid="${clientUuid}"; id="${ssId}"`,
-                scope: ''
-            }, {
-                auth: {
-                    username: clientUsername,
-                    password: clientPassword
+        let auth0 = axios.create({
+            baseURL: 'https://auth.simplisafe.com',
+            headers: {
+                'Accept': 'text/html',
+                'User-Agent': 'Homebridge-Simplisafe3'
+            },
+            withCredentials: true,
+            responseType: 'document',
+            paramsSerializer: function(params) {
+                return params.join('&');
+            },
+            maxRedirects: 0,
+            validateStatus: function(status) {
+                return status >= 200 && status < 303;
+            },
+        });
+        
+        this.emit(AUTH_EVENTS.LOGIN_STEP, 'Loading login auth url...');
+        return auth0.get(initialAuthUrl.url, {
+            params: initialAuthUrl.params
+        }).then(authorizeResponse => {
+            cookies = authorizeResponse.headers["set-cookie"];
+            const loginPath = authorizeResponse.headers['location'];
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to login with credentials...');
+            return auth0.post(loginPath, {
+                'username': username,
+                'password': password
+            },
+            {
+                headers: {
+                    'Cookie': cookies
+                },
+                maxRedirects: 5
+            });
+        }).then(awaitLoginAttemptResponse => {
+            let awaitLoginVerificationUrl = awaitLoginAttemptResponse.request._redirectable._currentUrl;
+
+            const checkLoginVerified = async (ms, triesLeft) => {
+                return new Promise((resolve, reject) => {
+                    const interval = setInterval(async () => {
+                        this.emit(AUTH_EVENTS.LOGIN_STEP, 'Awaiting login verification (check email)...');
+                        auth0.get(awaitLoginVerificationUrl, {
+                            maxRedirects: 5
+                        }).then(loginVerificationCheckResponse => {
+                            if (loginVerificationCheckResponse.data && loginVerificationCheckResponse.data.indexOf('Verification Successful') > -1) {
+                                this.emit(AUTH_EVENTS.LOGIN_STEP, 'Detected verification completed...');
+                                resolve(loginVerificationCheckResponse);
+                                clearInterval(interval);
+                            } else if (triesLeft <= 1) {
+                                reject(new Error('Timed out waiting for login verification'));
+                                clearInterval(interval);
+                            }
+                        })
+                        triesLeft--;
+                    }, ms);
+                });
+            }
+            
+            return checkLoginVerified(3000, (15 * 60 * 1000) / 3); // wait up to 15 minutes
+        }).then(loginVerificationCheckResponse => {
+            // <form method="post" action="https://auth.simplisafe.com/continue?state=***" id="success-form">\n' +
+            // <input type="hidden" name="token" value="***" />
+            const continueUrlMatch = loginVerificationCheckResponse.data.match(/https:\/\/auth\.simplisafe\.com\/continue\?[^"]*/g);
+            const tokenRegExp = new RegExp(/name="token" value="([^"]*)"/, 'g');
+            const tokenMatch = tokenRegExp.exec(loginVerificationCheckResponse.data);
+            if (continueUrlMatch.length && tokenMatch.length) {
+                this.emit(AUTH_EVENTS.LOGIN_STEP, 'Submitting verification form for redirect...');
+                return auth0.post(continueUrlMatch[0], {
+                    token: tokenMatch[1]
+                }, {
+                    maxRedirects: 0,
+                    headers: {
+                        'Cookie': cookies
+                    }
+                });
+            } else {
+                throw Error('Unable to parse token from continue form');
+            }
+        }).then(verificationRedirectResponse => {
+            const finalAuthPath = verificationRedirectResponse.headers['location'];
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Verification form submission successful, loading final auth redirect...');
+            return auth0.get(finalAuthPath, {
+                maxRedirects: 0,
+                headers: {
+                    'Cookie': cookies
                 }
             });
-
-            let token = response.data;
-            this.accessToken = token.access_token;
-            this.refreshToken = token.refresh_token;
-            this.expiry = Date.now() + (parseInt(token.expires_in) * 1000);
-            this.tokenType = token.token_type;
-            if (this.log && this.debug) this.log('Username / password login successful.');
-        } catch (error) {
-            this.log('Username / password login failed.');
-            throw error;
-        }
-    }
-
-    // Deprecated refresh with username / password
-    async _refreshWithUsernamePassword() {
-        try {
-            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please re-authenticate using newest method. See README for more info.');
-            if (this.log && this.debug) this.log('Attempting to refresh with username / password.');
-            const response = await ssApiV1.post('/api/token', {
-                refresh_token: this.refreshToken,
-                grant_type: 'refresh_token'
-            }, {
-                auth: {
-                    username: clientUsername,
-                    password: clientPassword
-                }
-            });
-
-            let token = response.data;
-            this.accessToken = token.access_token;
-            this.refreshToken = token.refresh_token;
-            this.expiry = Date.now() + (parseInt(token.expires_in) * 1000);
-            this.tokenType = token.token_type;
-            if (this.log && this.debug) this.log('Username / password refresh successful.');
-        } catch (error) {
-            this.log('Refresh with username / password login failed.');
-            throw error;
-        }
+        }).then(finalRedirectReponse => {
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to parse code from final callback URL...');
+            const redirectURL = new URL(finalRedirectReponse.headers['location']);
+            const code = redirectURL.searchParams.get('code');
+            if (!code) {
+                throw new Error('Unable to retrieve code from final redirect URL');
+            }
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to obtain auth token...');
+            return this.getToken(code);
+        }).then(token => {
+            if (token) this.emit(AUTH_EVENTS.LOGIN_COMPLETE);
+            return true;
+        }).catch((error) => {
+            this.emit(AUTH_EVENTS.LOGIN_STEP, `Authentication error: ${error.message ?? error.toString()}`, true);
+            return false;
+        });
     }
 }
 
-module.exports = SimpliSafe3AuthenticationManager, AUTH_EVENTS;
+module.exports.SimpliSafe3AuthenticationManager = SimpliSafe3AuthenticationManager;
+module.exports.AUTH_EVENTS = AUTH_EVENTS;
+module.exports.N_LOGIN_STEPS = N_LOGIN_STEPS;
+export default SimpliSafe3AuthenticationManager;

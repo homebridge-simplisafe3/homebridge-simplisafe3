@@ -63,7 +63,7 @@ class SS3Platform {
                         await this.retryBlockedAccessories();
                     }, this.simplisafe.nextAttempt - Date.now());
                 } else {
-                    this.log.error('SimpliSafe login failed with error:', err);
+                    this.log.error('SimpliSafe login failed with error:', err.toJSON ? err.toJSON() : err);
                     this.log.error('See the plugin README for more information on authenticating with SimpliSafe.');
                 }
             });
@@ -83,7 +83,7 @@ class SS3Platform {
                     }
                 })
                 .catch(err => {
-                    this.log.error('Initial accessories refresh failed with error:', err);
+                    this.log.error('Initial accessories refresh failed with error:', err.toJSON ? err.toJSON() : err);
                 });
         });
     }
@@ -142,7 +142,7 @@ class SS3Platform {
                     this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
                     this.accessories.push(accessory);
                 } catch (err) {
-                    this.log.error(`An error occurred while adding accessory: ${err}`);
+                    this.log.error('An error occurred while adding accessory:', err.toJSON ? err.toJSON() : err);
                 }
             }
         }
@@ -348,10 +348,10 @@ class SS3Platform {
             }
         } catch (err) {
             if (err instanceof RateLimitError) {
-                this.log.error('Accessory refresh failed due to rate limiting or connectivity:', err);
+                this.log.error('Accessory refresh failed due to rate limiting or connectivity:', err.toJSON ? err.toJSON() : err);
                 this.log.info('Note: this error can also occur if you are not signed up for a SimpliSafe monitoring plan.');
             } else {
-                this.log.error('An error occurred while refreshing accessories:', err);
+                this.log.error('An error occurred while refreshing accessories:', err.toJSON ? err.toJSON() : err);
             }
             throw err;
         }
@@ -384,7 +384,7 @@ class SS3Platform {
                     await this.retryBlockedAccessories();
                 }, this.simplisafe.nextAttempt - Date.now());
             } else {
-                this.log.error('An error occurred while refreshing credentials again:', err);
+                this.log.error('An error occurred while refreshing credentials again:', err.toJSON ? err.toJSON() : err);
             }
         }
     }

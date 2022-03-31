@@ -1,77 +1,58 @@
 const { HomebridgePluginUiServer } = require('@homebridge/plugin-ui-utils');
-const SimpliSafe3AuthenticationManager = require('../lib/authManager');
+const { SimpliSafe3AuthenticationManager, AUTH_EVENTS, N_LOGIN_STEPS } = require('../lib/authManager');
 
 // your class MUST extend the HomebridgePluginUiServer
 class UiServer extends HomebridgePluginUiServer {
     authManager;
 
     constructor () {
-    // super must be called first
+        // super must be called first
         super();
 
         this.authManager = new SimpliSafe3AuthenticationManager(this.homebridgeStoragePath);
+        this.authManager.on(AUTH_EVENTS.LOGIN_STEP, (message, isError) => {
+            this.pushEvent('login-step', { message: message, isError: isError });
+            console.log(message);
+        });
+
+        this.authManager.on(AUTH_EVENTS.LOGIN_COMPLETE, () => {
+            this.pushEvent('login-complete');
+            console.log('Authentication completed successfully');
+        });
 
         this.onRequest('/credentialsExist', this.credentialsExist.bind(this));
-        this.onRequest('/getCodeVerifier', this.getCodeVerifier.bind(this));
-        this.onRequest('/getSSAuthURL', this.getSSAuthURL.bind(this));
-        this.onRequest('/getAuthCodeFromUrl', this.getAuthCodeFromUrl.bind(this));
-        this.onRequest('/getToken', this.getToken.bind(this));
+        this.onRequest('/nLoginSteps', this.nLoginSteps.bind(this));
+        this.onRequest('/loginAndAuth', this.loginAndAuth.bind(this));
 
         // this.ready() must be called to let the UI know you are ready to accept api calls
         this.ready();
     }
 
     /**
-   * Reports whether credentials already exiist
-   */
+     * Reports whether credentials already exiist
+     */
     async credentialsExist() {
-        return { success: true, credentialsExist: this.authManager.accountsFileExists() }
+      return { success: true, credentialsExist: this.authManager.accountsFileExists() }
     }
 
     /**
-   * Get code verifier
-   */
-    async getCodeVerifier() {
-        return { success: true, codeVerifier: this.authManager.codeVerifier }
+     * Reports the number of login steps
+     */
+    async nLoginSteps() {
+      return { steps: N_LOGIN_STEPS }
     }
-
+    
     /**
-   * Get SS auth URL
-   */
-    async getSSAuthURL() {
-        return { success: true, url: this.authManager.getSSAuthURL() }
-    }
-
-    /**
-   * Try to extract auth code
-   */
-    async getAuthCodeFromUrl(payload) {
-        const redirectURLStr = payload.redirectURLStr;
-        let code;
-        try {
-          code = this.authManager.parseCodeFromURL(redirectURLStr);
-        } catch (error) {
-          return { success: false, error: error.toString() }
+     * Starts login process from authManager
+     */
+    async loginAndAuth(payload) {
+        const username = payload.username;
+        const password = payload.password;
+        if (!username.length || !password.length) {
+            return { success: false }
         }
-        return { success: true, authCode: code }
-    }
-
-    /**
-   * Get SS auth Token
-   */
-    async getToken(payload) {
-        const code = payload.authCode;
-        try {
-          await this.authManager.getToken(code);
-        } catch (error) {
-            console.log(error);
-            return { success: false, error: error.toString() }
-        }
-        return {
-          success: true,
-          accessToken: this.authManager.accessToken,
-          refreshToken: this.authManager.refreshToken
-        }
+        const loggedInAuthorized = await this.authManager.loginAndAuthorize(username, password);
+        return { success: loggedInAuthorized }
     }
 }
 

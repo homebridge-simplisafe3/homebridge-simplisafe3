@@ -158,25 +158,29 @@ class SimpliSafe3 extends EventEmitter {
             }
 
             let statusCode = err.response.status;
-            if (statusCode == 401 && !tokenRefreshed) {
+            if ((statusCode == 401 || err.response.data == 'Unauthorized') && !tokenRefreshed) {
                 try {
                     await this.authManager.refreshCredentials();
                     if (this.debug) this.log('Credentials refreshed successfully after failed request');
                     return this.request(params, true);
                 } catch (credentialsErr) {
                     if (credentialsErr.response && credentialsErr.response.status == 403) {
-                        if (this.debug) this.log.error('Credentials refresh failed with error 403 (rate liimiting?):', err);
+                        if (this.debug) this.log.error('Credentials refresh failed with error 403 (rate liimiting?):', credentialsErr.response.statusText);
                         this.setRateLimitHandler();
                         if (this.debug) this.log.info(`Next attempt will be in ${this.nextBlockInterval / 1000}s`);
                         throw new RateLimitError(credentialsErr.response.data);
                     } else {
-                        if (this.debug) this.log.error('Credentials refresh failed with error:', err);
-                        throw credentialsErr;
+                        if (this.debug) this.log.error('Credentials refresh failed with error:', credentialsErr.toJSON ? credentialsErr.toJSON() : credentialsErr);
+                        if (credentialsErr.isAxiosError) {
+                            throw new Error(`${credentialsErr.response.status}: ${credentialsErr.response.statusText}`);
+                        } else {
+                            throw credentialsErr;
+                        }
                     }
                 }
             } else if (statusCode == 403) {
                 this.log.error('SSAPI request failed, request blocked (rate limit?).');
-                if (this.debug) this.log.error('SSAPI request received a response error with code 403:', err.response);
+                if (this.debug) this.log.error('SSAPI request received a response error with code 403:', err.response.statusText);
                 this.setRateLimitHandler();
                 throw new RateLimitError(err.response.data);
             } else {
@@ -466,7 +470,7 @@ class SimpliSafe3 extends EventEmitter {
                             this.socketIsAlive = false;
                             this.socket.ping();
                         }
-                    }, socketHeartbeatInterval);
+                    }, socketHeartbeatInterval + (5000 * Math.random()));
                     break;
                 default:
                     if (this.debug) this.log('Received unknown service message:', message)
@@ -626,7 +630,11 @@ class SimpliSafe3 extends EventEmitter {
                 } catch (err) {
                     if (!(err instanceof RateLimitError)) { // never log rate limit errors as they are handled elsewhere
                         if (this.debug) {
-                            this.log.error('Sensor refresh received an error from the SimpliSafe API:', err);
+                            if (err.statusCode == 409) {
+                                this.log.debug('Sensor refresh received SettingsInProgress error from the SimpliSafe API. Note this does not necessarily indicate a problem, just that the base station was busy.');
+                            } else {
+                                this.log.error('Sensor refresh received an error from the SimpliSafe API:', err);
+                            }
                         } else {
                             this.handleErrorSuppression();
                         }
@@ -666,7 +674,11 @@ class SimpliSafe3 extends EventEmitter {
                 } catch (err) {
                     if (!(err instanceof RateLimitError)) { // never log rate limit errors as they are handled elsewhere
                         if (this.debug) {
-                            this.log.error('Alarm system refresh received an error from the SimpliSafe API:', err);
+                            if (err.statusCode == 409) {
+                                this.log.warn('Alarm system refresh received a SettingsInProgress error from the SimpliSafe API.');
+                            } else {
+                                this.log.error('Alarm system refresh received an error from the SimpliSafe API:', err);
+                            }
                         } else {
                             this.handleErrorSuppression();
                         }
@@ -687,7 +699,7 @@ class SimpliSafe3 extends EventEmitter {
         if (!this.errorSupperessionTimeoutID) {
             this.nSuppressedErrors = 1;
             this.errorSupperessionTimeoutID = setTimeout(() => {
-                if (!this.debug && this.nSuppressedErrors > 0) this.log.warn(`${this.nSuppressedErrors} error${this.nSuppressedErrors > 1 ? 's were' : ' was'} received from the SimpliSafe API while refereshing sensors in the last ${errorSuppressionDuration / 60000} minutes. Enable debug logging for detailed output.`);
+                if (!this.debug && this.nSuppressedErrors > 0) this.log.warn(`${this.nSuppressedErrors} error${this.nSuppressedErrors > 1 ? 's were' : ' was'} received from the SimpliSafe API while refereshing sensors in the last ${errorSuppressionDuration / 60000} minutes. These can usually be ignored if everything is working. Otherwise, enable debug logging for homebridge and the plugin to see detailed output.`);
                 clearTimeout(this.errorSupperessionTimeoutID);
                 this.errorSupperessionTimeoutID = undefined;
             }, errorSuppressionDuration);

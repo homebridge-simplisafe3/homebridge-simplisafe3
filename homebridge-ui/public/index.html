@@ -1,40 +1,62 @@
 <div class="card">
   <div class="card-body text-center">
-    <div id="authExists">
+    <div id="auth-exists">
       <p class="mb-0">
-        <strong>Authentication has been setup already.</strong> <a id="showAuth" href="#auth">Show Authentication Instructions.</a>
+        <strong>Authentication has been setup already.</strong> <a id="show-auth" href="#auth">Show Authentication Form.</a>
       </p>
     </div>
-    <div id="auth" class="pt-2">
-      <p class="form-text small">
-        Click the button below to launch the SimpliSafe login page. Once verified, you will be redirected to a URL (begins with 'com.SimpliSafe.mobile://') which you should copy and paste back here in its entirety.
-      </p>
-      <p class="form-text small">
-        Note that in some browsers (e.g. Chrome) the browser will not redirect you and will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.
-      </p>
-      <p class="form-text small">
-        Also please note that this task cannot be performed on an iOS device that has the SimpliSafe app installed (authenticating will launch the app).
-      </p>
-      <p class="form-text small">
-        See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md#simplisafe-authentication'>README</a> for more information.
-      </p>
-      <a href="" target="_blank" id="ssLoginButton" class="btn btn-primary btn-lg disabled">Launch SimpliSafe Login</a>
-      <div id="redirectUrl" class="text-left">
-        <label for="redirectUrlInput">Redirected URL</label>
-        <input type="text" class="form-control" id="redirectUrlInput" aria-describedby="authRedirectHelp">
-        <small id="authRedirectHelp" class="form-text text-muted">Enter the full URL</small>
+    <div id="auth">
+      <h4 class="card-title">SimpliSafe Authentication</h4>
+      <div id="auth-loading" class="mx-md-5">
+        <div class="pt-2">
+          <div class="progress" style="height: 1px;">
+            <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <p id="message" class="pt-1">&nbsp;</p>
+        </div>
       </div>
+      <form id="ss-login-form">
+        <p class="form-text small px-md-5 mx-md-5">
+          Click the button below to start the SimpliSafe authentication process.
+          Once you verify the login via email this will automatically complete.
+          See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md#simplisafe-authentication'>README</a> for more information.
+        </p>
+        <div class="text-left mx-md-8 px-md-5">
+          <div class="form-group">
+            <label for="username">SimpliSafe Email</label>
+            <input type="email" required placeholder="name@example.com" class="form-control" id="username">
+          </div>
+          <div class="form-group">
+            <label for="password">SimpliSafe Password</label>
+            <input type="password" required class="form-control" id="password" aria-describedby="password">
+            <small id="password" class="form-text text-muted">Password is not stored.</small>
+          </div>
+        </div>
+        <button type="submit" id="ss-login-button" class="btn btn-primary">Start Authentication</button>
+      </form>
     </div>
   </div>
 </div>
+
+<style type="text/css">
+  @media (min-width: 768px) {
+    .mx-md-8 {
+      margin-left: 8rem !important;
+      margin-right: 8rem !important;
+    }
+  }
+</style>
 
 <!-- Modules -->
 <script type="text/javascript" src="js/modules/jquery.min.js"></script>
 
 <script>
 (async () => {
-  $('#redirectUrl').slideUp(0);
-  $('#authExists').slideUp(0);
+  $('#auth-exists').slideUp(0).fadeOut(0);
+  $('#auth-loading').slideUp(0).fadeOut(0);
+  let currentStep;
+  let totalSteps;
+  let lastStepMessage;
 
   // get the current homebridge config
   const pluginConfig = await homebridge.getPluginConfig();
@@ -47,56 +69,79 @@
 
   const credentialsExistResponse = await homebridge.request('/credentialsExist');
   if (credentialsExistResponse.success && credentialsExistResponse.credentialsExist) {
-      $('#authExists').slideDown(0);
-      $('#auth').slideUp(0);
+    $('#auth-exists').fadeOut(0).slideDown(0);
+    $('#auth').fadeOut(0).slideUp(0);
   }
 
-  let codeVerifier;
-  const codeVerifierResponse = await homebridge.request('/getCodeVerifier');
-  if (codeVerifierResponse.success) {
-      codeVerifier = codeVerifierResponse.codeVerifier;
+  const nLoginSteps = await homebridge.request('/nLoginSteps');
+  if (nLoginSteps.steps) {
+    $('#auth-loading .progress-bar').attr('aria-valuemax', nLoginSteps.steps);
+    totalSteps = nLoginSteps.steps;
   }
 
-  const authURLResponse = await homebridge.request('/getSSAuthURL');
-  if (authURLResponse.success) {
-      $('#ssLoginButton').attr('href', authURLResponse.url).removeClass('disabled');
-  }
-
-  $('#showAuth').click(function() {
-      $('#auth').slideDown();
-  });
-
-  $('#ssLoginButton').click(function() {
-      $('#redirectUrl').slideDown();
-  });
-
-  $('#redirectUrlInput').on('paste input', async function () {
-      const redirectUrl = $('#redirectUrlInput').val();
-      if (redirectUrl.length > 0) {
-          const getCodeResponse = await homebridge.request('/getAuthCodeFromUrl', {
-              redirectURLStr: redirectUrl
-          });
-
-          if (!getCodeResponse.success) {
-              homebridge.toast.error('Unable to extract auth code from URL, check to ensure the pasted URL was correct.', 'Error retrieving code');
-              $('#redirectUrlInput').addClass('is-invalid');
-          } else {
-              const getTokenResponse = await homebridge.request('/getToken', {
-                  authCode: getCodeResponse.authCode
-              });
-
-              if (getTokenResponse.success) {
-                  homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
-                  $('#redirectUrlInput').removeClass('is-invalid');
-                  $('#redirectUrl').slideUp();
-                  $('#authExists').slideDown();
-              } else {
-                  homebridge.toast.error('Please try again.', 'Error retrieving token');
-                  $('#redirectUrlInput').addClass('is-invalid');
-              }
-          }
+  homebridge.addEventListener('login-step', (event) => {
+      if (event.data.isError) {
+          $('#auth-loading #message').text();
+          $('#auth-loading').fadeOut(0).slideUp(0);
+          $('#show-auth').click();
+          homebridge.toast.error(event.data.message);
+          console.log(`Error: ${event.data.message}`);
+      } else {
+        console.log(event.data.message);
+        if (lastStepMessage !== event.data.message) currentStep++; // for repeating steps
+        $('#auth-loading .progress-bar').attr('aria-valuenow', currentStep);
+        $('#auth-loading .progress-bar').css('width', `${100 * currentStep / totalSteps}%`);
+        $('#auth-loading #message').text(event.data.message);
+        lastStepMessage = event.data.message;
       }
   });
 
+  homebridge.addEventListener('login-complete', (event) => {
+      $('#auth-loading .progress-bar').css('width', '100%');
+  });
+
+  $('#show-auth').click(function() {
+      $('#ss-login-form').slideDown(0).fadeIn();
+      $('#auth').slideDownFadeIn();
+      $('#auth-exists').slideUpFadeOut();
+  });
+
+  $('#ss-login-form').submit(doLogin);
+  
+  async function doLogin(event) {
+    if (event) event.preventDefault();
+    
+    // reset
+    currentStep = 1;
+    $('#auth-loading #message').text();
+    $('#ss-login-form').slideUpFadeOut();
+    $('#auth-loading').slideDownFadeIn();
+    $('#auth-exists').fadeOut().slideUp();
+
+    homebridge.toast.info('Please wait...', 'Initiating Login');
+
+    const loginAndAuth = await homebridge.request('/loginAndAuth', {
+      username: $('#username').val(),
+      password: $('#password').val(),
+    });
+
+    if (loginAndAuth.success) {
+      $('#auth').slideUpFadeOut();
+      $('#auth-loading').slideUpFadeOut();
+      $('#auth-exists').slideDownFadeIn();
+      homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
+    } else {
+      homebridge.toast.error('Please try again.', 'Error logging in');
+    }
+  }
+
 })();
+
+$.fn.slideDownFadeIn  = function(speed, easing, callback) {
+    return this.slideDown(speed, easing, callback) && this.fadeIn(speed, easing, callback);
+};
+
+$.fn.slideUpFadeOut  = function(speed, easing, callback) {
+    return this.slideUp(speed, easing, callback) && this.fadeOut(speed, easing, callback);
+};
 </script>

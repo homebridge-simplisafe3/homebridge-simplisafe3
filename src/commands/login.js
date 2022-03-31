@@ -1,5 +1,5 @@
 const { Command, Flags, CliUx } = require('@oclif/core');
-const SimpliSafe3AuthenticationManager = require('../lib/authManager');
+const { SimpliSafe3AuthenticationManager, AUTH_EVENTS } = require('../lib/authManager');
 const path = require('path');
 const os = require('os');
 const isDocker = require('is-docker');
@@ -17,48 +17,44 @@ class Login extends Command {
         homebridgeDir: homebridgeDir()
     };
     authManager;
+    authComplete;
+    errorMessage;
 
     async run() {
         const {flags} = await this.parse(Login);
+        
         this.authManager = new SimpliSafe3AuthenticationManager(flags.homebridgeDir);
+        this.authManager.on(AUTH_EVENTS.LOGIN_STEP, (message, isError) => {
+            if (isError) {
+                this.warn(message);
+            } else {
+                this.log(message);
+            }
+        });
+        
+        this.log('\n======= Simplisafe Authentication =======\n');
 
-        const loginURL = this.authManager.getSSAuthURL();
+        const email = await CliUx.ux.prompt('SimpliSafe Email')
+        const password = await CliUx.ux.prompt('SimpliSafe Password', {type: 'hide'})
 
-        this.log('\n******* Simplisafe Authentication *******');
-        this.log('\nA browser window will open to log you into the SimpliSafe site, or you may need to copy + paste this URL into your browser:\n' + loginURL);
-        this.log('\nOnce you have approved the login you will be redirected to a URL that wont load (starts with com.SimpliSafe.mobile://) which you will need to copy and paste back here.');
-        this.log('\nNote that in some browsers (e.g. Chrome) the browser will not redirect you and will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.');
-        this.log('\nAlso please note that this task cannot be performed on an iOS device that has the SimpliSafe app installed (authenticating will launch the app).\n');
+        CliUx.ux.action.start('Authenticating with SimpliSafe');
+        
+        const loggedInAndAuthorized = await this.authManager.loginAndAuthorize(email, password);
 
-        await CliUx.ux.anykey();
-
-        try {
-            await CliUx.ux.open(loginURL);
-        } catch (e) {
-            this.log('Unable to open automatically, please copy and paste the URL above into your web browser.');
-        }
-
-        const redirectURLStr = (await CliUx.ux.prompt('Redirect URL'));
-
-        let code = this.authManager.parseCodeFromURL(redirectURLStr);
-
-        try {
-            await this.authManager.getToken(code);
-
-            this.log('\nCredentials retrieved successfully.');
+        CliUx.ux.action.stop();
+        if (loggedInAndAuthorized) {
+            this.log('\n======= Authentication Successful! =======\n');
             this.log('accessToken: ' + this.authManager.accessToken);
-            this.log('refreshToken: ' + this.authManager.refreshToken);
-            this.log('Please restart Homebridge for changes to take effect.');
-        } catch (e) {
-            this.log('\nAn error occurred retrieving credentials:');
-            this.log(e);
-            this.exit(1);
+            this.log('refreshToken: ' + this.authManager.refreshToken + '\n');
+            this.warn('Please restart Homebridge for changes to take effect.');
+        } else {
+            this.error('Authentication failed.');
         }
 
         this.exit(0);
     }
 }
 
-Login.description = 'Command to login to SimpliSafe';
+Login.description = 'Login and authenticate with SimpliSafe';
 
 module.exports = Login;
