@@ -11,8 +11,6 @@
   },
   "dependencies": {
     "@homebridge/plugin-ui-utils": "0.0.19",
-    "@oclif/core": "^1.6.3",
-    "@oclif/plugin-help": "^5.1.12",
     "axios": "^0.26.1",
     "axios-retry": "^3.2.4",
     "core-js": "^3.19.3",
@@ -21,6 +19,7 @@
     "is-docker": "^2.2.1",
     "jpeg-extract": "^3.0.1",
     "json-schema": ">=0.4.0",
+    "oclif": "^2.6.2",
     "ws": "^8.5.0"
   },
   "devDependencies": {
@@ -34,8 +33,8 @@
     "eslint-plugin-babel": "^5.3.1"
   },
   "engines": {
-    "homebridge": ">=1.0.0",
-    "node": ">=10.17"
+    "homebridge": ">=1.3.5",
+    "node": ">=14.13.1"
   },
   "eslintConfig": {
     "env": {
@@ -81,7 +80,6 @@
   "files": [
     "/bin",
     "/npm-shrinkwrap.json",
-    "/oclif.manifest.json",
     "/simplisafe.js",
     "/accessories",
     "/commands",
