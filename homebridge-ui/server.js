@@ -62,7 +62,7 @@ class UiServer extends HomebridgePluginUiServer {
         });
         
         try {
-            console.log('Loading login auth url...');
+            this.doLoginStep('Loading login auth url...');
             auth0.get(initialAuthUrl.url, {
                 params: initialAuthUrl.params,
                 headers: {
@@ -74,7 +74,7 @@ class UiServer extends HomebridgePluginUiServer {
             }).then(authorizeRes => {
                 const cookies = authorizeRes.headers["set-cookie"];
                 const loginLocation = authorizeRes.headers['location'];
-                console.log('Attempting to login with credentials...');
+                this.doLoginStep('Attempting to login with credentials...');
                 auth0.post('https://auth.simplisafe.com' + loginLocation, {
                     'username': username,
                     'password': password
@@ -88,20 +88,20 @@ class UiServer extends HomebridgePluginUiServer {
                 ).then(awaitMfaResult => {
                     let awaitMfaUrl = awaitMfaResult.request._redirectable._currentUrl;
                     let checkMfaInterval = setInterval(async () => {
-                        console.log('Check verification page...');
+                        this.doLoginStep('Awaiting login verification (check email)...');
                         auth0.get(awaitMfaUrl, {
                             maxRedirects: 5
                         }).then(mfaCheckResult => {
                             // <form method="post" action="https://auth.simplisafe.com/continue?state=***" id="success-form">\n' +
                             // <input type="hidden" name="token" value="***" />
                             if (mfaCheckResult.data && mfaCheckResult.data.indexOf('Verification Successful') > -1) {
-                                console.log('Detected verification success...');
+                                this.doLoginStep('Detected verification success...');
                                 clearInterval(checkMfaInterval);
                                 const continueUrlMatch = mfaCheckResult.data.match(/https:\/\/auth\.simplisafe\.com\/continue\?[^"]*/g);
                                 const tokenRegExp = new RegExp(/name="token" value="([^"]*)"/, 'g');
                                 const tokenMatch = tokenRegExp.exec(mfaCheckResult.data);
                                 if (continueUrlMatch.length && tokenMatch.length) {
-                                    console.log('Submitting verification form for redirect...');
+                                    this.doLoginStep('Submitting verification form for redirect...');
                                     auth0.post(continueUrlMatch[0], {
                                         token: tokenMatch[1]
                                     }, {
@@ -110,7 +110,7 @@ class UiServer extends HomebridgePluginUiServer {
                                             'Cookie': cookies
                                         }
                                     }).then(verificationRedirectResult => {
-                                        console.log(verificationRedirectResult);
+                                        this.doLoginStep('Verification form submission successful...');
                                         const finalAuthLocation = verificationRedirectResult.headers['location'];
                                         auth0.get('https://auth.simplisafe.com' + finalAuthLocation, {
                                             maxRedirects: 0,
@@ -120,7 +120,7 @@ class UiServer extends HomebridgePluginUiServer {
                                         }).then(finalRedirectResult => {
                                             const finalRedirectUrl = finalRedirectResult.headers['location'];
                                             this.finalAuthCallbackUrl = finalRedirectUrl;
-                                            console.log(finalRedirectUrl);
+                                            this.doLoginStep('Received final auth URL');
                                         });
                                     });
                                 }
@@ -131,11 +131,17 @@ class UiServer extends HomebridgePluginUiServer {
             });
             return { success: true }            
         } catch (error) {
-            console.log('Auth error:', error);
+            this.doLoginStep(`Auth error: ${error.toString()}`, true);
             this.authError = error;
         }
     }
+
+    doLoginStep(message, isError) {
+        this.pushEvent('login-step', { message: message, isError: isError });
+        console.log(message);
+    }
 }
+
 
 // start the instance of the class
 (() => {

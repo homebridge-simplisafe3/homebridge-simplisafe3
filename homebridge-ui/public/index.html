@@ -1,30 +1,45 @@
 <div class="card">
   <div class="card-body text-center">
-    <div id="authExists">
+    <div id="auth-exists">
       <p class="mb-0">
-        <strong>Authentication has been setup already.</strong> <a id="showAuth" href="#auth">Show Authentication Instructions.</a>
+        <strong>Authentication has been setup already.</strong> <a id="show-auth" href="#auth">Show Authentication Form.</a>
       </p>
     </div>
-    <div id="auth" class="pt-2">
-      <p class="form-text small">
-        Click the button below to launch the SimpliSafe login page. Once you verify via email the process will automatically complete.
-        Your login username and password are not saved.
-      </p>
-      <p class="form-text small">
-        See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md#simplisafe-authentication'>README</a> for more information.
-      </p>
-      <form id="loginForm" class="text-left">
-        <label for="username">SimpliSafe Username</label>
-        <input type="text" class="form-control" id="username" aria-describedby="username">
-        <small id="username" class="form-text text-muted">Enter username</small>
-        <label for="password">SimpliSafe Password</label>
-        <input type="password" class="form-control" id="password" aria-describedby="password">
-        <small id="password" class="form-text text-muted">Enter password</small>
+    <div id="auth-loading" class="mx-5 my-2">
+      <div class="spinner-border spinner-border-sm d-inline-block" role="status">
+        <span class="sr-only">Auth in progress...</span>
+      </div>
+      <p id="message" class="d-inline pl-2"></p>
+    </div>
+    <div id="auth">
+      <form id="ss-login-form" class="pt-4">
+        <p class="form-text small">
+          Click the button below to start the SimpliSafe login process. Once you verify via email this will automatically complete.<br/>
+          See <a target='_blank' href='https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/blob/master/README.md#simplisafe-authentication'>README</a> for more information.
+        </p>
+        <div class="text-left mx-8 px-5">
+          <div class="form-group">
+            <label for="username">SimpliSafe Email</label>
+            <input type="email" required placeholder="name@example.com" class="form-control" id="username">
+          </div>
+          <div class="form-group">
+            <label for="password">SimpliSafe Password</label>
+            <input type="password" required class="form-control" id="password" aria-describedby="password">
+            <small id="password" class="form-text text-muted">Password is not stored.</small>
+          </div>
+        </div>
+        <button type="submit" id="ss-login-button" class="btn btn-primary btn-lg">Launch SimpliSafe Login</button>
       </form>
-      <button target="_blank" id="ssLoginButton" class="btn btn-primary btn-lg">Launch SimpliSafe Login</button>
     </div>
   </div>
 </div>
+
+<style type="text/css">
+  .mx-8 {
+    margin-left: 8rem !important;
+    margin-right: 8rem !important;
+  }
+</style>
 
 <!-- Modules -->
 <script type="text/javascript" src="js/modules/jquery.min.js"></script>
@@ -32,7 +47,8 @@
 <script>
 (async () => {
   let mfaCheckIntervalID;
-  $('#authExists').slideUp(0);
+  $('#auth-exists').slideUp(0);
+  $('#auth-loading').slideUp(0);
 
   // get the current homebridge config
   const pluginConfig = await homebridge.getPluginConfig();
@@ -45,26 +61,47 @@
 
   const credentialsExistResponse = await homebridge.request('/credentialsExist');
   if (credentialsExistResponse.success && credentialsExistResponse.credentialsExist) {
-      $('#authExists').slideDown(0);
+      $('#auth-exists').slideDown(0);
       $('#auth').slideUp(0);
   }
 
-  $('#ssLoginButton').click(async function() {
+  homebridge.addEventListener('login-step', (event) => {
+    if (event.data.isError) {
+      $('#auth-loading #message').text()
+      $('#auth-loading').slideUp(0)
+      homebridge.toast.error(event.data.message);
+    } else $('#auth-loading #message').text(event.data.message)
+  });
+
+  $('#show-auth').click(function() {
+      $('#ss-login-form').slideDown(0);
+      $('#auth').slideDown();
+      $('#auth-exists').slideUp();
+  });
+
+  $('#ss-login-form').submit(doLogin);
+  
+  async function doLogin(event) {
+    if (event) event.preventDefault();
     const initiateLogin = await homebridge.request('/initiateLogin', {
       username: $('#username').val(),
       password: $('#password').val(),
     });
 
     if (initiateLogin.success) {
-      $('#loginForm').slideUp();
-      homebridge.showSpinner();
+      $('#ss-login-form').slideUp();
+      $('#auth-loading #message').text();
+      $('#auth-loading').slideDown();
+      $('#auth-exists').slideUp();
+
+      homebridge.toast.info('Please wait...', 'Initiating Login');
       mfaCheckIntervalID = setInterval(async () => {
         const authCheck = await homebridge.request('/checkForAuth');
         if (authCheck.success) {
           clearInterval(mfaCheckIntervalID);
-          homebridge.hideSpinner();
           $('#auth').slideUp(0);
-          $('#authExists').slideDown();
+          $('#auth-loading').slideUp(0);
+          $('#auth-exists').slideDown();
           homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
         } else if (authCheck.error) {
           homebridge.toast.error('Please try again.', 'Authentication Failure');
@@ -73,11 +110,7 @@
     } else {
       homebridge.toast.error('Please try again.', 'Error initiating login');
     }
-  });
-
-  $('#showAuth').click(function() {
-      $('#auth').slideDown();
-  });
+  }
 
 })();
 </script>
