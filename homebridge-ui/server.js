@@ -4,8 +4,6 @@ const { SimpliSafe3AuthenticationManager, AUTH_EVENTS } = require('../lib/authMa
 // your class MUST extend the HomebridgePluginUiServer
 class UiServer extends HomebridgePluginUiServer {
     authManager;
-    finalAuthCallbackUrl;
-    authError;
 
     constructor () {
         // super must be called first
@@ -17,9 +15,13 @@ class UiServer extends HomebridgePluginUiServer {
             console.log(message);
         });
 
+        this.authManager.on(AUTH_EVENTS.LOGIN_COMPLETE, () => {
+            this.pushEvent('login-complete');
+            console.log('Authentication completed successfully');
+        });
+
         this.onRequest('/credentialsExist', this.credentialsExist.bind(this));
         this.onRequest('/initiateLogin', this.initiateLogin.bind(this));
-        this.onRequest('/checkForAuth', this.checkForAuth.bind(this));
 
         // this.ready() must be called to let the UI know you are ready to accept api calls
         this.ready();
@@ -30,10 +32,6 @@ class UiServer extends HomebridgePluginUiServer {
    */
     async credentialsExist() {
         return { success: true, credentialsExist: this.authManager.accountsFileExists() }
-    }
-
-    async checkForAuth() {
-        return { success: this.authManager.finalAuthCallbackUrl !== undefined }
     }
 
     async initiateLogin(payload) {

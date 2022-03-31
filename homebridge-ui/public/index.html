@@ -50,7 +50,6 @@
 
 <script>
 (async () => {
-  let mfaCheckIntervalID;
   $('#auth-exists').slideUp(0);
   $('#auth-loading').slideUp(0);
 
@@ -70,13 +69,20 @@
   }
 
   homebridge.addEventListener('login-step', (event) => {
-    if (event.data.isError) {
-      clearInterval(mfaCheckIntervalID);
-      $('#auth-loading #message').text();
+      if (event.data.isError) {
+          clearInterval(mfaCheckIntervalID);
+          $('#auth-loading #message').text();
+          $('#auth-loading').slideUp(0);
+          $('#show-auth').click();
+          homebridge.toast.error(event.data.message);
+      } else $('#auth-loading #message').text(event.data.message)
+  });
+
+  homebridge.addEventListener('login-complete', (event) => {
+      $('#auth').slideUp(0);
       $('#auth-loading').slideUp(0);
-      $('#show-auth').click();
-      homebridge.toast.error(event.data.message);
-    } else $('#auth-loading #message').text(event.data.message)
+      $('#auth-exists').slideDown();
+      homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
   });
 
   $('#show-auth').click(function() {
@@ -100,17 +106,7 @@
       $('#auth-loading').slideDown();
       $('#auth-exists').slideUp();
 
-      homebridge.toast.info('Please wait...', 'Initiating Login');
-      mfaCheckIntervalID = setInterval(async () => {
-        const authCheck = await homebridge.request('/checkForAuth');
-        if (authCheck.success) {
-          clearInterval(mfaCheckIntervalID);
-          $('#auth').slideUp(0);
-          $('#auth-loading').slideUp(0);
-          $('#auth-exists').slideDown();
-          homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
-        }
-      }, 3300);
+      homebridge.toast.info('Please wait...', 'Initiating Login'); // then we wait for push event 'login-complete'
     } else {
       homebridge.toast.error('Please try again.', 'Error initiating login');
     }

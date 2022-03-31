@@ -11,7 +11,8 @@ const events = require('events');
 export const AUTH_EVENTS = {
     REFRESH_CREDENTIALS_SUCCESS: 'REFRESH_CREDENTIALS_SUCCESS',
     REFRESH_CREDENTIALS_FAILURE: 'REFRESH_CREDENTIALS_FAILURE',
-    LOGIN_STEP: 'LOGIN_STEP'
+    LOGIN_STEP: 'LOGIN_STEP',
+    LOGIN_COMPLETE: 'LOGIN_COMPLETE',
 };
 
 const ssOAuth = axios.create({
@@ -19,11 +20,7 @@ const ssOAuth = axios.create({
 });
 axiosRetry(ssOAuth, { retries: 3 });
 
-const ssApiV1 = axios.create({
-    baseURL: 'https://api.simplisafe.com/v1'
-});
-
-
+// Web app:
 // const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com/authorize';
 // const SS_OAUTH_CLIENT_ID = 'DWkIUe6LC38xLomvfG6LXesCCaKJGl24';
 // const SS_OAUTH_AUTH0_CLIENT = 'eyJuYW1lIjoiYXV0aDAtc3BhLWpzIiwidmVyc2lvbiI6IjEuMjAuMSJ9';
@@ -38,24 +35,7 @@ const SS_OAUTH_REDIRECT_URI = 'com.simplisafe.mobile://auth.simplisafe.com/ios/c
 const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
 const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
 
-// Retained for deprecated username / password login, for now
-const clientUuid = '4df55627-46b2-4e2c-866b-1521b395ded2';
-const clientUsername = `${clientUuid}.WebApp.simplisafe.com`;
-const clientPassword = '';
-
 const accountsFilename = 'simplisafe3auth.json';
-
-const generateSimplisafeId = () => {
-    const supportedCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz0123456789';
-    let id = [];
-    while (id.length < 10) {
-        id.push(supportedCharacters[Math.floor(Math.random() * supportedCharacters.length)]);
-    }
-
-    id = id.join('');
-
-    return `${id.substring(0, 5)}-${id.substring(5)}`;
-};
 
 class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     storagePath;
@@ -68,9 +48,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     refreshInterval;
     log;
     debug;
-
-    // Login
-    finalAuthCallbackUrl;
 
     constructor(storagePath, log, debug) {
         super();
@@ -159,22 +136,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
 
     sha256(buffer) {
         return crypto.createHash('sha256').update(buffer).digest();
-    }
-
-    parseCodeFromURL(redirectURLStr) {
-        let code;
-        try {
-            const redirectURL = new URL(redirectURLStr);
-            const maybeCode = redirectURL.searchParams.get('code');
-            if (!maybeCode) {
-                throw new Error();
-            }
-            code = maybeCode;
-        } catch (error) {
-            throw new Error('Invalid redirect URL');
-        }
-
-        return code;
     }
 
     async getToken(authorizationCode) {
@@ -339,9 +300,23 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                         }
                     });
                 }).then(finalRedirectReponse => {
+                    this.emit(AUTH_EVENTS.LOGIN_STEP, 'Received final auth URL.');
                     const finalRedirectUrl = finalRedirectReponse.headers['location'];
-                    this.finalAuthCallbackUrl = finalRedirectUrl;
-                    this.emit(AUTH_EVENTS.LOGIN_STEP, 'Received final auth URL');
+                    let code;
+                    try {
+                        const redirectURL = new URL(finalRedirectUrl);
+                        const maybeCode = redirectURL.searchParams.get('code');
+                        if (!maybeCode) {
+                            throw new Error();
+                        }
+                        code = maybeCode;
+                    } catch (error) {
+                        throw new Error('Invalid redirect URL');
+                    }
+                    this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to obtain token...');
+                    return this.getToken(code);
+                }).then(token => {
+                    if (token) this.emit(AUTH_EVENTS.LOGIN_COMPLETE);
                 }).catch(error => {
                     if (error.message == 'Verification not yet received') return;
                     else throw error;
