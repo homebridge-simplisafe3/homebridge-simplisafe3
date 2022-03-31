@@ -22,7 +22,10 @@ jobs:
       - run: npm version --allow-same-version --no-git-tag-version "$GITHUB_RELEASE"
       - run: npm ci
       - run: npm run build
-      - run: npm publish dist/
+      - if: "!contains(github.event.release.tag_name, 'beta')"
+        run: npm publish dist/
+      - if: "contains(github.event.release.tag_name, 'beta')"
+        run: npm publish dist/ --tag beta
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
 
