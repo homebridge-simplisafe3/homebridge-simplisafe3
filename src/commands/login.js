@@ -26,13 +26,13 @@ class Login extends Command {
         this.authManager = new SimpliSafe3AuthenticationManager(flags.homebridgeDir);
         this.authManager.on(AUTH_EVENTS.LOGIN_STEP, (message, isError) => {
             if (isError) {
-                this.warn(`Error: ${message}`);
+                this.warn(message);
             } else {
                 this.log(message);
             }
         });
         
-        this.log('\n******* Simplisafe Authentication *******');
+        this.log('\n======= Simplisafe Authentication =======\n');
 
         const email = await CliUx.ux.prompt('SimpliSafe Email')
         const password = await CliUx.ux.prompt('SimpliSafe Password', {type: 'hide'})
@@ -43,13 +43,12 @@ class Login extends Command {
 
         CliUx.ux.action.stop();
         if (loggedInAndAuthorized) {
-            this.log('\nAuthentication successful!');
+            this.log('\n======= Authentication Successful! =======\n');
             this.log('accessToken: ' + this.authManager.accessToken);
-            this.log('refreshToken: ' + this.authManager.refreshToken);
-            this.log('\nPlease restart Homebridge for changes to take effect.');
+            this.log('refreshToken: ' + this.authManager.refreshToken + '\n');
+            this.warn('Please restart Homebridge for changes to take effect.');
         } else {
-            this.warn('\nAuthentication failed.');
-            this.exit(1);
+            this.error('Authentication failed.');
         }
 
         this.exit(0);

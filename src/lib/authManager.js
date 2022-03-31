@@ -226,6 +226,11 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         let cookies;
 
         let auth0 = axios.create({
+            baseURL: 'https://auth.simplisafe.com',
+            headers: {
+                'Accept': 'text/html',
+                'User-Agent': 'Homebridge-Simplisafe3'
+            },
             withCredentials: true,
             responseType: 'document',
             paramsSerializer: function(params) {
@@ -239,18 +244,12 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         
         this.emit(AUTH_EVENTS.LOGIN_STEP, 'Loading login auth url...');
         return auth0.get(initialAuthUrl.url, {
-            params: initialAuthUrl.params,
-            headers: {
-                'Accept': 'text/html',
-                'User-Agent': 'Homebridge-Simplisafe3',
-                'Host': 'auth.simplisafe.com',
-                'Connection': 'keep-alive'
-            }
+            params: initialAuthUrl.params
         }).then(authorizeResponse => {
             cookies = authorizeResponse.headers["set-cookie"];
-            const loginLocation = authorizeResponse.headers['location'];
+            const loginPath = authorizeResponse.headers['location'];
             this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to login with credentials...');
-            return auth0.post('https://auth.simplisafe.com' + loginLocation, {
+            return auth0.post(loginPath, {
                 'username': username,
                 'password': password
             },
@@ -260,8 +259,8 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 },
                 maxRedirects: 5
             });
-        }).then(awaitLoginVerificationResponse => {
-            let awaitLoginVerificationUrl = awaitLoginVerificationResponse.request._redirectable._currentUrl;
+        }).then(awaitLoginAttemptResponse => {
+            let awaitLoginVerificationUrl = awaitLoginAttemptResponse.request._redirectable._currentUrl;
 
             const checkLoginVerified = async (ms, triesLeft) => {
                 return new Promise((resolve, reject) => {
@@ -304,8 +303,8 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             }
         }).then(verificationRedirectResponse => {
             this.emit(AUTH_EVENTS.LOGIN_STEP, 'Verification form submission successful...');
-            const finalAuthLocation = verificationRedirectResponse.headers['location'];
-            return auth0.get('https://auth.simplisafe.com' + finalAuthLocation, {
+            const finalAuthPath = verificationRedirectResponse.headers['location'];
+            return auth0.get(finalAuthPath, {
                 maxRedirects: 0,
                 headers: {
                     'Cookie': cookies
