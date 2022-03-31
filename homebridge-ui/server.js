@@ -22,7 +22,7 @@ class UiServer extends HomebridgePluginUiServer {
 
         this.onRequest('/credentialsExist', this.credentialsExist.bind(this));
         this.onRequest('/nLoginSteps', this.nLoginSteps.bind(this));
-        this.onRequest('/initiateLogin', this.initiateLogin.bind(this));
+        this.onRequest('/loginAndAuth', this.loginAndAuth.bind(this));
 
         // this.ready() must be called to let the UI know you are ready to accept api calls
         this.ready();
@@ -45,14 +45,14 @@ class UiServer extends HomebridgePluginUiServer {
     /**
      * Starts login process from authManager
      */
-    async initiateLogin(payload) {
+    async loginAndAuth(payload) {
         const username = payload.username;
         const password = payload.password;
         if (!username.length || !password.length) {
             return { success: false }
         }
-        const loginInitiated = await this.authManager.loginAuth(username, password);
-        return { success: loginInitiated }
+        const loggedInAuthorized = await this.authManager.loginAndAuthorize(username, password);
+        return { success: loggedInAuthorized }
     }
 }
 

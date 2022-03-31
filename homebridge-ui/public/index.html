@@ -87,7 +87,6 @@
       } else {
         console.log(event.data.message);
         if (lastStepMessage !== event.data.message) currentStep++; // for repeating steps
-        console.log(currentStep, $('#auth-loading .progress-bar').attr('aria-valuenow'), lastStepMessage, lastStepMessage == event.data.message);
         $('#auth-loading .progress-bar').attr('aria-valuenow', currentStep);
         $('#auth-loading .progress-bar').css('width', `${100 * currentStep / totalSteps}%`);
         $('#auth-loading #message').text(event.data.message);
@@ -96,10 +95,7 @@
   });
 
   homebridge.addEventListener('login-complete', (event) => {
-      $('#auth').slideUp(0);
-      $('#auth-loading').slideUp(0);
-      $('#auth-exists').slideDown();
-      homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
+      $('#auth-loading .progress-bar').css('width', '100%');
   });
 
   $('#show-auth').click(function() {
@@ -116,20 +112,24 @@
     // reset
     currentStep = 1;
     $('#auth-loading #message').text();
+    $('#ss-login-form').slideUp();
+    $('#auth-loading').slideDown();
+    $('#auth-exists').slideUp();
 
-    const initiateLogin = await homebridge.request('/initiateLogin', {
+    homebridge.toast.info('Please wait...', 'Initiating Login');
+
+    const loginAndAuth = await homebridge.request('/loginAndAuth', {
       username: $('#username').val(),
       password: $('#password').val(),
     });
 
-    if (initiateLogin.success) {
-      $('#ss-login-form').slideUp();
-      $('#auth-loading').slideDown();
-      $('#auth-exists').slideUp();
-
-      homebridge.toast.info('Please wait...', 'Initiating Login'); // then we wait for push event 'login-complete'
+    if (loginAndAuth.success) {
+      $('#auth').slideUp(0);
+      $('#auth-loading').slideUp(0);
+      $('#auth-exists').slideDown();
+      homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
     } else {
-      homebridge.toast.error('Please try again.', 'Error initiating login');
+      homebridge.toast.error('Please try again.', 'Error logging in');
     }
   }
 

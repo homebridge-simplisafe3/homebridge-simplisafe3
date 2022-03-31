@@ -221,12 +221,9 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         }, parseInt(token.expires_in) * 1000 - 300000);
     }
     
-    async loginAuth(username, password) {
-        // reset
-        this.finalAuthCallbackUrl = undefined;
-        
+    async loginAndAuthorize(username, password) {
         const initialAuthUrl = this.getSSAuthURL();
-        let cookies, checkMfaIntervalID;
+        let cookies;
 
         let auth0 = axios.create({
             withCredentials: true,
@@ -241,7 +238,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         });
         
         this.emit(AUTH_EVENTS.LOGIN_STEP, 'Loading login auth url...');
-        auth0.get(initialAuthUrl.url, {
+        return auth0.get(initialAuthUrl.url, {
             params: initialAuthUrl.params,
             headers: {
                 'Accept': 'text/html',
@@ -263,73 +260,80 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 },
                 maxRedirects: 5
             });
-        }).then(awaitMfaResponse => {
-            let awaitMfaUrl = awaitMfaResponse.request._redirectable._currentUrl;
-            checkMfaIntervalID = setInterval(async () => {
-                this.emit(AUTH_EVENTS.LOGIN_STEP, 'Awaiting login verification (check email)...');
-                auth0.get(awaitMfaUrl, {
-                    maxRedirects: 5
-                }).then(mfaCheckResponse => {
-                    // <form method="post" action="https://auth.simplisafe.com/continue?state=***" id="success-form">\n' +
-                    // <input type="hidden" name="token" value="***" />
-                    if (mfaCheckResponse.data && mfaCheckResponse.data.indexOf('Verification Successful') > -1) {
-                        this.emit(AUTH_EVENTS.LOGIN_STEP, 'Detected verification success...');
-                        clearInterval(checkMfaIntervalID);
-                        const continueUrlMatch = mfaCheckResponse.data.match(/https:\/\/auth\.simplisafe\.com\/continue\?[^"]*/g);
-                        const tokenRegExp = new RegExp(/name="token" value="([^"]*)"/, 'g');
-                        const tokenMatch = tokenRegExp.exec(mfaCheckResponse.data);
-                        if (continueUrlMatch.length && tokenMatch.length) {
-                            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Submitting verification form for redirect...');
-                            return auth0.post(continueUrlMatch[0], {
-                                token: tokenMatch[1]
-                            }, {
-                                maxRedirects: 0,
-                                headers: {
-                                    'Cookie': cookies
-                                }
-                            });
-                        }
-                    } else {
-                        throw new Error('Verification not yet received');
-                    }
-                }).then(verificationRedirectResponse => {
-                    this.emit(AUTH_EVENTS.LOGIN_STEP, 'Verification form submission successful...');
-                    const finalAuthLocation = verificationRedirectResponse.headers['location'];
-                    return auth0.get('https://auth.simplisafe.com' + finalAuthLocation, {
-                        maxRedirects: 0,
-                        headers: {
-                            'Cookie': cookies
-                        }
-                    });
-                }).then(finalRedirectReponse => {
-                    this.emit(AUTH_EVENTS.LOGIN_STEP, 'Received final auth URL.');
-                    const finalRedirectUrl = finalRedirectReponse.headers['location'];
-                    let code;
-                    try {
-                        const redirectURL = new URL(finalRedirectUrl);
-                        const maybeCode = redirectURL.searchParams.get('code');
-                        if (!maybeCode) {
-                            throw new Error();
-                        }
-                        code = maybeCode;
-                    } catch (error) {
-                        throw new Error('Invalid redirect URL');
-                    }
-                    this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to obtain token...');
-                    return this.getToken(code);
-                }).then(token => {
-                    if (token) this.emit(AUTH_EVENTS.LOGIN_COMPLETE);
-                }).catch(error => {
-                    if (error.message == 'Verification not yet received') return;
-                    else throw error;
+        }).then(awaitLoginVerificationResponse => {
+            let awaitLoginVerificationUrl = awaitLoginVerificationResponse.request._redirectable._currentUrl;
+
+            const checkLoginVerified = async (ms, triesLeft) => {
+                return new Promise((resolve, reject) => {
+                    const interval = setInterval(async () => {
+                        this.emit(AUTH_EVENTS.LOGIN_STEP, 'Awaiting login verification (check email)...');
+                        auth0.get(awaitLoginVerificationUrl, {
+                            maxRedirects: 5
+                        }).then(loginVerificationCheckResponse => {
+                            // <form method="post" action="https://auth.simplisafe.com/continue?state=***" id="success-form">\n' +
+                            // <input type="hidden" name="token" value="***" />
+                            if (loginVerificationCheckResponse.data && loginVerificationCheckResponse.data.indexOf('Verification Successful') > -1) {
+                                resolve(loginVerificationCheckResponse);
+                                clearInterval(interval);
+                            } else if (triesLeft <= 1) {
+                                reject(new Error('Timed out waiting for login verification'));
+                                clearInterval(interval);
+                            }
+                        })
+                        triesLeft--;
+                    }, ms);
                 });
-            }, 3000);
+            }
+            
+            return checkLoginVerified(3000, (15 * 60 * 1000) / 3); // wait up to 15 minutes
+        }).then(loginVerificationCheckResponse => {
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Detected verification success...');
+            const continueUrlMatch = loginVerificationCheckResponse.data.match(/https:\/\/auth\.simplisafe\.com\/continue\?[^"]*/g);
+            const tokenRegExp = new RegExp(/name="token" value="([^"]*)"/, 'g');
+            const tokenMatch = tokenRegExp.exec(loginVerificationCheckResponse.data);
+            if (continueUrlMatch.length && tokenMatch.length) {
+                this.emit(AUTH_EVENTS.LOGIN_STEP, 'Submitting verification form for redirect...');
+                return auth0.post(continueUrlMatch[0], {
+                    token: tokenMatch[1]
+                }, {
+                    maxRedirects: 0,
+                    headers: {
+                        'Cookie': cookies
+                    }
+                });
+            }
+        }).then(verificationRedirectResponse => {
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Verification form submission successful...');
+            const finalAuthLocation = verificationRedirectResponse.headers['location'];
+            return auth0.get('https://auth.simplisafe.com' + finalAuthLocation, {
+                maxRedirects: 0,
+                headers: {
+                    'Cookie': cookies
+                }
+            });
+        }).then(finalRedirectReponse => {
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Received final auth URL.');
+            const finalRedirectUrl = finalRedirectReponse.headers['location'];
+            let code;
+            try {
+                const redirectURL = new URL(finalRedirectUrl);
+                const maybeCode = redirectURL.searchParams.get('code');
+                if (!maybeCode) {
+                    throw new Error();
+                }
+                code = maybeCode;
+            } catch (error) {
+                throw new Error('Invalid redirect URL');
+            }
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to obtain token...');
+            return this.getToken(code);
+        }).then(token => {
+            if (token) this.emit(AUTH_EVENTS.LOGIN_COMPLETE);
+            return true;
         }).catch((error) => {
             this.emit(AUTH_EVENTS.LOGIN_STEP, `Authentication error: ${error.message ?? error.toString()}`, true);
-            clearInterval(checkMfaIntervalID);
+            return false;
         });
-        
-        return true;
     }
 }
 

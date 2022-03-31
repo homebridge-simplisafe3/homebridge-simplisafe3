@@ -26,39 +26,33 @@ class Login extends Command {
         this.authManager = new SimpliSafe3AuthenticationManager(flags.homebridgeDir);
         this.authManager.on(AUTH_EVENTS.LOGIN_STEP, (message, isError) => {
             if (isError) {
-                // picked up by waitFor
-                this.errorMessage = message;
+                this.warn(`Error: ${message}`);
             } else {
                 this.log(message);
             }
         });
+        
+        this.log('\n******* Simplisafe Authentication *******');
 
-        this.authManager.on(AUTH_EVENTS.LOGIN_COMPLETE, () => {
-            CliUx.ux.action.stop();
-            this.log('\nCredentials retrieved successfully!');
+        const email = await CliUx.ux.prompt('SimpliSafe Email')
+        const password = await CliUx.ux.prompt('SimpliSafe Password', {type: 'hide'})
+
+        CliUx.ux.action.start('Authenticating with SimpliSafe');
+        
+        const loggedInAndAuthorized = await this.authManager.loginAndAuthorize(email, password);
+
+        CliUx.ux.action.stop();
+        if (loggedInAndAuthorized) {
+            this.log('\nAuthentication successful!');
             this.log('accessToken: ' + this.authManager.accessToken);
             this.log('refreshToken: ' + this.authManager.refreshToken);
             this.log('\nPlease restart Homebridge for changes to take effect.');
-            // picked up by waitFor
-            this.authComplete = true;
-        });
-        
-        this.log('\n******* Simplisafe Authentication *******');
-        const email = await CliUx.ux.prompt('SimpliSafe Email')
-        const password = await CliUx.ux.prompt('SimpliSafe Password', {type: 'hide'})
-        CliUx.ux.action.start('Authenticating with SimpliSafe');
-        
-        this.authManager.loginAuth(email, password);
+        } else {
+            this.warn('\nAuthentication failed.');
+            this.exit(1);
+        }
 
-        let sleep = ms => new Promise(r => setTimeout(r, ms));
-        let waitFor = async function waitFor(f){
-            while(!f()) await sleep(1000);
-            return f();
-        };
-        await waitFor(() => this.authComplete || this.errorMessage).then(() => {
-            if (this.errorMessage) this.error(this.errorMessage);
-            else this.exit(0);
-        })
+        this.exit(0);
     }
 }
 
