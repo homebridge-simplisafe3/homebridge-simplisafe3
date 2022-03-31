@@ -3,14 +3,14 @@
     <h4 class="card-title">SimpliSafe Authentication</h4>
     <div id="auth-exists">
       <p class="mb-0">
-        <strong>Authentication has been setup already.</strong> <a id="show-auth" href="#auth">Show Authentication Form.</a>
+        <strong>Authentication has been setup.</strong> <a id="show-auth" href="#auth">Show Authentication Form.</a>
       </p>
     </div>
     <div id="auth-loading" class="mx-md-5 my-2">
-      <div class="spinner-border spinner-border-sm d-inline-block" role="status">
-        <span class="sr-only">Auth in progress...</span>
+      <div class="progress" style="height: 1px;">
+        <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      <p id="message" class="d-inline pl-2"></p>
+      <p id="message" class="pt-1"></p>
     </div>
     <div id="auth">
       <form id="ss-login-form" class="pt-2">
@@ -52,6 +52,9 @@
 (async () => {
   $('#auth-exists').slideUp(0);
   $('#auth-loading').slideUp(0);
+  let currentStep;
+  let totalSteps;
+  let lastStepMessage;
 
   // get the current homebridge config
   const pluginConfig = await homebridge.getPluginConfig();
@@ -64,18 +67,32 @@
 
   const credentialsExistResponse = await homebridge.request('/credentialsExist');
   if (credentialsExistResponse.success && credentialsExistResponse.credentialsExist) {
-      $('#auth-exists').slideDown(0);
-      $('#auth').slideUp(0);
+    $('#auth-exists').slideDown(0);
+    $('#auth').slideUp(0);
+  }
+
+  const nLoginSteps = await homebridge.request('/nLoginSteps');
+  if (nLoginSteps.steps) {
+    $('#auth-loading .progress-bar').attr('aria-valuemax', nLoginSteps.steps);
+    totalSteps = nLoginSteps.steps;
   }
 
   homebridge.addEventListener('login-step', (event) => {
       if (event.data.isError) {
-          clearInterval(mfaCheckIntervalID);
           $('#auth-loading #message').text();
           $('#auth-loading').slideUp(0);
           $('#show-auth').click();
           homebridge.toast.error(event.data.message);
-      } else $('#auth-loading #message').text(event.data.message)
+          console.log(`Error: ${event.data.message}`);
+      } else {
+        console.log(event.data.message);
+        if (lastStepMessage !== event.data.message) currentStep++; // for repeating steps
+        console.log(currentStep, $('#auth-loading .progress-bar').attr('aria-valuenow'), lastStepMessage, lastStepMessage == event.data.message);
+        $('#auth-loading .progress-bar').attr('aria-valuenow', currentStep);
+        $('#auth-loading .progress-bar').css('width', `${100 * currentStep / totalSteps}%`);
+        $('#auth-loading #message').text(event.data.message);
+        lastStepMessage = event.data.message;
+      }
   });
 
   homebridge.addEventListener('login-complete', (event) => {
@@ -95,6 +112,11 @@
   
   async function doLogin(event) {
     if (event) event.preventDefault();
+    
+    // reset
+    currentStep = 1;
+    $('#auth-loading #message').text();
+
     const initiateLogin = await homebridge.request('/initiateLogin', {
       username: $('#username').val(),
       password: $('#password').val(),
@@ -102,7 +124,6 @@
 
     if (initiateLogin.success) {
       $('#ss-login-form').slideUp();
-      $('#auth-loading #message').text();
       $('#auth-loading').slideDown();
       $('#auth-exists').slideUp();
 

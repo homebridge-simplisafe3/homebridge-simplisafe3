@@ -15,6 +15,8 @@ export const AUTH_EVENTS = {
     LOGIN_COMPLETE: 'LOGIN_COMPLETE',
 };
 
+export const N_LOGIN_STEPS = 9;
+
 const ssOAuth = axios.create({
     baseURL: 'https://auth.simplisafe.com/oauth'
 });
@@ -333,4 +335,5 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
 
 module.exports.SimpliSafe3AuthenticationManager = SimpliSafe3AuthenticationManager;
 module.exports.AUTH_EVENTS = AUTH_EVENTS;
+module.exports.N_LOGIN_STEPS = N_LOGIN_STEPS;
 export default SimpliSafe3AuthenticationManager;

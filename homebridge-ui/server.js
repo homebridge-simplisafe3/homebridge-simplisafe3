@@ -1,5 +1,5 @@
 const { HomebridgePluginUiServer } = require('@homebridge/plugin-ui-utils');
-const { SimpliSafe3AuthenticationManager, AUTH_EVENTS } = require('../lib/authManager');
+const { SimpliSafe3AuthenticationManager, AUTH_EVENTS, N_LOGIN_STEPS } = require('../lib/authManager');
 
 // your class MUST extend the HomebridgePluginUiServer
 class UiServer extends HomebridgePluginUiServer {
@@ -21,6 +21,7 @@ class UiServer extends HomebridgePluginUiServer {
         });
 
         this.onRequest('/credentialsExist', this.credentialsExist.bind(this));
+        this.onRequest('/nLoginSteps', this.nLoginSteps.bind(this));
         this.onRequest('/initiateLogin', this.initiateLogin.bind(this));
 
         // this.ready() must be called to let the UI know you are ready to accept api calls
@@ -28,12 +29,22 @@ class UiServer extends HomebridgePluginUiServer {
     }
 
     /**
-   * Reports whether credentials already exiist
-   */
+     * Reports whether credentials already exiist
+     */
     async credentialsExist() {
-        return { success: true, credentialsExist: this.authManager.accountsFileExists() }
+      return { success: true, credentialsExist: this.authManager.accountsFileExists() }
     }
 
+    /**
+     * Reports the number of login steps
+     */
+    async nLoginSteps() {
+      return { steps: N_LOGIN_STEPS }
+    }
+    
+    /**
+     * Starts login process from authManager
+     */
     async initiateLogin(payload) {
         const username = payload.username;
         const password = payload.password;
