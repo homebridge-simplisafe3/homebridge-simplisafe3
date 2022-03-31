@@ -22,7 +22,7 @@ jobs:
       - run: npm version --allow-same-version --no-git-tag-version "$GITHUB_RELEASE"
       - run: npm ci
       - run: npm run build
-      - run: npm publish lib/
+      - run: npm publish dist/
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
 
