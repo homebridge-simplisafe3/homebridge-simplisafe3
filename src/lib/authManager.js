@@ -10,7 +10,8 @@ const events = require('events');
 
 export const AUTH_EVENTS = {
     REFRESH_CREDENTIALS_SUCCESS: 'REFRESH_CREDENTIALS_SUCCESS',
-    REFRESH_CREDENTIALS_FAILURE: 'REFRESH_CREDENTIALS_FAILURE'
+    REFRESH_CREDENTIALS_FAILURE: 'REFRESH_CREDENTIALS_FAILURE',
+    LOGIN_STEP: 'LOGIN_STEP'
 };
 
 const ssOAuth = axios.create({
@@ -68,9 +69,8 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     log;
     debug;
 
-    // Retained for deprecated username / password login, for now
-    username;
-    password;
+    // Login
+    finalAuthCallbackUrl;
 
     constructor(storagePath, log, debug) {
         super();
@@ -195,15 +195,8 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     }
 
     async refreshCredentials() {
-        if (!this.accountsFileExists()) {
-            if (this.username !== undefined && this.password !== undefined) {
-                // support old username / password, for now...
-                if (this.refreshToken == undefined) await this._loginWithUsernamePassword();
-                else await this._refreshWithUsernamePassword();
-                return;
-            } else if (this.refreshToken == undefined) {
-                throw new Error('No authentication credentials detected.');
-            }
+        if (!this.accountsFileExists() && this.refreshToken == undefined) {
+            throw new Error('No authentication credentials detected.');
         }
 
         try {
@@ -264,64 +257,102 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 });
         }, parseInt(token.expires_in) * 1000 - 300000);
     }
+    
+    async loginAuth(username, password) {
+        // reset
+        this.finalAuthCallbackUrl = undefined;
+        
+        const initialAuthUrl = this.getSSAuthURL();
+        let cookies, checkMfaIntervalID;
 
-    // Deprecated login with username / password
-    async _loginWithUsernamePassword() {
-        try {
-            let ssId = generateSimplisafeId();
-            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please re-authenticate using newest method. See README for more info.');
-            if (this.log && this.debug) this.log('Attempting to login with username / password.');
-            const response = await ssApiV1.post('/api/token', {
-                username: this.username,
-                password: this.password,
-                grant_type: 'password',
-                client_id: clientUsername,
-                device_id: `Homebridge; useragent="Homebridge-SimpliSafe3 (SS-ID: ${ssId})"; uuid="${clientUuid}"; id="${ssId}"`,
-                scope: ''
-            }, {
-                auth: {
-                    username: clientUsername,
-                    password: clientPassword
-                }
+        let auth0 = axios.create({
+            withCredentials: true,
+            responseType: 'document',
+            paramsSerializer: function(params) {
+                return params.join('&');
+            },
+            maxRedirects: 0,
+            validateStatus: function(status) {
+                return status >= 200 && status < 303;
+            },
+        });
+        
+        this.emit(AUTH_EVENTS.LOGIN_STEP, 'Loading login auth url...');
+        auth0.get(initialAuthUrl.url, {
+            params: initialAuthUrl.params,
+            headers: {
+                'Accept': 'text/html',
+                'User-Agent': 'Homebridge-Simplisafe3',
+                'Host': 'auth.simplisafe.com',
+                'Connection': 'keep-alive'
+            }
+        }).then(authorizeResponse => {
+            cookies = authorizeResponse.headers["set-cookie"];
+            const loginLocation = authorizeResponse.headers['location'];
+            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to login with credentials...');
+            return auth0.post('https://auth.simplisafe.com' + loginLocation, {
+                'username': username,
+                'password': password
+            },
+            {
+                headers: {
+                    'Cookie': cookies
+                },
+                maxRedirects: 5
             });
-
-            let token = response.data;
-            this.accessToken = token.access_token;
-            this.refreshToken = token.refresh_token;
-            this.expiry = Date.now() + (parseInt(token.expires_in) * 1000);
-            this.tokenType = token.token_type;
-            if (this.log && this.debug) this.log('Username / password login successful.');
-        } catch (error) {
-            this.log('Username / password login failed.');
-            throw error;
-        }
-    }
-
-    // Deprecated refresh with username / password
-    async _refreshWithUsernamePassword() {
-        try {
-            if (this.log && this.log.warn) this.log.warn('Warning: Authentication with username / password is expected to cease to function on or after December 2021. Please re-authenticate using newest method. See README for more info.');
-            if (this.log && this.debug) this.log('Attempting to refresh with username / password.');
-            const response = await ssApiV1.post('/api/token', {
-                refresh_token: this.refreshToken,
-                grant_type: 'refresh_token'
-            }, {
-                auth: {
-                    username: clientUsername,
-                    password: clientPassword
-                }
-            });
-
-            let token = response.data;
-            this.accessToken = token.access_token;
-            this.refreshToken = token.refresh_token;
-            this.expiry = Date.now() + (parseInt(token.expires_in) * 1000);
-            this.tokenType = token.token_type;
-            if (this.log && this.debug) this.log('Username / password refresh successful.');
-        } catch (error) {
-            this.log('Refresh with username / password login failed.');
-            throw error;
-        }
+        }).then(awaitMfaResponse => {
+            let awaitMfaUrl = awaitMfaResponse.request._redirectable._currentUrl;
+            checkMfaIntervalID = setInterval(async () => {
+                this.emit(AUTH_EVENTS.LOGIN_STEP, 'Awaiting login verification (check email)...');
+                auth0.get(awaitMfaUrl, {
+                    maxRedirects: 5
+                }).then(mfaCheckResponse => {
+                    // <form method="post" action="https://auth.simplisafe.com/continue?state=***" id="success-form">\n' +
+                    // <input type="hidden" name="token" value="***" />
+                    if (mfaCheckResponse.data && mfaCheckResponse.data.indexOf('Verification Successful') > -1) {
+                        this.emit(AUTH_EVENTS.LOGIN_STEP, 'Detected verification success...');
+                        clearInterval(checkMfaIntervalID);
+                        const continueUrlMatch = mfaCheckResponse.data.match(/https:\/\/auth\.simplisafe\.com\/continue\?[^"]*/g);
+                        const tokenRegExp = new RegExp(/name="token" value="([^"]*)"/, 'g');
+                        const tokenMatch = tokenRegExp.exec(mfaCheckResponse.data);
+                        if (continueUrlMatch.length && tokenMatch.length) {
+                            this.emit(AUTH_EVENTS.LOGIN_STEP, 'Submitting verification form for redirect...');
+                            return auth0.post(continueUrlMatch[0], {
+                                token: tokenMatch[1]
+                            }, {
+                                maxRedirects: 0,
+                                headers: {
+                                    'Cookie': cookies
+                                }
+                            });
+                        }
+                    } else {
+                        throw new Error('Verification not yet received');
+                    }
+                }).then(verificationRedirectResponse => {
+                    this.emit(AUTH_EVENTS.LOGIN_STEP, 'Verification form submission successful...');
+                    const finalAuthLocation = verificationRedirectResponse.headers['location'];
+                    return auth0.get('https://auth.simplisafe.com' + finalAuthLocation, {
+                        maxRedirects: 0,
+                        headers: {
+                            'Cookie': cookies
+                        }
+                    });
+                }).then(finalRedirectReponse => {
+                    const finalRedirectUrl = finalRedirectReponse.headers['location'];
+                    this.finalAuthCallbackUrl = finalRedirectUrl;
+                    this.emit(AUTH_EVENTS.LOGIN_STEP, 'Received final auth URL');
+                }).catch(error => {
+                    if (error.message == 'Verification not yet received') return;
+                    else throw error;
+                });
+            }, 3000);
+        }).catch((error) => {
+            this.emit(AUTH_EVENTS.LOGIN_STEP, `Authentication error: ${error.message ?? error.toString()}`, true);
+            clearInterval(checkMfaIntervalID);
+        });
+        
+        return true;
     }
 }
 
