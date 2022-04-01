@@ -22,15 +22,7 @@ const ssOAuth = axios.create({
 });
 axiosRetry(ssOAuth, { retries: 3 });
 
-// Web app:
-// const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com/authorize';
-// const SS_OAUTH_CLIENT_ID = 'DWkIUe6LC38xLomvfG6LXesCCaKJGl24';
-// const SS_OAUTH_AUTH0_CLIENT = 'eyJuYW1lIjoiYXV0aDAtc3BhLWpzIiwidmVyc2lvbiI6IjEuMjAuMSJ9';
-// const SS_OAUTH_REDIRECT_URI = 'https://webapp.simplisafe.com/new';
-// const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
-// const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
-
-const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com/authorize';
+const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com';
 const SS_OAUTH_CLIENT_ID = '42aBZ5lYrVW12jfOuu3CQROitwxg9sN5';
 const SS_OAUTH_AUTH0_CLIENT = 'eyJuYW1lIjoiQXV0aDAuc3dpZnQiLCJlbnYiOnsiaU9TIjoiMTUuMCIsInN3aWZ0IjoiNS54In0sInZlcnNpb24iOiIxLjMzLjAifQ';
 const SS_OAUTH_REDIRECT_URI = 'com.simplisafe.mobile://auth.simplisafe.com/ios/com.simplisafe.mobile/callback';
@@ -57,12 +49,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         this.log = log || console.log;
         this.debug = debug || false;
 
-        const account = this._parseAccountsFile();
-        if (account.accessToken !== undefined) {
-            this.accessToken = account.accessToken;
-            this.refreshToken = account.refreshToken;
-            this.codeVerifier = account.codeVerifier;
-        }
+        this.parseAccountsFile();
 
         if (!this.codeVerifier) this.codeVerifier = this.base64URLEncode(crypto.randomBytes(32));
         this.codeChallenge = this.base64URLEncode(this.sha256(this.codeVerifier));
@@ -78,7 +65,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         return fs.existsSync(accountsFile);
     }
 
-    _parseAccountsFile() {
+    parseAccountsFile() {
         if (this.accountsFileExists()) {
             let fileContents;
 
@@ -88,12 +75,16 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 fileContents = '{}';
             }
 
-            return JSON.parse(fileContents);
+            const account = JSON.parse(fileContents);
+
+            if (account.accessToken !== undefined) {
+                this.accessToken = account.accessToken;
+                this.refreshToken = account.refreshToken;
+                this.codeVerifier = account.codeVerifier;
+            }
         } else if (!this._storagePathExists()) {
             throw new Error(`Supplied path ${this.storagePath} does not exist`);
         }
-
-        return {};
     }
 
     _writeAccountsFile(account) {
@@ -111,22 +102,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
 
     isAuthenticated() {
         return this.refreshToken !== null && Date.now() < this.expiry;
-    }
-    
-    getSSAuthURL() {
-        let loginURL = { url: SS_OAUTH_AUTH_URL };
-        loginURL.params = [
-            `client_id=${SS_OAUTH_CLIENT_ID}`,
-            `scope=${SS_OAUTH_SCOPE}`,
-            'response_type=code',
-            'response_mode=query',
-            `redirect_uri=${SS_OAUTH_REDIRECT_URI}`,
-            'code_challenge_method=S256',
-            `code_challenge=${this.codeChallenge}`,
-            `audience=${SS_OAUTH_AUDIENCE}`,
-            `auth0Client=${SS_OAUTH_AUTH0_CLIENT}`,
-        ]
-        return loginURL;
     }
 
     base64URLEncode(str) {
@@ -220,13 +195,26 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 });
         }, parseInt(token.expires_in) * 1000 - 300000);
     }
-    
-    async loginAndAuthorize(username, password) {
-        const initialAuthUrl = this.getSSAuthURL();
-        let cookies;
 
+    /**
+     * This method handles logging into SimpliSafe via the auth0 web flow. The flow is:
+     * 1. Visit initial auth URL e.g. https://auth.simplisafe.com/authorize?client_id=SS_OAUTH_CLIENT_ID&scope=SS_OAUTH_SCOPE&response_type=code&response_mode=query&redirect_uri=SS_OAUTH_REDIRECT_URI&code_challenge_method=S256&code_challenge=${this.codeChallenge}&audience=SS_OAUTH_AUDIENCE&auth0Client=SS_OAUTH_AUTH0_CLIENT
+     *         Generating this URL requires codeVerifier and codeChallenge, see above
+     * 2. Obtain cookies from step 1 from headers "set-cookie"
+     * 3. Now we can try to login, with cookies with POST (allow redirects here for next step) to e.g. https://auth.simplisafe.com/u/login?state=STATE
+     * 4. Flow is redirected to the page awaiting login verification, note the different host e.g. https://tsv.prd.platform.simplisafe.com/v1/tsv/check?token=TOKEN (not the same token as at the end)
+     * 5. This web page periodically re-submits a form which presumably checks with auth0 whether login was verified. To simulate this we POST the form every 3 seconds. The form action URL and required token parameter need to be scraped from the page, e.g.:
+     *         <form method="post" action="https://auth.simplisafe.com/continue?state=STATE" id="success-form">...
+     *         <input type="hidden" name="token" value="TOKEN" />
+     *         This form data is sent as POST to the form action URL
+     * 6. If the login was verified via email, we are redirected to https://tsv.prd.platform.simplisafe.com/v1/tsv/confirm?code=CODE (not same code as below)
+     * 7. The URL in step 6 passes a redirect to the final web URL e.g. https://auth.simplisafe.com/authorize/resume?state=STATE
+     * 7. At this point we are supposed to be redirected to the callback URI, this can be either webapp.simplisafe or the mobile URI e.g. com.simplisafe.mobile://auth.simplisafe.com/ios/com.simplisafe.mobile/callback?code=CODE
+     * 8. Strip the CODE from the URI in step 7 and we can finally use this to obtain a token be sending POST to /token, see getToken()
+     */
+    async loginAndAuthorize(username, password) {
         let auth0 = axios.create({
-            baseURL: 'https://auth.simplisafe.com',
+            baseURL: SS_OAUTH_AUTH_URL,
             headers: {
                 'Accept': 'text/html',
                 'User-Agent': 'Homebridge-Simplisafe3'
@@ -234,17 +222,29 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             withCredentials: true,
             responseType: 'document',
             paramsSerializer: function(params) {
-                return params.join('&');
+                return Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
             },
             maxRedirects: 0,
             validateStatus: function(status) {
                 return status >= 200 && status < 303;
             },
         });
+
+        let cookies;
         
         this.emit(AUTH_EVENTS.LOGIN_STEP, 'Loading login auth url...');
-        return auth0.get(initialAuthUrl.url, {
-            params: initialAuthUrl.params
+        return auth0.get('/authorize', {
+            params: {
+                'client_id': SS_OAUTH_CLIENT_ID,
+                'scope': SS_OAUTH_SCOPE,
+                'response_type': 'code',
+                'response_mode': 'query',
+                'redirect_uri': SS_OAUTH_REDIRECT_URI,
+                'code_challenge_method': 'S256',
+                'code_challenge': this.codeChallenge,
+                'audience': SS_OAUTH_AUDIENCE,
+                'auth0Client': SS_OAUTH_AUTH0_CLIENT,
+            }
         }).then(authorizeResponse => {
             cookies = authorizeResponse.headers["set-cookie"];
             const loginPath = authorizeResponse.headers['location'];
@@ -285,8 +285,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             
             return checkLoginVerified(3000, (15 * 60 * 1000) / 3); // wait up to 15 minutes
         }).then(loginVerificationCheckResponse => {
-            // <form method="post" action="https://auth.simplisafe.com/continue?state=***" id="success-form">\n' +
-            // <input type="hidden" name="token" value="***" />
+            // parse <form>
             const continueUrlMatch = loginVerificationCheckResponse.data.match(/https:\/\/auth\.simplisafe\.com\/continue\?[^"]*/g);
             const tokenRegExp = new RegExp(/name="token" value="([^"]*)"/, 'g');
             const tokenMatch = tokenRegExp.exec(loginVerificationCheckResponse.data);
