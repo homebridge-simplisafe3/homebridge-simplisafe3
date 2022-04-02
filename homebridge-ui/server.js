@@ -1,5 +1,5 @@
 const { HomebridgePluginUiServer } = require('@homebridge/plugin-ui-utils');
-const { SimpliSafe3AuthenticationManager, AUTH_EVENTS, N_LOGIN_STEPS } = require('../lib/authManager');
+const { SimpliSafe3AuthenticationManager, AUTH_EVENTS, AUTH_STATES, N_LOGIN_STEPS } = require('../lib/authManager');
 
 // your class MUST extend the HomebridgePluginUiServer
 class UiServer extends HomebridgePluginUiServer {
@@ -15,19 +15,9 @@ class UiServer extends HomebridgePluginUiServer {
             console.log(message);
         });
 
-        this.authManager.on(AUTH_EVENTS.LOGIN_COMPLETE, () => {
-            this.pushEvent('login-complete');
-            console.log('Authentication completed successfully');
-        });
-
-        this.authManager.on(AUTH_EVENTS.LOGIN_STEP_SMS_REQUEST, (message) => {
-            this.pushEvent('login-step-sms-request', { message: message });
-            console.log(message);
-        });
-
         this.onRequest('/credentialsExist', this.credentialsExist.bind(this));
         this.onRequest('/nLoginSteps', this.nLoginSteps.bind(this));
-        this.onRequest('/loginAndAuth', this.loginAndAuth.bind(this));
+        this.onRequest('/initiateLoginAndAuth', this.initiateLoginAndAuth.bind(this));
         this.onRequest('/sendSmsCode', this.sendSmsCode.bind(this));
 
         // this.ready() must be called to let the UI know you are ready to accept api calls
@@ -51,20 +41,23 @@ class UiServer extends HomebridgePluginUiServer {
     /**
      * Starts login process from authManager
      */
-    async loginAndAuth(payload) {
+    async initiateLoginAndAuth(payload) {
         const username = payload.username;
         const password = payload.password;
         if (!username.length || !password.length) {
             return { success: false }
         }
-        const loggedInAuthorized = await this.authManager.loginAndAuthorize(username, password);
-        return { success: loggedInAuthorized }
+        const authorizedOrAwaitingVerification = await this.authManager.initiateLoginAndAuth(username, password);
+        return { 
+            success: authorizedOrAwaitingVerification !== AUTH_STATES.ERROR, 
+            awaitingVerification: authorizedOrAwaitingVerification == AUTH_STATES.AWAITING_VERIFICATION
+        }
     }
-
+    
     async sendSmsCode(payload) {
         const code = payload.code;
-        this.authManager.smsCode = code;
-        return true;
+        const loggedInAuthorized = this.authManager.completeLoginVerificationAndAuthorizeSms(code);
+        return { success: loggedInAuthorized !== AUTH_STATES.ERROR }
     }
 }
 

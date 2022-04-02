@@ -90,11 +90,11 @@
 
   homebridge.addEventListener('login-step', (event) => {
       if (event.data.isError) {
+          console.log(`Error: ${event.data.message}`);
           $('#auth-loading #message').text();
           $('#auth-loading').fadeOut(0).slideUp(0);
           $('#show-auth').click();
           homebridge.toast.error(event.data.message);
-          console.log(`Error: ${event.data.message}`);
       } else {
         console.log(event.data.message);
         if (lastStepMessage !== event.data.message) currentStep++; // for repeating steps
@@ -103,16 +103,6 @@
         $('#auth-loading #message').text(event.data.message);
         lastStepMessage = event.data.message;
       }
-  });
-
-  homebridge.addEventListener('login-step-sms-request', (event) => {
-      console.log(event.data.message);
-      if (lastStepMessage !== event.data.message) currentStep++; // for repeating steps
-      $('#auth-loading .progress-bar').attr('aria-valuenow', currentStep);
-      $('#auth-loading .progress-bar').css('width', `${100 * currentStep / totalSteps}%`);
-      $('#auth-loading #message').text(event.data.message);
-      lastStepMessage = event.data.message;
-      $('#sms-code-form').slideDownFadeIn();
   });
 
   homebridge.addEventListener('login-complete', (event) => {
@@ -126,7 +116,6 @@
   });
 
   $('#sms-code-form').submit(async (event) => {
-    console.log(event);
       event.preventDefault();
       $('#sms-code-form').slideUpFadeOut();
       const sendCode = await homebridge.request('/sendSmsCode', {
@@ -148,16 +137,21 @@
 
     homebridge.toast.info('Please wait...', 'Initiating Login');
 
-    const loginAndAuth = await homebridge.request('/loginAndAuth', {
+    const initiateLoginAndAuth = await homebridge.request('/initiateLoginAndAuth', {
       username: $('#username').val(),
       password: $('#password').val(),
     });
 
-    if (loginAndAuth.success) {
-      $('#auth').slideUpFadeOut();
-      $('#auth-loading').slideUpFadeOut();
-      $('#auth-exists').slideDownFadeIn();
-      homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
+    if (initiateLoginAndAuth.success) {
+      if (initiateLoginAndAuth.awaitingVerification) {
+        $('#sms-code-form').slideDownFadeIn();
+        homebridge.toast.info('Enter SMS verification code.', 'Awaiting SMS Code');
+      } else {
+        $('#auth').slideUpFadeOut();
+        $('#auth-loading').slideUpFadeOut();
+        $('#auth-exists').slideDownFadeIn();
+        homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
+      }
     } else {
       homebridge.toast.error('Please try again.', 'Error logging in');
     }
