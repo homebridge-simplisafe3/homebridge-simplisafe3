@@ -20,9 +20,15 @@ class UiServer extends HomebridgePluginUiServer {
             console.log('Authentication completed successfully');
         });
 
+        this.authManager.on(AUTH_EVENTS.LOGIN_STEP_SMS_REQUEST, (message) => {
+            this.pushEvent('login-step-sms-request', { message: message });
+            console.log(message);
+        });
+
         this.onRequest('/credentialsExist', this.credentialsExist.bind(this));
         this.onRequest('/nLoginSteps', this.nLoginSteps.bind(this));
         this.onRequest('/loginAndAuth', this.loginAndAuth.bind(this));
+        this.onRequest('/sendSmsCode', this.sendSmsCode.bind(this));
 
         // this.ready() must be called to let the UI know you are ready to accept api calls
         this.ready();
@@ -53,6 +59,12 @@ class UiServer extends HomebridgePluginUiServer {
         }
         const loggedInAuthorized = await this.authManager.loginAndAuthorize(username, password);
         return { success: loggedInAuthorized }
+    }
+
+    async sendSmsCode(payload) {
+        const code = payload.code;
+        this.authManager.smsCode = code;
+        return true;
     }
 }
 

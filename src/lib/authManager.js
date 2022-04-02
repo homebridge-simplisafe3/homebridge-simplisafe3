@@ -12,6 +12,7 @@ export const AUTH_EVENTS = {
     REFRESH_CREDENTIALS_SUCCESS: 'REFRESH_CREDENTIALS_SUCCESS',
     REFRESH_CREDENTIALS_FAILURE: 'REFRESH_CREDENTIALS_FAILURE',
     LOGIN_STEP: 'LOGIN_STEP',
+    LOGIN_STEP_SMS_REQUEST: 'LOGIN_STEP_SMS_REQUEST',
     LOGIN_COMPLETE: 'LOGIN_COMPLETE',
 };
 
@@ -42,6 +43,8 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     refreshInterval;
     log;
     debug;
+
+    smsCode;
 
     constructor(storagePath, log, debug) {
         super();
@@ -199,15 +202,17 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     /**
      * This method handles logging into SimpliSafe via the auth0 web flow. The flow is:
      * 1. Visit initial auth URL e.g. https://auth.simplisafe.com/authorize?client_id=SS_OAUTH_CLIENT_ID&scope=SS_OAUTH_SCOPE&response_type=code&response_mode=query&redirect_uri=SS_OAUTH_REDIRECT_URI&code_challenge_method=S256&code_challenge=${this.codeChallenge}&audience=SS_OAUTH_AUDIENCE&auth0Client=SS_OAUTH_AUTH0_CLIENT
-     *         Generating this URL requires codeVerifier and codeChallenge, see above
+     *      Generating this URL requires codeVerifier and codeChallenge, see above
      * 2. Obtain cookies from step 1 from headers "set-cookie"
      * 3. Now we can try to login, with cookies with POST (allow redirects here for next step) to e.g. https://auth.simplisafe.com/u/login?state=STATE
-     * 4. Flow is redirected to the page awaiting login verification, note the different host e.g. https://tsv.prd.platform.simplisafe.com/v1/tsv/check?token=TOKEN (not the same token as at the end)
-     * 5. This web page periodically re-submits a form which presumably checks with auth0 whether login was verified. To simulate this we POST the form every 3 seconds. The form action URL and required token parameter need to be scraped from the page, e.g.:
-     *         <form method="post" action="https://auth.simplisafe.com/continue?state=STATE" id="success-form">...
-     *         <input type="hidden" name="token" value="TOKEN" />
-     *         This form data is sent as POST to the form action URL
-     * 6. If the login was verified via email, we are redirected to https://tsv.prd.platform.simplisafe.com/v1/tsv/confirm?code=CODE (not same code as below)
+     * 4. If the user has email verification chosen, flow is redirected to the page awaiting login verification, note the different host e.g. https://tsv.prd.platform.simplisafe.com/v1/tsv/check?token=TOKEN (not the same token as at the end)
+     *      This web page periodically re-submits a form which presumably checks with auth0 whether login was verified. To simulate this we POST the form every 3 seconds. The form action URL and required token parameter need to be scraped from the page, e.g.:
+    *       <form method="post" action="https://auth.simplisafe.com/continue?state=STATE" id="success-form">...
+    *       <input type="hidden" name="token" value="TOKEN" />
+    *       This form data is sent as POST to the form action URL
+     * 5. Alternatively, if they are using SMS verification the URL is of the format /u/mfa-sms-challenge
+     *      The user needs to supply their SMS code
+     * 6. After the login was verified, we are redirected to https://tsv.prd.platform.simplisafe.com/v1/tsv/confirm?code=CODE (not same code as below)
      * 7. The URL in step 6 passes a redirect to the final web URL e.g. https://auth.simplisafe.com/authorize/resume?state=STATE
      * 7. At this point we are supposed to be redirected to the callback URI, this can be either webapp.simplisafe or the mobile URI e.g. com.simplisafe.mobile://auth.simplisafe.com/ios/com.simplisafe.mobile/callback?code=CODE
      * 8. Strip the CODE from the URI in step 7 and we can finally use this to obtain a token be sending POST to /token, see getToken()
@@ -245,9 +250,9 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 'audience': SS_OAUTH_AUDIENCE,
                 'auth0Client': SS_OAUTH_AUTH0_CLIENT,
             }
-        }).then(authorizeResponse => {
-            cookies = authorizeResponse.headers["set-cookie"];
-            const loginPath = authorizeResponse.headers['location'];
+        }).then(initialAuthUrlResponse => {
+            cookies = initialAuthUrlResponse.headers["set-cookie"];
+            const loginPath = initialAuthUrlResponse.headers['location'];
             this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to login with credentials...');
             return auth0.post(loginPath, {
                 'username': username,
@@ -259,10 +264,10 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 },
                 maxRedirects: 5
             });
-        }).then(awaitLoginAttemptResponse => {
-            let awaitLoginVerificationUrl = awaitLoginAttemptResponse.request._redirectable._currentUrl;
+        }).then(loginAttemptResponse => {
+            let awaitLoginVerificationUrl = loginAttemptResponse.request._redirectable._currentUrl;
 
-            const checkLoginVerified = async (ms, triesLeft) => {
+            const checkVerifiedByEmail = async (ms, triesLeft) => {
                 return new Promise((resolve, reject) => {
                     const interval = setInterval(async () => {
                         this.emit(AUTH_EVENTS.LOGIN_STEP, 'Awaiting login verification (check email)...');
@@ -282,25 +287,57 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                     }, ms);
                 });
             }
-            
-            return checkLoginVerified(3000, (15 * 60 * 1000) / 3); // wait up to 15 minutes
-        }).then(loginVerificationCheckResponse => {
-            // parse <form>
-            const continueUrlMatch = loginVerificationCheckResponse.data.match(/https:\/\/auth\.simplisafe\.com\/continue\?[^"]*/g);
-            const tokenRegExp = new RegExp(/name="token" value="([^"]*)"/, 'g');
-            const tokenMatch = tokenRegExp.exec(loginVerificationCheckResponse.data);
-            if (continueUrlMatch.length && tokenMatch.length) {
-                this.emit(AUTH_EVENTS.LOGIN_STEP, 'Submitting verification form for redirect...');
-                return auth0.post(continueUrlMatch[0], {
-                    token: tokenMatch[1]
-                }, {
-                    maxRedirects: 0,
-                    headers: {
-                        'Cookie': cookies
-                    }
+
+            const checkLoginVerifiedBySms = async (ms, triesLeft) => {
+                return new Promise((resolve, reject) => {
+                    const interval = setInterval(async () => {
+                        this.emit(AUTH_EVENTS.LOGIN_STEP_SMS_REQUEST, 'Awaiting sms verification code...');
+                        if (this.smsCode) {
+                            resolve(this.smsCode);
+                            this.smsCode = undefined;
+                            clearInterval(interval);
+                        } else if (triesLeft <= 1) {
+                            reject(new Error('Timed out waiting for sms verification'));
+                            clearInterval(interval);
+                        }
+                        triesLeft--;
+                    }, ms);
+                });
+            }
+
+            if (awaitLoginVerificationUrl.indexOf('/u/mfa-sms-challenge') > -1) {
+                // SMS verification
+                return checkLoginVerifiedBySms(3000, (5 * 60 * 1000) / 3000).then(smsCode => {
+                    this.emit(AUTH_EVENTS.LOGIN_STEP, 'Submitting verification form for redirect...');
+                    return auth0.post(awaitLoginVerificationUrl, {
+                        code: smsCode
+                    }, {
+                        maxRedirects: 0,
+                        headers: {
+                            'Cookie': cookies
+                        }
+                    });
                 });
             } else {
-                throw Error('Unable to parse token from continue form');
+                return checkVerifiedByEmail(3000, (15 * 60 * 1000) / 3000).then(loginVerificationCheckResponse => {
+                    // parse <form>
+                    const continueUrlMatch = loginVerificationCheckResponse.data.match(/https:\/\/auth\.simplisafe\.com\/continue\?[^"]*/g);
+                    const tokenRegExp = new RegExp(/name="token" value="([^"]*)"/, 'g');
+                    const tokenMatch = tokenRegExp.exec(loginVerificationCheckResponse.data);
+                    if (continueUrlMatch.length && tokenMatch.length) {
+                        this.emit(AUTH_EVENTS.LOGIN_STEP, 'Submitting verification form for redirect...');
+                        return auth0.post(continueUrlMatch[0], {
+                            token: tokenMatch[1]
+                        }, {
+                            maxRedirects: 0,
+                            headers: {
+                                'Cookie': cookies
+                            }
+                        });
+                    } else {
+                        throw Error('Unable to parse token from continue form');
+                    }
+                });
             }
         }).then(verificationRedirectResponse => {
             const finalAuthPath = verificationRedirectResponse.headers['location'];

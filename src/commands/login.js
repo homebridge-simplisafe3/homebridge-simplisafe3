@@ -31,11 +31,17 @@ class Login extends Command {
                 this.log(message);
             }
         });
+
+        this.authManager.on(AUTH_EVENTS.LOGIN_STEP_SMS_REQUEST, async (message) => {
+            this.log(message);
+            const code = await CliUx.ux.prompt('Enter SMS code');
+            this.authManager.smsCode = code;
+        });
         
         this.log('\n======= Simplisafe Authentication =======\n');
 
-        const email = await CliUx.ux.prompt('SimpliSafe Email')
-        const password = await CliUx.ux.prompt('SimpliSafe Password', {type: 'hide'})
+        const email = await CliUx.ux.prompt('SimpliSafe Email');
+        const password = await CliUx.ux.prompt('SimpliSafe Password', {type: 'hide'});
 
         CliUx.ux.action.start('Authenticating with SimpliSafe');
         
