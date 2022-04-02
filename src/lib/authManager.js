@@ -331,6 +331,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     }
 
     async verifySmsAndCompleteAuthorization(smsCode) {
+        this.emit(AUTH_EVENTS.LOGIN_STEP, 'Attempting to verify SMS code...');
         return this.auth0Endpoint.post(this.auth0LoginVerificationUrl, {
             code: smsCode
         }, {
