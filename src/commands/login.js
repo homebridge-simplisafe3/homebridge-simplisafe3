@@ -47,7 +47,7 @@ class Login extends Command {
             CliUx.ux.action.stop();
             const code = await CliUx.ux.prompt('Enter SMS code');
             CliUx.ux.action.start('Completing authentication with SimpliSafe');
-            authorizedOrAwaitingVerification = this.authManager.completeLoginVerificationAndAuthorizeSms(code);
+            authorizedOrAwaitingVerification = this.authManager.verifySmsAndCompleteAuthorization(code);
         }
 
         CliUx.ux.action.stop();

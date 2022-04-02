@@ -221,7 +221,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     }
 
     /**
-     * This method, completeLoginAndAuthorize() & completeLoginVerificationAndAuthorizeSms() handle logging into SimpliSafe via the auth0 web flow. The flow is:
+     * This method, completeLoginAndAuthorize() & verifySmsAndCompleteAuthorization() handle logging into SimpliSafe via the auth0 web flow. The flow is:
      * 1. Visit initial auth URL e.g. https://auth.simplisafe.com/authorize?client_id=SS_OAUTH_CLIENT_ID&scope=SS_OAUTH_SCOPE&response_type=code&response_mode=query&redirect_uri=SS_OAUTH_REDIRECT_URI&code_challenge_method=S256&code_challenge=${this.codeChallenge}&audience=SS_OAUTH_AUDIENCE&auth0Client=SS_OAUTH_AUTH0_CLIENT
      *      Generating this URL requires codeVerifier and codeChallenge, see above
      * 2. Obtain cookies from step 1 from headers "set-cookie"
@@ -232,9 +232,9 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
      *      <input type="hidden" name="token" value="TOKEN" />
      *      This form data is sent as POST to the form action URL and flow completes with completeLoginAndAuthorize()
      * 
-     * --- completeLoginVerificationAndAuthorizeSms() ---
+     * --- verifySmsAndCompleteAuthorization() ---
      * 5. Alternatively, if they are using SMS verification the URL is of the format /u/mfa-sms-challenge. 
-     *      The user needs to supply their SMS code via cli / UI input which is sent via POST to the URL above using completeLoginVerificationAndAuthorizeSms()
+     *      The user needs to supply their SMS code via cli / UI input which is sent via POST to the URL above using verifySmsAndCompleteAuthorization()
      *      Authorization completes as above with completeLoginAndAuthorize()
      * 
      * --- completeLoginAndAuthorize() ---
@@ -330,7 +330,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         });
     }
 
-    async completeLoginVerificationAndAuthorizeSms(smsCode) {
+    async verifySmsAndCompleteAuthorization(smsCode) {
         return this.auth0Endpoint.post(this.auth0LoginVerificationUrl, {
             code: smsCode
         }, {
