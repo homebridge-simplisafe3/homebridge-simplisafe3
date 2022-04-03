@@ -56,7 +56,7 @@ class UiServer extends HomebridgePluginUiServer {
     
     async sendSmsCode(payload) {
         const code = payload.code;
-        const loggedInAuthorized = this.authManager.verifySmsAndCompleteAuthorization(code);
+        const loggedInAuthorized = await this.authManager.verifySmsAndCompleteAuthorization(code);
         return { success: loggedInAuthorized !== AUTH_STATES.ERROR }
     }
 }

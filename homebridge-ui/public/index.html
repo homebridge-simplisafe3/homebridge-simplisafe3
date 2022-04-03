@@ -37,7 +37,7 @@
     </div>
     <form id="sms-code-form" class="mx-auto w-50">
       <div class="input-group mb-3">
-        <input class="form-control" type="number" placeholder="Enter sms code" autocomplete="one-time-code" />
+        <input class="form-control" type="number" placeholder="Enter SMS code" autocomplete="one-time-code" />
         <div class="input-group-append">
           <button class="btn btn-primary m-0" type="submit">Go</button>
         </div>
@@ -121,6 +121,13 @@
       const sendCode = await homebridge.request('/sendSmsCode', {
           code: $('#sms-code-form input').val()
       });
+
+      if (sendCode.success) {
+        $('#auth').slideUpFadeOut();
+        $('#auth-loading').slideUpFadeOut();
+        $('#auth-exists').slideDownFadeIn();
+        homebridge.toast.success('Restart to apply the changes.', 'Authorization Successful');
+      }
   })
 
   $('#ss-login-form').submit(doLogin);
