@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Have a question? 👉 [Start a new discussion](https://github.com/paperless-ngx/paperless-ngx/discussions/categories/feature-requests)        
+        Have a question? 👉 [Start a new discussion](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions)        
         Before opening an issue, please search for existing issues / discussions.
   - type: textarea
     id: description
