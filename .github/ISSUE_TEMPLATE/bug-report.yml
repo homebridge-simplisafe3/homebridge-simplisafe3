@@ -76,3 +76,16 @@ body:
       placeholder: Check with `node -v`
     validations:
       required: true
+  - type: dropdown
+    id: host-os
+    attributes:
+      label: Host OS
+      options:
+        - Raspbian
+        - macOS
+        - Docker
+        - Ubuntu
+        - Debian
+        - Windows
+    validations:
+      required: true
