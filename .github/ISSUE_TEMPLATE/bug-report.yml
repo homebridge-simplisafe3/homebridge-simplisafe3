@@ -1,0 +1,78 @@
+name: Bug Report
+description: Raise a bug related to the plugin.
+title: "[BUG] A description of the issue"
+labels: ["bug", "unconfirmed"]
+
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question? 👉 [Start a new discussion](https://github.com/paperless-ngx/paperless-ngx/discussions/categories/feature-requests)        
+        Before opening an issue, please search for existing issues / discussions.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Currently...
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: In this situation...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Steps to reproduce the behavior
+      placeholder: "1. Go to '...', 2. Click on '....', 3. See error"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Homebridge logs
+      description: Please enable the debug option for the plugin and optionally Homebridge debug mode (https://github.com/homebridge/homebridge/wiki/Basic-Troubleshooting#debug-mode) before generating the log.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Homebridge config.json contents
+      description: Paste the relevant section of your homebridge config.json. Be sure to remove any sensitive information.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem.
+  - type: input
+    id: version
+    attributes:
+      label: Plugin version
+      placeholder: e.g. 1.10.0 (check with `npm list -g homebridge-simplisafe3`)
+    validations:
+      required: true
+  - type: input
+    id: version-homebridge
+    attributes:
+      label: Homebridge version
+      placeholder: Check with `homebridge -V`
+    validations:
+      required: true
+  - type: input
+    id: version-node
+    attributes:
+      label: Node.js version
+      placeholder: Check with `node -v`
+    validations:
+      required: true
