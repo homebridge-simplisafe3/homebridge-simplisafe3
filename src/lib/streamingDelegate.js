@@ -391,55 +391,60 @@ class StreamingDelegate {
                     let video = [].concat(...videoArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
                     let audio = [].concat(...audioArgs.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
 
-                    let cmd = spawn(this.ss3Camera.ffmpegPath, [
-                        ...source,
-                        ...video,
-                        ...audio
-                    ], {
-                        env: process.env
-                    });
-
-                    if (this.ss3Camera.debug) {
-                        this.log(`Start streaming video for camera '${this.ss3Camera.name}'`);
-                        this.log([this.ss3Camera.ffmpegPath, source.join(' '), video.join(' '), audio.join(' ')].join(' '));
-                    }
-
-                    let started = false;
-                    cmd.stderr.on('data', data => {
-                        if (!started) {
-                            started = true;
-                            if (this.ss3Camera.debug) this.log('FFMPEG received first frame');
-                            callback(); // do not forget to execute callback once set up
-                        }
+                    try {
+                        let cmd = spawn(this.ss3Camera.ffmpegPath, [
+                            ...source,
+                            ...video,
+                            ...audio
+                        ], {
+                            env: process.env
+                        });
+    
                         if (this.ss3Camera.debug) {
-                            this.log(data.toString());
+                            this.log(`Start streaming video for camera '${this.ss3Camera.name}'`);
+                            this.log([this.ss3Camera.ffmpegPath, source.join(' '), video.join(' '), audio.join(' ')].join(' '));
                         }
-                    });
-
-                    cmd.on('error', err => {
-                        this.log.error('An error occurred while making stream request:', err);
-                        callback(err);
-                    });
-
-                    cmd.on('close', code => {
-                        switch (code) {
-                        case null:
-                        case 0:
-                        case 255:
-                            if (this.ss3Camera.debug) this.log('Camera stopped streaming');
-                            break;
-                        default:
-                            if (this.ss3Camera.debug) this.log(`Error: FFmpeg exited with code ${code}`);
+    
+                        let started = false;
+                        cmd.stderr.on('data', data => {
                             if (!started) {
-                                callback(new Error(`Error: FFmpeg exited with code ${code}`));
-                            } else {
-                                this.controller.forceStopStreamingSession(sessionId);
+                                started = true;
+                                if (this.ss3Camera.debug) this.log('FFMPEG received first frame');
+                                callback(); // do not forget to execute callback once set up
                             }
-                            break;
-                        }
-                    });
-
-                    this.ongoingSessions[sessionIdentifier] = cmd;
+                            if (this.ss3Camera.debug) {
+                                this.log(data.toString());
+                            }
+                        });
+    
+                        cmd.on('error', err => {
+                            this.log.error('An error occurred while making stream request:', err);
+                            callback(err);
+                        });
+    
+                        cmd.on('close', code => {
+                            switch (code) {
+                            case null:
+                            case 0:
+                            case 255:
+                                if (this.ss3Camera.debug) this.log('Camera stopped streaming');
+                                break;
+                            default:
+                                if (this.ss3Camera.debug) this.log(`Error: FFmpeg exited with code ${code}`);
+                                if (!started) {
+                                    callback(new Error(`Error: FFmpeg exited with code ${code}`));
+                                } else {
+                                    this.controller.forceStopStreamingSession(sessionId);
+                                }
+                                break;
+                            }
+                        });
+    
+                        this.ongoingSessions[sessionIdentifier] = cmd;
+                    } catch (e) {
+                        this.log.error(`Unable to spawn ffmpeg process at ${this.ss3Camera.ffmpegPath} with error:`, e);
+                        callback(e);
+                    }
                 }
 
                 delete this.pendingSessions[sessionIdentifier];
