@@ -53,7 +53,7 @@ If installing manually, add the following configuration to the `platforms` array
 
 ### SimpliSafe Authentication
 
-1. Users of [Config UI X](https://github.com/oznu/homebridge-config-ui-x) (which is included in many Homebridge installations) can initiate this process from the plugin settings. A button will launch the authentication process and attempt to automatically obtain a token from SimpliSafe. Please check the homebridge logs if errors occur.
+1. Users of [Config UI X](https://github.com/oznu/homebridge-config-ui-x) (which is included in many Homebridge installations) can initiate this process from the plugin settings. A button will launch the authentication process and attempt to automatically obtain a token from SimpliSafe. During the process you will either have to verify via email or enter an SMS vertification code (same as logging into SimpliSafe website). Please check the homebridge logs if errors occur.
 
 2. Alternatively the plugin provides a command-line method for authenticating. The process works the same as above and can be run using `homebridge-simplisafe3 login`. If you are using a non-standard storage location for Homebridge pass the `-d` argument e.g. `homebridge-simplisafe3 login -d /path/to/storage/`.
 
