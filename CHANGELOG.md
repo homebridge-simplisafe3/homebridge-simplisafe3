@@ -1,7 +1,7 @@
 # Change Log
 All notable changes are documented here.
 
-## 1.10.0 (2022-04-08)
+## 1.10.2 (2022-04-08)
 - This release brings "automatic" authorization, meaning you can just enter your SimpliSafe username and password using the UI or command line and the plug-in will take care of the rest! Supports SMS and email verification.
 - Various fixes for authentication refresh failures.
 - Lots of dependency updates.
