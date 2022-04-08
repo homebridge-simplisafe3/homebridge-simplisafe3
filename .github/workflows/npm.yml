@@ -24,6 +24,8 @@ jobs:
       - run: npm run build
       - if: "!contains(github.event.release.tag_name, 'beta')"
         run: npm publish dist/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
       - if: "contains(github.event.release.tag_name, 'beta')"
         run: npm publish dist/ --tag beta
         env:
