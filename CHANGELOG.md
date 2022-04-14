@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.10.3 (2022-04-14)
+- This release updates a dependency used to install `ffmpeg` which was not properly installing itself in previous versions.
+
 ## 1.10.2 (2022-04-08)
 - This release brings "automatic" authorization, meaning you can just enter your SimpliSafe username and password using the UI or command line and the plug-in will take care of the rest! Supports SMS and email verification.
 - Various fixes for authentication refresh failures.
