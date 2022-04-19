@@ -13,7 +13,7 @@ body:
         HOOBS user? 👉 [Contact HOOBS](https://support.hoobs.org)
         Please note this plugin does not directly support HOOBS even though they claim so. Rather, the HOOBS team patches support for changes after-the-fact. You can always consider switching to Homebridge!
         
-        Before opening an issue, please search for existing issues / discussions. This bug report is for an issue that you belive would affect all users, not just if you are having trouble setting things up.
+        Before opening an issue, please search for existing issues / discussions. This bug report is for an issue that you believe would affect all users, not just if you are having trouble setting things up.
   - type: textarea
     id: description
     attributes:
