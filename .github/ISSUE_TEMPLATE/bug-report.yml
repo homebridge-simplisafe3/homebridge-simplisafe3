@@ -10,8 +10,8 @@ body:
       value: |
         Have a question? 👉 [Start a new discussion](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions)
         
-        HOOBS user? 👉 [Cotnact HOOBS](https://support.hoobs.org)
-        Please note this plugin does not directly support HOOBS even though they claim it does. Rather, the HOOBS team patches support after-the-fact. You can always consider switching to Homebridge!
+        HOOBS user? 👉 [Contact HOOBS](https://support.hoobs.org)
+        Please note this plugin does not directly support HOOBS even though they claim so. Rather, the HOOBS team patches support for changes after-the-fact. You can always consider switching to Homebridge!
         
         Before opening an issue, please search for existing issues / discussions. This bug report is for an issue that you belive would affect all users, not just if you are having trouble setting things up.
   - type: textarea
