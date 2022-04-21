@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.10.4 (2022-04-21)
+- This release fixes an issue that prevented upgrading for some users, see #335.
+
 ## 1.10.3 (2022-04-14)
 - This release updates a dependency used to install `ffmpeg` which was not properly installing itself in previous versions.
 
