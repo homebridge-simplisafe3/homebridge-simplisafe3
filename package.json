@@ -1,6 +1,6 @@
 {
   "name": "homebridge-simplisafe3",
-  "version": "1.10.3",
+  "version": "1.10.4-beta.3",
   "description": "A complete Homebridge plugin for the SimpliSafe 3 security system",
   "author": "Niccolò Zapponi",
   "bin": {
@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@homebridge/plugin-ui-utils": "0.0.19",
+    "@oclif/core": "^1",
+    "@oclif/plugin-help": "^5",
+    "@oclif/plugin-plugins": "^2.0.1",
     "axios": "^0.26.1",
     "axios-retry": "^3.2.4",
     "core-js": "^3.19.3",
@@ -19,7 +22,6 @@
     "is-docker": "^2.2.1",
     "jpeg-extract": "^3.0.1",
     "json-schema": ">=0.4.0",
-    "oclif": "^2.6.2",
     "ws": "^8.5.0"
   },
   "devDependencies": {
