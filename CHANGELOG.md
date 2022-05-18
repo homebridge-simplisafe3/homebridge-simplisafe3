@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.10.5 (2022-05-18)
+- This release adds support for SimpliSafe "Test mode" i.e. it no longer triggers a (false) alarm, see #341.
+
 ## 1.10.4 (2022-04-21)
 - This release fixes an issue that prevented upgrading for some users, see #335.
 
