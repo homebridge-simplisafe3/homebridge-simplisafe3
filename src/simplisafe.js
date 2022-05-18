@@ -49,7 +49,8 @@ export const EVENT_TYPES = {
     DOORLOCK_UNLOCKED: 'DOORLOCK_UNLOCKED',
     DOORLOCK_ERROR: 'DOORLOCK_ERROR',
     POWER_OUTAGE: 'POWER_OUTAGE',
-    POWER_RESTORED: 'POWER_RESTORED'
+    POWER_RESTORED: 'POWER_RESTORED',
+    USER_INITIATED_TEST: 'USER_INITIATED_TEST',
 };
 
 export class RateLimitError extends Error {
@@ -484,7 +485,11 @@ class SimpliSafe3 extends EventEmitter {
 
                 switch (data.eventType) {
                 case 'alarm':
-                    this.emit(EVENT_TYPES.ALARM_TRIGGER, data);
+                    if (data.eventCid == 1601) {
+                        this.emit(EVENT_TYPES.USER_INITIATED_TEST, data);
+                    } else {
+                        this.emit(EVENT_TYPES.ALARM_TRIGGER, data);
+                    }
                     break;
                 case 'alarmCancel':
                     this.emit(EVENT_TYPES.ALARM_OFF, data);
@@ -569,6 +574,9 @@ class SimpliSafe3 extends EventEmitter {
                         break;
                     case 3350:
                         this.log.warn('Base station WiFi restored.');
+                        break;
+                    case 1601:
+                        // User-initiated test, handled above
                         break;
                     case 1602:
                         // Automatic test
