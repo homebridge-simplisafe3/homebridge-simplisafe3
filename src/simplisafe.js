@@ -707,7 +707,7 @@ class SimpliSafe3 extends EventEmitter {
         if (!this.errorSupperessionTimeoutID) {
             this.nSuppressedErrors = 1;
             this.errorSupperessionTimeoutID = setTimeout(() => {
-                if (!this.debug && this.nSuppressedErrors > 0) this.log.warn(`${this.nSuppressedErrors} error${this.nSuppressedErrors > 1 ? 's were' : ' was'} received from the SimpliSafe API while refereshing sensors in the last ${errorSuppressionDuration / 60000} minutes. These can usually be ignored if everything is working. Otherwise, enable debug logging for homebridge and the plugin to see detailed output.`);
+                if (!this.debug && this.nSuppressedErrors > 0) this.log.warn(`${this.nSuppressedErrors} error${this.nSuppressedErrors > 1 ? 's were' : ' was'} received from the SimpliSafe API while refreshing sensors in the last ${errorSuppressionDuration / 60000} minutes. These can usually be ignored if everything is working. Otherwise, enable debug logging for homebridge and the plugin to see detailed output.`);
                 clearTimeout(this.errorSupperessionTimeoutID);
                 this.errorSupperessionTimeoutID = undefined;
             }, errorSuppressionDuration);
