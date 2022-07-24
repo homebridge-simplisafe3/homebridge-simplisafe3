@@ -39,25 +39,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
     log;
     debug;
 
-    auth0Endpoint = axios.create({
-        baseURL: SS_OAUTH_AUTH_URL,
-        headers: {
-            'Accept': 'text/html',
-            'User-Agent': 'Homebridge-Simplisafe3'
-        },
-        withCredentials: true,
-        responseType: 'document',
-        paramsSerializer: function(params) {
-            return Object.keys(params).map(key => `${key}=${params[key]}`).join('&');
-        },
-        maxRedirects: 0,
-        validateStatus: function(status) {
-            return status >= 200 && status < 303;
-        },
-    });
-    auth0Cookies;
-    auth0LoginVerificationUrl;
-
     constructor(storagePath, log, debug) {
         super();
         this.storagePath = storagePath;
@@ -189,11 +170,11 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         }
 
         try {
-           const refreshTokenResponse = await ssOAuth.post('/token', {
-               grant_type: 'refresh_token',
-               client_id: SS_OAUTH_CLIENT_ID,
-               refresh_token: this.refreshToken
-           }, {
+            const refreshTokenResponse = await ssOAuth.post('/token', {
+                grant_type: 'refresh_token',
+                client_id: SS_OAUTH_CLIENT_ID,
+                refresh_token: this.refreshToken
+            }, {
                 headers: { // SS seems to need these...
                     'Host': 'auth.simplisafe.com',
                     'Content-Type': 'application/json',
@@ -201,7 +182,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                     'Auth0-Client': SS_OAUTH_AUTH0_CLIENT
                 }
             });
-           await this._storeToken(refreshTokenResponse.data);
+            await this._storeToken(refreshTokenResponse.data);
             this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_SUCCESS);
             if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh was successful');
         } catch (err) {
