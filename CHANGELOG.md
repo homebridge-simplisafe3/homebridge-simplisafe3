@@ -1,8 +1,12 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.10.8 (2022-07-25)
+- Unfortunately, due to changes made by Simplisafe, the plugin now uses the previous login method that uses the browser. See https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/issues/352 / https://twitter.com/bachya/status/1550318909164748801
+- This release fixes an issue that could cause re-authentication failures.
+
 ## 1.10.7 (2022-07-22)
-- Unfortunately, due to changes made by Simplisafe, this release reverts the plugin to the previous login method that uses the browser. See https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/issues/352 / https://twitter.com/bachya/status/1550318909164748801
+- Reverts the plugin to the previous login method that uses the browser.
 
 ## 1.10.6 (2022-06-01)
 - This release updates the ffmpeg tool bundled with the plugin and should resolve ffmpeg installation issues on M1 Macs, see https://github.com/homebridge/ffmpeg-for-homebridge/issues/44
