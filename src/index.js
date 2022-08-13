@@ -107,7 +107,24 @@ class SS3Platform {
                         this.accessories.push(accessory);
                     } else {
                         if (this.debug) this.log(`Cached accessory {${accessory.UUID}} not matched to a SimpliSafe device`);
-                        this.removeAccessory(accessory);
+                        if (!this.authManager.isAuthenticated() && accessory.services.find(s => s.UUID == this.api.hap.Service.SecuritySystem.UUID) &&
+                            accessory._associatedPlugin == PLUGIN_NAME) {
+                            // In the case of initial auth failure instantiate the cached alarm and set fault
+                            const alarmAccessory = new Alarm(
+                                'SimpliSafe 3',
+                                '000',
+                                this.log,
+                                this.debug,
+                                this.simplisafe,
+                                this.api
+                            );
+                            
+                            this.devices.push(alarmAccessory);
+                            alarmAccessory.setAccessory(accessory);
+                            alarmAccessory.setFault();
+                        } else {
+                            this.removeAccessory(accessory);
+                        }
                     }
 
                     resolve();

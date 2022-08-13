@@ -165,7 +165,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 else await this._refreshWithUsernamePassword();
                 return;
             } else if (this.refreshToken == undefined) {
-                throw new Error('No authentication credentials detected.');
+                throw new Error('No valid authentication credentials detected.');
             }
         }
 
@@ -186,9 +186,9 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh was successful');
         } catch (err) {
             if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh failed');
-            if (err.response && (err.response.status == 401 || err.response.data == 'Unauthorized')) {
+            if (err.response && (String(err.response.status).indexOf('4') == 0 || err.response.data == 'Unauthorized')) {
                 // this is a true auth failure
-                this.refreshToken = null;
+                this.refreshToken = this.accessToken = null;
                 this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE);
             }
             throw err; // just pass it along
