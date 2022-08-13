@@ -53,18 +53,9 @@ If installing manually, add the following configuration to the `platforms` array
 
 ### SimpliSafe Authentication
 
-In 2021, SimpliSafe transitioned to only supporting a protocol called OAuth for authentication (and later added reCAPTCHA which prevents systems like this from being able to "auto-login"). This requires the user to authenticate in a browser and it is not possible to circumvent this and authenticate directly against the API. This plugin provides two ways to obtain credentials:
+1. Users of [Config UI X](https://github.com/oznu/homebridge-config-ui-x) (which is included in many Homebridge installations) can initiate this process from the plugin settings. A button will launch the authentication process and attempt to automatically obtain a token from SimpliSafe. During the process you will either have to verify via email or enter an SMS vertification code (same as logging into SimpliSafe website). Please check the homebridge logs if errors occur.
 
- 1. Users of [Config UI X](https://github.com/oznu/homebridge-config-ui-x) (which is included in many Homebridge installations) can initiate this process from the plugin settings. A button will launch the authentication process and you will have to copy and paste the final URL back into the plugin settings. This process involves a few steps:
-     1. Upon clicking the "Launch SimpliSafe Login" button you are taken to the SimpliSafe login page. If you are already logged in this step is skipped.
-     2. You will be redirected to a page requesting you to approve the login, either via email or 2FA.
-     3. After approval you will either be redirected to a final URL (begins with *com.SimpliSafe.mobile://*) which you will need to copy & paste back into the Homebridge settings UI. See notes below about using certain browsers / platforms.
-
-    - :information_source: **Many browsers (e.g. Chrome) will not redirect you and will only show an error in the Console** (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.
-    - Safari v15.1+ neither displays the URL in the console nor visually in the URL bar and thus is not recommended for this process.
-    - Also note that this process cannot be performed on a mobile device.
-
- 1. Alternatively the plugin provides a command-line method for authenticating. The process works the same as above and can be run using `homebridge-simplisafe3 login`. If you are using a non-standard storage location for Homebridge pass the `-d` argument e.g. `homebridge-simplisafe3 login -d /path/to/storage/`.
+2. Alternatively the plugin provides a command-line method for authenticating. The process works the same as above and can be run using `homebridge-simplisafe3 login`. If you are using a non-standard storage location for Homebridge pass the `-d` argument e.g. `homebridge-simplisafe3 login -d /path/to/storage/`.
 
 #### Authentication Failure Notifications
 The plugin is designed to persistently and proactively maintain authentication with SimpliSafe but obviously this is not perfect. When authentication with SimpliSafe fails, the plugin sets the [**Status Fault** property](https://developers.homebridge.io/#/characteristic/StatusFault) of the Alarm to `true`. Though you are not able to see this property in the Home app, it can be viewed in other HomeKit apps and you can create automations based on this, for example to send you an email or notification when this happens using the excellent [homebridge-messenger plugin](https://github.com/potrudeau/homebridge-messenger). For more details on an example notification setup see [this discussion](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/285#discussioncomment-2008529).
