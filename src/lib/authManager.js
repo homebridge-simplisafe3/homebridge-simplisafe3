@@ -162,6 +162,10 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         }
 
         try {
+            if (!this.refreshToken) {
+                // E.g. re-trying after failed attempt
+                this.parseAccountsFile();
+            }
             const refreshTokenResponse = await ssOAuth.post('/token', {
                 grant_type: 'refresh_token',
                 client_id: SS_OAUTH_CLIENT_ID,

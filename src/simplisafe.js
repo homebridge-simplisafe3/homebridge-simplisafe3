@@ -2,6 +2,7 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import WebSocket from 'ws';
 import EventEmitter from 'events';
+import { AUTH_EVENTS } from './lib/authManager';
 
 export const VALID_ALARM_STATES = [
     'off',
@@ -115,6 +116,9 @@ class SimpliSafe3 extends EventEmitter {
         this.debug = debug;
         this.storagePath = storagePath;
         this.authManager = authManager;
+        this.authManager.on(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE, () => {
+            if (this.socket) this.handleSocketConnectionFailure();
+        });
         
         axiosRetry(ssApi, { retries: 2 });
 
@@ -135,7 +139,10 @@ class SimpliSafe3 extends EventEmitter {
     }
 
     async request(params, tokenRefreshed = false) {
-        if (this.isBlocked && Date.now() < this.nextAttempt) {
+        if (!this.authManager.isAuthenticated() && tokenRefreshed) {
+            let err = new Error('Request ignored: Not authenticated with SimpliSafe');
+            throw err;    
+        } else if (this.isBlocked && Date.now() < this.nextAttempt) {
             let err = new RateLimitError('Blocking request: rate limited');
             throw err;
         }
@@ -153,34 +160,27 @@ class SimpliSafe3 extends EventEmitter {
         } catch (err) {
             if (!err.response) {
                 let rateLimitError = new RateLimitError(err);
-                this.log.error('SSAPI request failed, request blocked (rate limit?).');
+                this.log.error('SSAPI request failed, request blocked (rate limit or auth failure?).');
                 this.setRateLimitHandler();
                 throw rateLimitError;
             }
 
             let statusCode = err.response.status;
-            if ((statusCode == 401 || err.response.data == 'Unauthorized') && !tokenRefreshed) {
+            if ((String(statusCode).indexOf('4') == 0 || err.response.data == 'Unauthorized') && !tokenRefreshed) { // 4xx error
                 try {
                     await this.authManager.refreshCredentials();
                     if (this.debug) this.log('Credentials refreshed successfully after failed request');
                     return this.request(params, true);
                 } catch (credentialsErr) {
-                    if (credentialsErr.response && credentialsErr.response.status == 403) {
-                        if (this.debug) this.log.error('Credentials refresh failed with error 403 (rate liimiting?):', credentialsErr.response.statusText);
-                        this.setRateLimitHandler();
-                        if (this.debug) this.log.info(`Next attempt will be in ${this.nextBlockInterval / 1000}s`);
-                        throw new RateLimitError(credentialsErr.response.data);
+                    if (this.debug) this.log.error('Credentials refresh failed with error:', credentialsErr.toJSON ? credentialsErr.toJSON() : credentialsErr);
+                    if (credentialsErr.isAxiosError) {
+                        throw new Error(`${credentialsErr.response.status}: ${credentialsErr.response.statusText}`);
                     } else {
-                        if (this.debug) this.log.error('Credentials refresh failed with error:', credentialsErr.toJSON ? credentialsErr.toJSON() : credentialsErr);
-                        if (credentialsErr.isAxiosError) {
-                            throw new Error(`${credentialsErr.response.status}: ${credentialsErr.response.statusText}`);
-                        } else {
-                            throw credentialsErr;
-                        }
+                        throw credentialsErr;
                     }
                 }
             } else if (statusCode == 403) {
-                this.log.error('SSAPI request failed, request blocked (rate limit?).');
+                this.log.error('SSAPI request failed, request blocked (rate limit or auth failure?).');
                 if (this.debug) this.log.error('SSAPI request received a response error with code 403:', err.response.statusText);
                 this.setRateLimitHandler();
                 throw new RateLimitError(err.response.data);
@@ -396,6 +396,12 @@ class SimpliSafe3 extends EventEmitter {
     async startListening() {
         if (this.socket) return;
 
+        if (!this.authManager.isAuthenticated()) {
+            this.log.error('Socket connect ignored: Not authenticated with SimpliSafe');
+            this.handleSocketConnectionFailure();
+            return;
+        }
+
         let userId = await this.getUserId();
         this.socket = new WebSocket(wsUrl, {
             handshakeTimeout: 5000
@@ -593,15 +599,17 @@ class SimpliSafe3 extends EventEmitter {
     }
 
     handleSocketConnectionFailure() {
-        if (this.isAwaitingSocketReconnect || this.socket.readyState === WebSocket.CONNECTING) return; // a reconnect attempt is pending / running
+        if (this.isAwaitingSocketReconnect || (this.socket && this.socket.readyState === WebSocket.CONNECTING)) return; // a reconnect attempt is pending / running
 
-        try {
-            this.socket.removeAllListeners();
-            this.socket.terminate();
-        } catch (error) {
-            if (this.debug) this.log.warn('SSAPI socket error occurred during termination, perhaps socket was not yet established.', error);
+        if (this.socket) {
+            try {
+                this.socket.removeAllListeners();
+                this.socket.terminate();
+            } catch (error) {
+                if (this.debug) this.log.warn('SSAPI socket error occurred during termination, perhaps socket was not yet established.', error);
+            }
+            this.socket = null;
         }
-        this.socket = null;
 
         clearTimeout(this.socketHeartbeatIntervalID);
         this.socketIsAlive = false;
@@ -707,7 +715,7 @@ class SimpliSafe3 extends EventEmitter {
         if (!this.errorSupperessionTimeoutID) {
             this.nSuppressedErrors = 1;
             this.errorSupperessionTimeoutID = setTimeout(() => {
-                if (!this.debug && this.nSuppressedErrors > 0) this.log.warn(`${this.nSuppressedErrors} error${this.nSuppressedErrors > 1 ? 's were' : ' was'} received from the SimpliSafe API while refreshing sensors in the last ${errorSuppressionDuration / 60000} minutes. These can usually be ignored if everything is working. Otherwise, enable debug logging for homebridge and the plugin to see detailed output.`);
+                if (!this.debug && this.nSuppressedErrors > 0) this.log.warn(`${this.nSuppressedErrors} error${this.nSuppressedErrors > 1 ? 's were' : ' was'} received from the SimpliSafe API while refreshing sensors in the last ${errorSuppressionDuration / 60000} minutes. These can usually be ignored if everything is working. Otherwise, enable debug logging for the plugin and restart to see detailed output.`);
                 clearTimeout(this.errorSupperessionTimeoutID);
                 this.errorSupperessionTimeoutID = undefined;
             }, errorSuppressionDuration);
