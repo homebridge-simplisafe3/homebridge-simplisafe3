@@ -166,7 +166,7 @@ class SimpliSafe3 extends EventEmitter {
             }
 
             let statusCode = err.response.status;
-            if ((String(statusCode).indexOf('4') == 0 || err.response.data == 'Unauthorized') && !tokenRefreshed) { // 4xx error
+            if ((statusCode == 401 || statusCode == 403 || err.response.data == 'Unauthorized') && !tokenRefreshed) {
                 try {
                     await this.authManager.refreshCredentials();
                     if (this.debug) this.log('Credentials refreshed successfully after failed request');
