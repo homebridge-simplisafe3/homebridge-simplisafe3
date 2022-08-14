@@ -138,13 +138,24 @@ class SimpliSafe3 extends EventEmitter {
         }
     }
 
-    async request(params, tokenRefreshed = false) {
-        if (!this.authManager.isAuthenticated() && tokenRefreshed) {
-            let err = new Error('Request ignored: Not authenticated with SimpliSafe');
-            throw err;    
-        } else if (this.isBlocked && Date.now() < this.nextAttempt) {
+    async request(params) {
+        if (this.isBlocked && Date.now() < this.nextAttempt) {
             let err = new RateLimitError('Blocking request: rate limited');
             throw err;
+        }
+
+        if (!this.authManager.isAuthenticated()) {
+            try {
+                await this.authManager.refreshCredentials();
+                if (this.debug) this.log('Credentials refreshed successfully after failed request');
+            } catch (credentialsErr) {
+                if (this.debug) this.log.error('Recovery credentials refresh failed with error:', credentialsErr.toJSON ? credentialsErr.toJSON() : credentialsErr);
+                if (credentialsErr.isAxiosError) {
+                    throw new Error(`${credentialsErr.response.status}: ${credentialsErr.response.statusText}`);
+                } else {
+                    throw credentialsErr;
+                }
+            }
         }
 
         try {
@@ -166,20 +177,7 @@ class SimpliSafe3 extends EventEmitter {
             }
 
             let statusCode = err.response.status;
-            if ((statusCode == 401 || statusCode == 403 || err.response.data == 'Unauthorized') && !tokenRefreshed) {
-                try {
-                    await this.authManager.refreshCredentials();
-                    if (this.debug) this.log('Credentials refreshed successfully after failed request');
-                    return this.request(params, true);
-                } catch (credentialsErr) {
-                    if (this.debug) this.log.error('Credentials refresh failed with error:', credentialsErr.toJSON ? credentialsErr.toJSON() : credentialsErr);
-                    if (credentialsErr.isAxiosError) {
-                        throw new Error(`${credentialsErr.response.status}: ${credentialsErr.response.statusText}`);
-                    } else {
-                        throw credentialsErr;
-                    }
-                }
-            } else if (statusCode == 403) {
+            if (statusCode == 403) {
                 this.log.error('SSAPI request failed, request blocked (rate limit or auth failure?).');
                 if (this.debug) this.log.error('SSAPI request received a response error with code 403:', err.response.statusText);
                 this.setRateLimitHandler();
