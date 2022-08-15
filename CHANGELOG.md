@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.10.9 (2022-08-15)
+- This release re-introduces the "automatic" login process (as of now SS have removed ReCAPTCHA). See #360 and #352
+- Adds improvement to authentication failure detection, including on plugin startup. See #361
+
 ## 1.10.8 (2022-07-25)
 - Unfortunately, due to changes made by Simplisafe, the plugin now uses the previous login method that uses the browser. See https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/issues/352 / https://twitter.com/bachya/status/1550318909164748801
 - This release fixes an issue that could cause re-authentication failures.
