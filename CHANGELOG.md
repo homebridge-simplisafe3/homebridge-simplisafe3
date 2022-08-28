@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.10.10 (2022-08-27)
+- This release fixes a potential issue when logging in with command line interface if an incorrect path is given.
+
 ## 1.10.9 (2022-08-15)
 - This release re-introduces the "automatic" login process (as of now SS have removed ReCAPTCHA). See #360 and #352
 - Adds improvement to authentication failure detection, including on plugin startup. See #361
