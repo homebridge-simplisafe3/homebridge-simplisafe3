@@ -111,19 +111,6 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         }
     }
 
-    _writeAccountsFile(account) {
-        try {
-            fs.writeFileSync(
-                path.join(this.storagePath, accountsFilename),
-                JSON.stringify(account)
-            );
-            return true;
-        } catch (err) {
-            if (this.log !== undefined) this.log.error('Unable to write accounts file.', err);
-            return false;
-        }
-    }
-
     isAuthenticated() {
         return this.refreshToken !== null && Date.now() < this.expiry;
     }
@@ -152,7 +139,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             await this._storeToken(tokenResponse.data);
             return this.accessToken;
         } catch (err) {
-            throw new Error('Error getting token: ' + err.toString());
+            throw new Error('Error getting token: ' + err.message ? err.message : err.toString());
         }
     }
 
@@ -179,9 +166,9 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             });
             await this._storeToken(refreshTokenResponse.data);
             this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_SUCCESS);
-            if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh was successful');
+            if (this.log && this.debug) this.log('SimpliSafe credentials refresh was successful');
         } catch (err) {
-            if (this.log !== undefined && this.debug) this.log('SimpliSafe credentials refresh failed');
+            if (this.log && this.debug) this.log('SimpliSafe credentials refresh failed');
             if (err.response && (String(err.response.status).indexOf('4') == 0 || err.response.data == 'Unauthorized')) {
                 // this is a true auth failure
                 this.refreshToken = this.accessToken = null;
@@ -202,20 +189,25 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             codeVerifier: this.codeVerifier,
             refreshToken: this.refreshToken
         };
-        const fileWritten = await this._writeAccountsFile(account);
-        if (!fileWritten) {
-            if (this.log !== undefined) this.log.error('Unable to store token.');
-            return;
+
+        try {
+            fs.writeFileSync(
+                path.join(this.storagePath, accountsFilename),
+                JSON.stringify(account)
+            );
+        } catch (err) {
+            if (this.log && this.log.error) this.log.error('Unable to write accounts file.', err);
+            throw new Error(`Failed storing token with error message "${err.message}"`);
         }
 
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
         }
         this.refreshInterval = setInterval(() => {
-            if (this.log !== undefined && this.debug) this.log('Preemptively authenticating with SimpliSafe');
+            if (this.log && this.debug) this.log('Preemptively authenticating with SimpliSafe');
             this.refreshCredentials()
                 .catch(err => {
-                    if (this.log !== undefined) this.log.error(err.toJSON ? err.toJSON() : err);
+                    if (this.log && this.log.error) this.log.error(err.toJSON ? err.toJSON() : err);
                     if (err.response && (err.response.status == 403 || err.response.data == 'Unauthorized')) {
                         clearInterval(this.refreshInterval); // just disable until next successful one
                     }
