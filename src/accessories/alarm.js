@@ -168,18 +168,19 @@ class SS3Alarm extends SimpliSafe3Accessory {
             this.setFault(false);
             callback(null);
         } catch (err) {
-            if ([409, 504].indexOf(parseInt(err.statusCode)) !== -1 && this.nRetries < targetStateMaxRetries) { // 409 = SettingsInProgress, 504 = GatewayTimeout
+            // We retry 409 = SettingsInProgress, 504 = GatewayTimeout errors up to targetStateMaxRetries times
+            if ([409, 504].includes(parseInt(err.statusCode)) && this.nRetries < targetStateMaxRetries) {
                 if (this.debug) this.log(`${err.type} error while setting alarm state. nRetries: ${this.nRetries}`);
                 this.nRetries++;
                 setTimeout(async () => {
                     if (this.debug) this.log('Retrying setTargetState.');
                     await this.setTargetState(homekitState, callback);
-                }, 1000); // wait 1  second and try again
+                }, 1000 + 500 * Math.random()); // wait 1.5-ish seconds and try again
             } else {
                 this.log.error('Error while setting alarm state:', err);
                 this.nRetries = 0;
                 this.setFault();
-                callback(new Error(`An error occurred while setting the alarm state: ${err}`));
+                callback(err);
             }
         }
     }
