@@ -57,8 +57,10 @@ If installing manually, add the following configuration to the `platforms` array
 
 2. Alternatively the plugin provides a command-line method for authenticating. The process works the same as above and can be run using `homebridge-simplisafe3 login`. If you are using a non-standard storage location for Homebridge pass the `-d` argument e.g. `homebridge-simplisafe3 login -d /path/to/storage/`.
 
-#### Authentication Failure Notifications
-The plugin is designed to persistently and proactively maintain authentication with SimpliSafe but obviously this is not perfect. When authentication with SimpliSafe fails, the plugin sets the [**Status Fault** property](https://developers.homebridge.io/#/characteristic/StatusFault) of the Alarm to `true`. Though you are not able to see this property in the Home app, it can be viewed in other HomeKit apps and you can create automations based on this, for example to send you an email or notification when this happens using the excellent [homebridge-messenger plugin](https://github.com/potrudeau/homebridge-messenger). For more details on an example notification setup see [this discussion](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/285#discussioncomment-2008529).
+#### Error & Authentication Failure Notifications
+
+- The plugin is designed to persistently and proactively maintain authentication with SimpliSafe but obviously this is not perfect. When authentication with SimpliSafe fails, the plugin sets the [**Status Fault** property](https://developers.homebridge.io/#/characteristic/StatusFault) of the Alarm to `true`. Though you are not able to see this property in the Home app, it can be viewed in other HomeKit apps and you can create automations based on this, for example to send you an email or notification when this happens using the excellent [homebridge-messenger plugin](https://github.com/potrudeau/homebridge-messenger). For more details on an example notification setup see [this discussion](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/285#discussioncomment-2008529).
+- The [**Status Fault** property](https://developers.homebridge.io/#/characteristic/StatusFault) will also be set in the event of the plugin failing to set an alarm state either because of auth failure or for example errors communicating with the SimpliSafe API. This can help alert you if the alarm state did not successfully change.
 
 ### Optional Parameters
 
