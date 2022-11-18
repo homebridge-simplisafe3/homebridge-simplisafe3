@@ -1,5 +1,5 @@
 const { Command, Flags, CliUx } = require('@oclif/core');
-const { SimpliSafe3AuthenticationManager, AUTH_EVENTS, AUTH_STATES } = require('../lib/authManager');
+const { SimpliSafe3AuthenticationManager } = require('../lib/authManager');
 const path = require('path');
 const os = require('os');
 const isDocker = require('is-docker');
@@ -17,54 +17,50 @@ class Login extends Command {
         homebridgeDir: homebridgeDir()
     };
     authManager;
-    authComplete;
-    errorMessage;
 
     async run() {
         const {flags} = await this.parse(Login);
         
         this.authManager = new SimpliSafe3AuthenticationManager(flags.homebridgeDir);
-        this.authManager.on(AUTH_EVENTS.LOGIN_STEP, (message, isError) => {
-            if (isError) {
-                this.warn(message);
-            } else {
-                this.log(message);
-            }
-        });
-        
-        this.log('\n======= Simplisafe Authentication =======\n');
 
-        const email = await CliUx.ux.prompt('SimpliSafe Email');
-        const password = await CliUx.ux.prompt('SimpliSafe Password', {type: 'hide'});
+        const loginURL = this.authManager.getSSAuthURL();
 
-        CliUx.ux.action.start('Initiating authentication with SimpliSafe');
-        
-        let authorizedOrAwaitingVerification = await this.authManager.initiateLoginAndAuth(email, password);
-        
-        if (authorizedOrAwaitingVerification == AUTH_STATES.ERROR) {
-            this.error('Authentication failed.');
-        } else if (authorizedOrAwaitingVerification == AUTH_STATES.AWAITING_VERIFICATION) {
-            CliUx.ux.action.stop();
-            const code = await CliUx.ux.prompt('Enter SMS code');
-            CliUx.ux.action.start('Completing authentication with SimpliSafe');
-            authorizedOrAwaitingVerification = this.authManager.verifySmsAndCompleteAuthorization(code);
+        this.log('\n******* Simplisafe Authentication *******');
+        this.log('\nA browser window will open to log you into the SimpliSafe site, or you may need to copy + paste this URL into your browser:\n' + loginURL);
+        this.log('\nOnce you have approved the login, depending on your browser, you then will either be redirected to a URL that begins with com.SimpliSafe.mobile:// which you should copy and paste back here in its entirety.');
+        this.log('\nOr, many browsers will not display the final redirect but will show an error in the Console (e.g. View > Developer Tools > Javascript Console) and you will have to copy and paste the URL from the error message.');
+        this.log('\nSafari v15.1+ does not show the URL in the console or the browser and thus is not recommended for this process.');
+        this.log('\nAlso please note that this task cannot be performed on a mobile device.\n');
+
+        await CliUx.ux.anykey();
+
+        try {
+            await CliUx.ux.open(loginURL);
+        } catch (e) {
+            this.log('Unable to open automatically, please copy and paste the URL above into your web browser.');
         }
 
-        CliUx.ux.action.stop();
-        
-        if (authorizedOrAwaitingVerification == AUTH_STATES.ERROR) {
-            this.error('Authentication failed.');
-        } else {
-            this.log('\n======= Authentication Successful! =======\n');
+        const redirectURLStr = (await CliUx.ux.prompt('Redirect URL'));
+
+        let code = this.authManager.parseCodeFromURL(redirectURLStr);
+
+        try {
+            await this.authManager.getToken(code);
+
+            this.log('\nCredentials retrieved successfully.');
             this.log('accessToken: ' + this.authManager.accessToken);
-            this.log('refreshToken: ' + this.authManager.refreshToken + '\n');
-            this.warn('Please restart Homebridge for changes to take effect.');
+            this.log('refreshToken: ' + this.authManager.refreshToken);
+            this.log('Please restart Homebridge for changes to take effect.');
+        } catch (e) {
+            this.log('\nAn error occurred retrieving credentials:');
+            this.log(e);
+            this.exit(1);
         }
 
         this.exit(0);
     }
 }
 
-Login.description = 'Login and authenticate with SimpliSafe';
+Login.description = 'Login with SimpliSafe';
 
 module.exports = Login;
