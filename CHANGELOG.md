@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.10.11 (2022-11-18)
+- Unfortunately, due to changes made by Simplisafe, this version reverts to using the 'manual' login process that requires the browser. This is unlikely to change going forward.
+
 ## 1.10.10 (2022-08-27)
 - This release fixes a potential issue when logging in with command line interface if an incorrect path is given.
 
