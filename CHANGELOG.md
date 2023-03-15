@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.10.12 (2023-03-15)
+- Excluding cameras is now supported using the `excludedDevices` option. See #384.
+
 ## 1.10.11 (2022-11-18)
 - Unfortunately, due to changes made by Simplisafe, this version reverts to using the 'manual' login process that requires the browser. This is unlikely to change going forward.
 
