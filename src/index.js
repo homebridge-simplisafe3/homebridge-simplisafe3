@@ -344,6 +344,11 @@ class SS3Platform {
                         this.log(`Discovered camera '${cameraName}' from SimpliSafe:`, JSON.stringify(camera));
                     }
 
+                    if (camera.serial && this.excludedDevices.includes(camera.serial)) {
+                        this.log.info(`Excluding camera with serial '${camera.serial}'`);
+                        continue;
+                    }
+
                     let cameraAccessory = this.accessories.find(acc => acc.UUID === uuid);
                     if (!cameraAccessory) {
                         const cameraAccessory = new Camera(
