@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.10.13 (2023-04-05)
+- Fixes a change made by SimpliSafe that broke the ability of the plugin to maintain authentication. See [#386](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/issues/386)
+
 ## 1.10.12 (2023-03-15)
 - Excluding cameras is now supported using the `excludedDevices` option. See #384.
 
