@@ -20,10 +20,12 @@ axiosRetry(ssOAuth, { retries: 3 });
 
 const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com/authorize';
 const SS_OAUTH_CLIENT_ID = '42aBZ5lYrVW12jfOuu3CQROitwxg9sN5';
-const SS_OAUTH_AUTH0_CLIENT = 'eyJuYW1lIjoiQXV0aDAuc3dpZnQiLCJlbnYiOnsiaU9TIjoiMTUuMCIsInN3aWZ0IjoiNS54In0sInZlcnNpb24iOiIxLjMzLjAifQ';
+const SS_OAUTH_AUTH0_CLIENT = 'eyJ2ZXJzaW9uIjoiMi4zLjIiLCJuYW1lIjoiQXV0aDAuc3dpZnQiLCJlbnYiOnsic3dpZnQiOiI1LngiLCJpT1MiOiIxNi4zIn19';
 const SS_OAUTH_REDIRECT_URI = 'com.simplisafe.mobile://auth.simplisafe.com/ios/com.simplisafe.mobile/callback';
 const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
 const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
+const SS_OAUTH_DEVICE = 'iPhone';
+const SS_OAUTH_DEVICE_UUID = "0000007E-0000-1000-8000-0026BB765291"; // anything, e.g. hap.Service.SecuritySystem.UUID
 
 const accountsFilename = 'simplisafe3auth.json';
 
@@ -61,6 +63,8 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         loginURL.searchParams.append('code_challenge', this.codeChallenge);
         loginURL.searchParams.append('audience', 'AUDIENCE');
         loginURL.searchParams.append('auth0Client', SS_OAUTH_AUTH0_CLIENT);
+        loginURL.searchParams.append('device', SS_OAUTH_DEVICE);
+        loginURL.searchParams.append('device_id', SS_OAUTH_DEVICE_UUID);
         return loginURL.toString().replace('SCOPE', SS_OAUTH_SCOPE).replace('AUDIENCE', SS_OAUTH_AUDIENCE);
     }
 
@@ -181,7 +185,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
 
     async _storeToken(token) {
         this.accessToken = token.access_token;
-        this.refreshToken = token.refresh_token;
+        this.refreshToken = token.refresh_token ?? this.refreshToken;
         this.expiry = Date.now() + (parseInt(token.expires_in) * 1000);
         this.tokenType = token.token_type;
 
