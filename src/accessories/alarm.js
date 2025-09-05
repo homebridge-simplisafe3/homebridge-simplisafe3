@@ -163,6 +163,10 @@ class SS3Alarm extends SimpliSafe3Accessory {
                 setTimeout(async () => {
                     await this.refreshState();
                 }, data.exitDelay * 1000);
+            } else {
+                setTimeout(async () => {
+                    await this.refreshState();
+                }, 1000);
             }
             this.nRetries = 0;
             this.setFault(false);
