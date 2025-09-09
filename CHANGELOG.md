@@ -1,6 +1,13 @@
 # Change Log
 All notable changes are documented here.
 
+## 1.10.16 (2025-09-04)
+- Fix: Add fallback refresh for alarm state update by @shamoon in #462
+- Bump brace-expansion from 1.1.11 to 1.1.12 by @dependabot[bot] in #463
+
+## 1.10.15 (2025-04-13)
+- This maintenance release contains dependency updates and security fixes and also notes compatibility with Homebridge v2.0
+
 ## 1.10.13 (2023-04-05)
 - Fixes a change made by SimpliSafe that broke the ability of the plugin to maintain authentication. See [#386](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/issues/386). All users will need to re-authenticate.
 
