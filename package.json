@@ -14,7 +14,7 @@
     "@oclif/core": "^1",
     "@oclif/plugin-help": "^5",
     "@oclif/plugin-plugins": "^2.0.1",
-    "axios": "^0.28.0",
+    "axios": "^1.12.0",
     "axios-retry": "^3.2.4",
     "core-js": "^3.19.3",
     "ffmpeg-for-homebridge": "^0.1.4",
