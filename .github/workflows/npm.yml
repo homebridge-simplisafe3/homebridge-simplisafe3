@@ -7,6 +7,10 @@ on:
 env:
   GITHUB_RELEASE: ${{ github.event.release.tag_name }}
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build-publish-npm:
     runs-on: ubuntu-latest
@@ -24,10 +28,6 @@ jobs:
       - run: npm run build
       - if: "!contains(github.event.release.tag_name, 'beta')"
         run: npm publish dist/
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
       - if: "contains(github.event.release.tag_name, 'beta')"
         run: npm publish dist/ --tag beta
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
 
