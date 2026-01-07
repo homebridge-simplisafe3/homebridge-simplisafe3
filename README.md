@@ -150,7 +150,7 @@ To add an argument that requires no additional parameter, e.g. `-re`, then add i
 To remove a default argument, define it with `false` as its value, e.g. `"-tune false"`.
 
 #### FFMPEG Hardware Acceleration
- The bundled build of ffmpeg *includes* hardware acceleration on supported Raspberry Pi models but in order to enable this you must check the setting **Advanced Camera Settings** > **Enable Hardware Acceleration for Raspberry Pi** (or set `"enableHwaccelRpi"` under `"cameraOptions"` to `true` in `config.json`).
+ The bundled build of ffmpeg *includes* hardware acceleration on supported Raspberry Pi models (disabled as of Raspberry Pi 5) but in order to enable this you must check the setting **Advanced Camera Settings** > **Enable Hardware Acceleration for Raspberry Pi** (or set `"enableHwaccelRpi"` under `"cameraOptions"` to `true` in `config.json`).
 
 *Note that enabling this option assumes you are using the bundled version of ffmpeg and thus may not work if you specify a custom one.*
 
