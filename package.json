@@ -17,7 +17,7 @@
     "axios": "^1.12.0",
     "axios-retry": "^3.2.4",
     "core-js": "^3.19.3",
-    "ffmpeg-for-homebridge": "^0.1.4",
+    "ffmpeg-for-homebridge": "^2.2.0",
     "ip": "^1.1.5",
     "is-docker": "^2.2.1",
     "jpeg-extract": "^3.0.1",
