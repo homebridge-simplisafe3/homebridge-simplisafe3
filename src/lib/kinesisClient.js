@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { RTCPeerConnection } from 'werift';
+import { RTCPeerConnection, RTCRtpCodecParameters, useNACK, usePLI, useREMB } from 'werift';
 
 const KINESIS_URL_BASE = 'https://app-hub.prd.aser.simplisafe.com/v2';
 const CONNECTION_TIMEOUT_MS = 30000;
@@ -121,19 +121,48 @@ class KinesisClient {
             this.log('[Kinesis] Creating RTCPeerConnection (bundle=max, rtcpMux=require)');
         }
 
-        // Create peer connection with ICE servers
+        // Create peer connection with ICE servers and H264 codec
+        // SimpliSafe outdoor cameras only support H264 (profile 42e01f), not VP8
         const peerConnection = new RTCPeerConnection({
             iceServers: iceServers,
             bundlePolicy: 'max-bundle',
-            rtcpMuxPolicy: 'require'
+            rtcpMuxPolicy: 'require',
+            codecs: {
+                audio: [
+                    new RTCRtpCodecParameters({
+                        mimeType: 'audio/opus',
+                        clockRate: 48000,
+                        channels: 2,
+                    }),
+                ],
+                video: [
+                    // H264 Constrained Baseline - required by SimpliSafe cameras
+                    new RTCRtpCodecParameters({
+                        mimeType: 'video/H264',
+                        clockRate: 90000,
+                        rtcpFeedback: [useNACK(), usePLI(), useREMB()],
+                        parameters: 'level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f',
+                    }),
+                ],
+            },
         });
 
         // Add transceivers for receiving video and audio
         peerConnection.addTransceiver('video', { direction: 'recvonly' });
         peerConnection.addTransceiver('audio', { direction: 'recvonly' });
 
+        // CRITICAL: Add a data channel - the camera requires this in the SDP offer
+        // Without a data channel, the camera responds with a=inactive instead of a=sendonly
+        const dataChannel = peerConnection.createDataChannel('kvsDataChannel');
+        dataChannel.onopen = () => {
+            if (this.debug) this.log('[Kinesis] Data channel opened');
+        };
+        dataChannel.onclose = () => {
+            if (this.debug) this.log('[Kinesis] Data channel closed');
+        };
+
         if (this.debug) {
-            this.log('[Kinesis] Added transceivers: video (recvonly), audio (recvonly)');
+            this.log('[Kinesis] Added transceivers: video (recvonly), audio (recvonly), data channel');
         }
 
         // Connect to Kinesis signaling WebSocket

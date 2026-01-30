@@ -12,7 +12,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import WebSocket from 'ws';
-import { RTCPeerConnection } from 'werift';
+import { RTCPeerConnection, RTCRtpCodecParameters, useNACK, usePLI, useREMB } from 'werift';
 
 const KINESIS_URL_BASE = 'https://app-hub.prd.aser.simplisafe.com/v2';
 
@@ -90,15 +90,40 @@ async function testKinesisConnection(accessToken, locationId, cameraSerial) {
         credential: server.credential
     }));
 
+    // Configure H264 codec - SimpliSafe outdoor cameras require H264, not VP8
     const pc = new RTCPeerConnection({
         iceServers,
         bundlePolicy: 'max-bundle',
-        rtcpMuxPolicy: 'require'
+        rtcpMuxPolicy: 'require',
+        codecs: {
+            audio: [
+                new RTCRtpCodecParameters({
+                    mimeType: 'audio/opus',
+                    clockRate: 48000,
+                    channels: 2,
+                }),
+            ],
+            video: [
+                new RTCRtpCodecParameters({
+                    mimeType: 'video/H264',
+                    clockRate: 90000,
+                    rtcpFeedback: [useNACK(), usePLI(), useREMB()],
+                    parameters: 'level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f',
+                }),
+            ],
+        },
     });
 
     pc.addTransceiver('video', { direction: 'recvonly' });
     pc.addTransceiver('audio', { direction: 'recvonly' });
-    console.log('  ✓ Peer connection created with video/audio transceivers');
+
+    // CRITICAL: Add data channel - camera requires this in SDP offer
+    // Without it, camera responds with a=inactive instead of a=sendonly
+    const dataChannel = pc.createDataChannel('kvsDataChannel');
+    dataChannel.onopen = () => console.log('  Data channel opened');
+    dataChannel.onclose = () => console.log('  Data channel closed');
+
+    console.log('  ✓ Peer connection created with video/audio transceivers + data channel');
 
     // Step 3: Connect to signaling WebSocket
     console.log('\n[Step 3] Connecting to signaling WebSocket...');
