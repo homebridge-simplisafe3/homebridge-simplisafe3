@@ -77,9 +77,16 @@ class KinesisClient {
 
             const data = await response.json();
 
-            if (this.debug) {
-                const iceInfo = data.iceServers?.map((s, i) => `ICE${i}:${s.username ? 'auth' : 'noauth'}`).join(' ') || 'none';
-                this.log(`[Kinesis] Live view OK (${this._elapsed(startTime)}): clientId=${data.clientId} ${iceInfo}`);
+            // Always log API response structure for debugging
+            const iceInfo = data.iceServers?.map((s, i) => `ICE${i}:${s.username ? 'auth' : 'noauth'}:${s.urls?.length || 0}urls`).join(' ') || 'none';
+            this.log(`[Kinesis] Live view OK (${this._elapsed(startTime)}): clientId=${data.clientId} iceServers=${data.iceServers?.length || 0} ${iceInfo}`);
+            this.log(`[Kinesis] Signaling URL: ${data.signedChannelEndpoint?.substring(0, 100)}...`);
+
+            if (!data.clientId) {
+                this.log.error(`[Kinesis] WARNING: No clientId in response! Keys: ${Object.keys(data).join(',')}`);
+            }
+            if (!data.iceServers || data.iceServers.length === 0) {
+                this.log.error(`[Kinesis] WARNING: No ICE servers in response!`);
             }
 
             return data;
@@ -205,16 +212,22 @@ class KinesisClient {
                         this.log(`[Kinesis] SDP offer created (${this._elapsed(offerStartTime)}, ${offer.sdp?.length || 0} bytes)`);
                     }
 
+                    // As a VIEWER, we do NOT include recipientClientId
+                    // The master (camera) will receive our offer automatically
+                    // messagePayload must be Base64-encoded JSON (Kinesis WebRTC protocol)
+                    const offerPayload = JSON.stringify({
+                        type: 'offer',
+                        sdp: offer.sdp
+                    });
                     const offerMessage = {
                         action: 'SDP_OFFER',
-                        recipientClientId: liveView.clientId,
-                        messagePayload: JSON.stringify({
-                            type: 'offer',
-                            sdp: offer.sdp
-                        })
+                        messagePayload: Buffer.from(offerPayload).toString('base64')
                     };
 
-                    signaling.send(JSON.stringify(offerMessage));
+                    const offerJson = JSON.stringify(offerMessage);
+                    this.log(`[Kinesis] Sending SDP_OFFER as VIEWER (${offerJson.length} bytes)`);
+                    signaling.send(offerJson);
+                    this.log(`[Kinesis] SDP_OFFER sent, waiting for answer...`);
 
                 } catch (err) {
                     this.log.error(`[Kinesis] SDP offer failed: ${err.message}`);
@@ -228,18 +241,21 @@ class KinesisClient {
             });
 
             // Handle ICE candidates from local peer connection
+            // As VIEWER, we do NOT include recipientClientId
+            // messagePayload must be Base64-encoded JSON (Kinesis WebRTC protocol)
             peerConnection.onicecandidate = ({ candidate }) => {
                 if (candidate && signaling.readyState === WebSocket.OPEN) {
                     localCandidateCount++;
+                    const candidateJson = candidate.toJSON();
+                    const candidatePayload = JSON.stringify(candidateJson);
                     const candidateMessage = {
                         action: 'ICE_CANDIDATE',
-                        recipientClientId: liveView.clientId,
-                        messagePayload: JSON.stringify(candidate.toJSON())
+                        messagePayload: Buffer.from(candidatePayload).toString('base64')
                     };
-                    if (this.debug) {
-                        this.log(`[Kinesis] Sending ICE candidate #${localCandidateCount}: ${candidate.candidate?.substring(0, 60)}...`);
-                    }
+                    this.log(`[Kinesis] ICE candidate send #${localCandidateCount}: ${candidate.candidate?.substring(0, 80)}`);
                     signaling.send(JSON.stringify(candidateMessage));
+                } else if (candidate === null) {
+                    this.log(`[Kinesis] ICE gathering complete (${localCandidateCount} candidates)`);
                 }
             };
 
@@ -302,24 +318,59 @@ class KinesisClient {
             };
 
             // Handle signaling messages from Kinesis
-            signaling.on('message', async (data) => {
+            signaling.on('message', async (data, isBinary) => {
+                const elapsed = this._elapsed(sessionStartTime);
                 try {
-                    const message = JSON.parse(data.toString());
+                    const dataStr = isBinary ? data.toString('utf8') : data.toString();
+
+                    // Skip empty acknowledgment frames
+                    if (!dataStr || dataStr.length === 0) {
+                        if (this.debug) {
+                            this.log(`[Kinesis] WS empty frame received (${elapsed})`);
+                        }
+                        return;
+                    }
+
+                    // Always log received messages for debugging
+                    this.log(`[Kinesis] WS recv (${elapsed}): ${dataStr.substring(0, 200)}${dataStr.length > 200 ? '...' : ''}`);
+
+                    const message = JSON.parse(dataStr);
+                    const msgType = message.messageType || message.type || 'unknown';
+                    this.log(`[Kinesis] Message type: ${msgType} senderClientId=${message.senderClientId || 'none'}`);
 
                     if (message.messageType === 'SDP_ANSWER') {
-                        const answer = JSON.parse(message.messagePayload);
-                        if (this.debug) this.log(`[Kinesis] SDP answer received (${answer.sdp?.length || 0} bytes)`);
+                        // messagePayload is Base64-encoded JSON (Kinesis WebRTC protocol)
+                        const answerJson = Buffer.from(message.messagePayload, 'base64').toString('utf8');
+                        const answer = JSON.parse(answerJson);
+                        this.log(`[Kinesis] SDP ANSWER received (${elapsed}): ${answer.sdp?.length || 0} bytes`);
+                        if (this.debug) {
+                            // Log first few lines of SDP for debugging
+                            const sdpPreview = answer.sdp?.split('\n').slice(0, 5).join(' | ') || 'no sdp';
+                            this.log(`[Kinesis] SDP preview: ${sdpPreview}`);
+                        }
                         await peerConnection.setRemoteDescription({ type: 'answer', sdp: answer.sdp });
+                        this.log(`[Kinesis] Remote description set successfully`);
 
                     } else if (message.messageType === 'ICE_CANDIDATE') {
-                        const candidate = JSON.parse(message.messagePayload);
+                        // messagePayload is Base64-encoded JSON (Kinesis WebRTC protocol)
+                        const candidateJson = Buffer.from(message.messagePayload, 'base64').toString('utf8');
+                        const candidate = JSON.parse(candidateJson);
                         if (candidate.candidate) {
                             remoteCandidateCount++;
+                            this.log(`[Kinesis] ICE candidate recv #${remoteCandidateCount} (${elapsed}): ${candidate.candidate.substring(0, 80)}`);
                             await peerConnection.addIceCandidate(candidate);
+                            this.log(`[Kinesis] ICE candidate #${remoteCandidateCount} added successfully`);
+                        } else {
+                            this.log(`[Kinesis] ICE candidate recv with empty candidate (end of candidates)`);
                         }
+                    } else {
+                        // Log any unknown message types
+                        this.log(`[Kinesis] Unknown message: type=${message.messageType || message.type || 'none'} keys=${Object.keys(message).join(',')}`);
                     }
                 } catch (err) {
-                    this.log.error(`[Kinesis] Signaling message error: ${err.message}`);
+                    const preview = data?.toString?.()?.substring(0, 300) || 'no data';
+                    this.log.error(`[Kinesis] Signaling parse error: ${err.message}`);
+                    this.log.error(`[Kinesis] Raw data: ${preview}`);
                 }
             });
         });
