@@ -10,6 +10,160 @@ import KinesisClient from './kinesisClient';
 const unsupportedCameraImage = path.resolve(__dirname, '..', 'images', 'unsupportedcamera_snapshot.png');
 const unsupportedCameraImageInBytes = fs.readFileSync(unsupportedCameraImage);
 
+// H264 NAL unit start code
+const NAL_START_CODE = Buffer.from([0x00, 0x00, 0x00, 0x01]);
+
+// H264 NAL unit types
+const NAL_TYPE_SLICE = 1;      // Non-IDR slice (P/B frame)
+const NAL_TYPE_IDR = 5;        // IDR slice (keyframe)
+const NAL_TYPE_SEI = 6;        // Supplemental enhancement info
+const NAL_TYPE_SPS = 7;        // Sequence parameter set
+const NAL_TYPE_PPS = 8;        // Picture parameter set
+
+/**
+ * H264 RTP Depacketizer - converts RTP payloads to Annex B format for FFmpeg
+ * Handles single NAL units, STAP-A aggregation, and FU-A fragmentation (RFC 6184)
+ * Waits for keyframe before emitting data to ensure clean decode start
+ */
+class H264Depacketizer {
+    constructor() {
+        this.fuBuffer = null; // Buffer for FU-A fragment reassembly
+        this.fuNri = 0;
+        this.fuType = 0;
+
+        // Keyframe synchronization
+        this.sps = null;       // Cached SPS NAL
+        this.pps = null;       // Cached PPS NAL
+        this.synced = false;   // True once we've seen SPS+PPS+IDR
+        this.waitingForKeyframe = true;
+    }
+
+    /**
+     * Process an RTP payload and return Annex B formatted NAL units
+     * @param {Buffer} payload - RTP payload
+     * @returns {Buffer|null} - Annex B data or null if buffering/waiting for sync
+     */
+    depacketize(payload) {
+        if (!payload || payload.length < 1) return null;
+
+        const nalHeader = payload[0];
+        const nalType = nalHeader & 0x1f;
+        const nri = nalHeader & 0x60;
+
+        // Single NAL unit (types 1-23)
+        if (nalType >= 1 && nalType <= 23) {
+            return this._processNal(nalType, Buffer.concat([NAL_START_CODE, payload]));
+        }
+
+        // STAP-A - Single-time aggregation packet (type 24)
+        if (nalType === 24) {
+            return this._depacketizeStapA(payload);
+        }
+
+        // FU-A - Fragmentation unit (type 28)
+        if (nalType === 28) {
+            return this._depacketizeFuA(payload, nri);
+        }
+
+        // Unsupported types (STAP-B=25, MTAP16=26, MTAP24=27, FU-B=29)
+        return null;
+    }
+
+    _processNal(nalType, annexBData) {
+        // Cache SPS/PPS for later use
+        if (nalType === NAL_TYPE_SPS) {
+            this.sps = annexBData;
+            return null; // Don't emit yet, wait for IDR
+        }
+        if (nalType === NAL_TYPE_PPS) {
+            this.pps = annexBData;
+            return null; // Don't emit yet, wait for IDR
+        }
+
+        // If we see an IDR (keyframe), we can start emitting
+        if (nalType === NAL_TYPE_IDR) {
+            this.synced = true;
+            this.waitingForKeyframe = false;
+
+            // Prepend SPS+PPS before IDR for clean decoder init
+            const chunks = [];
+            if (this.sps) chunks.push(this.sps);
+            if (this.pps) chunks.push(this.pps);
+            chunks.push(annexBData);
+            return Buffer.concat(chunks);
+        }
+
+        // Only emit non-IDR slices if we're synced
+        if (this.synced && !this.waitingForKeyframe) {
+            return annexBData;
+        }
+
+        // Drop P/B frames until we see a keyframe
+        return null;
+    }
+
+    _depacketizeStapA(payload) {
+        const chunks = [];
+        let offset = 1; // Skip aggregation header
+
+        while (offset + 2 <= payload.length) {
+            const nalSize = (payload[offset] << 8) | payload[offset + 1];
+            offset += 2;
+
+            if (offset + nalSize > payload.length) break;
+
+            const nalData = payload.slice(offset, offset + nalSize);
+            const nalType = nalData[0] & 0x1f;
+            const annexB = Buffer.concat([NAL_START_CODE, nalData]);
+
+            // Process each NAL in the aggregation
+            const processed = this._processNal(nalType, annexB);
+            if (processed) chunks.push(processed);
+
+            offset += nalSize;
+        }
+
+        return chunks.length > 0 ? Buffer.concat(chunks) : null;
+    }
+
+    _depacketizeFuA(payload, nri) {
+        if (payload.length < 2) return null;
+
+        const fuHeader = payload[1];
+        const startBit = (fuHeader & 0x80) !== 0;
+        const endBit = (fuHeader & 0x40) !== 0;
+        const nalType = fuHeader & 0x1f;
+        const fragmentData = payload.slice(2);
+
+        if (startBit) {
+            // Start of fragmented NAL - reconstruct NAL header
+            this.fuNri = nri;
+            this.fuType = nalType;
+            this.fuBuffer = [fragmentData];
+            return null;
+        }
+
+        if (!this.fuBuffer) {
+            // Middle/end fragment without start - discard
+            return null;
+        }
+
+        this.fuBuffer.push(fragmentData);
+
+        if (endBit) {
+            // End of fragmented NAL - reassemble
+            const nalHeader = Buffer.from([this.fuNri | this.fuType]);
+            const nalData = Buffer.concat([NAL_START_CODE, nalHeader, ...this.fuBuffer]);
+            this.fuBuffer = null;
+
+            // Process the reassembled NAL
+            return this._processNal(this.fuType, nalData);
+        }
+
+        return null; // Middle fragment, keep buffering
+    }
+}
+
 /**
  * Streaming delegate for SimpliSafe outdoor cameras using Kinesis WebRTC
  */
@@ -158,13 +312,12 @@ class KinesisStreamingDelegate {
                     return;
                 }
 
-                // Use FFmpeg to capture a single frame from the RTP stream
+                // Use FFmpeg to decode H264 and capture a single frame
                 const ffmpegArgs = [
-                    '-f', 'rawvideo',
-                    '-pix_fmt', 'yuv420p',
-                    '-video_size', `${width}x${height}`,
+                    '-f', 'h264',           // Input is H264 Annex B stream
                     '-i', 'pipe:0',
-                    '-vframes', '1',
+                    '-vframes', '1',        // Capture one frame
+                    '-vf', `scale=${width}:${height}`,
                     '-f', 'mjpeg',
                     '-q:v', '5',
                     'pipe:1'
@@ -178,7 +331,11 @@ class KinesisStreamingDelegate {
 
                 const chunks = [];
                 let rtpPacketCount = 0;
+                let nalCount = 0;
                 let bytesWritten = 0;
+
+                // Create H264 depacketizer for snapshot
+                const depacketizer = new H264Depacketizer();
 
                 ffmpeg.stdout.on('data', (chunk) => chunks.push(chunk));
 
@@ -191,7 +348,7 @@ class KinesisStreamingDelegate {
                 ffmpeg.on('close', (code) => {
                     clearTimeout(timeout);
                     if (this.ss3Camera.debug) {
-                        this.log(`[KinesisDelegate] Snapshot FFmpeg closed (code: ${code}, packets: ${rtpPacketCount}, bytes: ${bytesWritten})`);
+                        this.log(`[KinesisDelegate] Snapshot FFmpeg closed (code: ${code}, packets: ${rtpPacketCount}, NALs: ${nalCount}, bytes: ${bytesWritten})`);
                     }
                     if (code === 0 && chunks.length > 0) {
                         resolve(Buffer.concat(chunks));
@@ -206,21 +363,26 @@ class KinesisStreamingDelegate {
                     reject(err);
                 });
 
-                // Write RTP packets to FFmpeg
-                const maxFrames = 60; // Capture up to 2 seconds at 30fps
+                // Write depacketized H264 NAL units to FFmpeg
+                const maxPackets = 300; // ~10 seconds of RTP packets
 
                 session.videoTrack.onReceiveRtp.subscribe((rtp) => {
-                    if (rtpPacketCount < maxFrames) {
+                    if (rtpPacketCount < maxPackets) {
                         try {
-                            ffmpeg.stdin.write(rtp.payload);
-                            bytesWritten += rtp.payload.length;
-                            rtpPacketCount++;
-                            if (rtpPacketCount >= maxFrames) {
-                                if (this.ss3Camera.debug) {
-                                    this.log(`[KinesisDelegate] Snapshot reached ${maxFrames} packets, closing input`);
+                            const annexB = depacketizer.depacketize(rtp.payload);
+                            if (annexB) {
+                                ffmpeg.stdin.write(annexB);
+                                bytesWritten += annexB.length;
+                                nalCount++;
+                                // Close input after we have some NAL units
+                                if (nalCount >= 30) {
+                                    if (this.ss3Camera.debug) {
+                                        this.log(`[KinesisDelegate] Snapshot reached ${nalCount} NALs, closing input`);
+                                    }
+                                    ffmpeg.stdin.end();
                                 }
-                                ffmpeg.stdin.end();
                             }
+                            rtpPacketCount++;
                         } catch (e) {
                             // Stream ended
                         }
@@ -410,8 +572,9 @@ class KinesisStreamingDelegate {
 
         // Build FFmpeg command for processing WebRTC -> HomeKit SRTP
         const ffmpegArgs = [
-            // Input from pipe (H.264 RTP payload)
+            // Input from pipe (H.264 Annex B stream)
             '-f', 'h264',
+            '-err_detect', 'ignore_err',      // Tolerate some decode errors
             '-i', 'pipe:0',
 
             // Video output
@@ -544,15 +707,24 @@ class KinesisStreamingDelegate {
                     this.log('[KinesisDelegate] Subscribing to video track RTP packets');
                 }
 
+                // Create H264 depacketizer to convert RTP to Annex B format
+                const depacketizer = new H264Depacketizer();
+                let nalCount = 0;
+
                 kinesisSession.videoTrack.onReceiveRtp.subscribe((rtp) => {
                     try {
-                        ffmpeg.stdin.write(rtp.payload);
+                        // Depacketize RTP H264 to Annex B NAL units
+                        const annexB = depacketizer.depacketize(rtp.payload);
+                        if (annexB) {
+                            ffmpeg.stdin.write(annexB);
+                            nalCount++;
+                            rtpByteCount += annexB.length;
+                        }
                         rtpPacketCount++;
-                        rtpByteCount += rtp.payload.length;
 
-                        // Log first packet
-                        if (rtpPacketCount === 1 && this.ss3Camera.debug) {
-                            this.log(`[KinesisDelegate] First RTP packet received (${rtp.payload.length} bytes)`);
+                        // Log first NAL unit
+                        if (nalCount === 1 && this.ss3Camera.debug) {
+                            this.log(`[KinesisDelegate] First NAL unit written (${annexB.length} bytes)`);
                         }
                     } catch (e) {
                         // Stream ended - this is normal when stopping

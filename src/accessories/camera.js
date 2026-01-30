@@ -1,3 +1,17 @@
+/**
+ * SimpliSafe Camera Accessory
+ *
+ * Supports three streaming modes based on camera type:
+ * - Standard FLV streaming (indoor cameras, doorbell): Uses streamingDelegate.js
+ * - Kinesis WebRTC (outdoor cameras with KVS provider): Uses kinesisStreamingDelegate.js
+ * - LiveKit WebRTC (outdoor cameras with MIST provider): Uses liveKitStreamingDelegate.js
+ *
+ * The streaming delegate is selected based on cameraDetails.currentState.webrtcProvider:
+ * - 'KVS' -> Kinesis (AWS Kinesis Video Streams WebRTC)
+ * - 'MIST' -> LiveKit (SimpliSafe's LiveKit deployment)
+ * - null/undefined -> Standard FLV streaming
+ */
+
 import ffmpegPath from 'ffmpeg-for-homebridge';
 import isDocker from 'is-docker';
 
@@ -6,6 +20,7 @@ import { EVENT_TYPES } from '../simplisafe';
 
 import StreamingDelegate from '../lib/streamingDelegate';
 import KinesisStreamingDelegate from '../lib/kinesisStreamingDelegate';
+import LiveKitStreamingDelegate from '../lib/liveKitStreamingDelegate';
 
 class SS3Camera extends SimpliSafe3Accessory {
     constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, authManager, api) {
@@ -22,15 +37,22 @@ class SS3Camera extends SimpliSafe3Accessory {
             this.ffmpegPath = this.cameraOptions.ffmpegPath;
         }
 
-        // Select appropriate streaming delegate based on camera type
-        const delegate = this._isKinesisCamera()
-            ? new KinesisStreamingDelegate(this)
-            : new StreamingDelegate(this);
-        this.controller = delegate.controller;
+        // Select appropriate streaming delegate based on camera's WebRTC provider
+        let delegate;
+        const webrtcProvider = this._getWebRTCProvider();
 
-        if (this.debug && this._isKinesisCamera()) {
-            this.log(`Camera '${name}' using Kinesis WebRTC streaming (outdoor camera)`);
+        if (webrtcProvider === 'KVS') {
+            delegate = new KinesisStreamingDelegate(this);
+            if (this.debug) this.log(`Camera '${name}' using Kinesis WebRTC streaming`);
+        } else if (webrtcProvider === 'MIST') {
+            delegate = new LiveKitStreamingDelegate(this);
+            if (this.debug) this.log(`Camera '${name}' using LiveKit streaming`);
+        } else {
+            delegate = new StreamingDelegate(this);
+            if (this.debug) this.log(`Camera '${name}' using standard FLV streaming`);
         }
+
+        this.controller = delegate.controller;
 
         this.startListening();
     }
@@ -98,11 +120,20 @@ class SS3Camera extends SimpliSafe3Accessory {
         return false;
     }
 
+    _getWebRTCProvider() {
+        // Get the WebRTC provider from camera details
+        // KVS = AWS Kinesis Video Streams (outdoor cameras)
+        // MIST = LiveKit (some outdoor cameras)
+        // null/undefined = standard FLV streaming (indoor cameras)
+        return this.cameraDetails.currentState?.webrtcProvider?.toUpperCase() || null;
+    }
+
     _isKinesisCamera() {
-        // Outdoor cameras (SSOBCM4) use Kinesis WebRTC instead of FLV streaming
-        return this.cameraDetails.supportedFeatures &&
-               this.cameraDetails.supportedFeatures.providers &&
-               this.cameraDetails.supportedFeatures.providers.recording !== 'simplisafe';
+        return this._getWebRTCProvider() === 'KVS';
+    }
+
+    _isLiveKitCamera() {
+        return this._getWebRTCProvider() === 'MIST';
     }
 
     startListening() {
