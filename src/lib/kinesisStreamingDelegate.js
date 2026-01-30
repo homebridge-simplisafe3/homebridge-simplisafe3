@@ -131,13 +131,16 @@ class KinesisStreamingDelegate {
         const subscription = await this.simplisafe.getSubscription();
         const locationId = subscription.sid;
 
+        // Use full UUID from cameraDetails, not the short serial from ss3Camera.id
+        const cameraUuid = this.cameraDetails.uuid;
+
         if (this.ss3Camera.debug) {
-            this.log(`[KinesisDelegate] Starting WebRTC snapshot: location=${locationId} camera=${this.ss3Camera.id} size=${width}x${height}`);
+            this.log(`[KinesisDelegate] Starting WebRTC snapshot: location=${locationId} camera=${cameraUuid} size=${width}x${height}`);
         }
 
         let session = null;
         try {
-            session = await this.kinesisClient.createSession(locationId, this.ss3Camera.id);
+            session = await this.kinesisClient.createSession(locationId, cameraUuid);
 
             if (this.ss3Camera.debug) {
                 this.log(`[KinesisDelegate] WebRTC session established in ${Date.now() - startTime}ms`);
@@ -379,11 +382,11 @@ class KinesisStreamingDelegate {
         const locationId = subscription.sid;
 
         if (this.ss3Camera.debug) {
-            this.log(`[KinesisDelegate] Establishing WebRTC for session ${shortId}: location=${locationId} camera=${this.ss3Camera.id}`);
+            this.log(`[KinesisDelegate] Establishing WebRTC for session ${shortId}: location=${locationId} camera=${this.cameraDetails.uuid}`);
         }
 
-        // Create Kinesis session
-        const kinesisSession = await this.kinesisClient.createSession(locationId, this.ss3Camera.id);
+        // Create Kinesis session - use full UUID from cameraDetails
+        const kinesisSession = await this.kinesisClient.createSession(locationId, this.cameraDetails.uuid);
 
         const webrtcTime = Date.now() - startTime;
         this.log(`[KinesisDelegate] WebRTC connected in ${webrtcTime}ms, starting FFmpeg pipeline`);
