@@ -138,36 +138,65 @@ This gives power users control while maintaining current behavior for those who 
 
 Note: Option 3 (Motion Thumbnails) was the preferred approach but is **not viable** - SimpliSafe does not expose this API.
 
-## Detection Consideration
+## Detection - SOLVED ✅
 
-Could we auto-detect battery vs plugged-in status?
+**Investigation completed 2026-01-30.** The SimpliSafe API exposes battery/power fields:
 
-- SimpliSafe API may expose `powerSource` or `batteryLevel` in camera details
-- If detectable, could auto-adjust defaults based on power source
-- Needs API investigation
+### Available Fields
 
-**Known camera data fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `supportedFeatures.battery` | boolean | Camera supports battery power |
+| `supportedFeatures.wired` | boolean | Camera has wired power option |
+| `cameraStatus.batteryPercentage` | number | Battery level 0-100 |
+| `currentState.batteryCharging` | boolean | Currently plugged in/charging |
+
+### Real Camera Data
+
+| Camera | Model | battery | wired | batteryCharging |
+|--------|-------|---------|-------|-----------------|
+| Front Door | SS002 (doorbell) | `false` | `true` | `false` |
+| Back Yard | SSOBCM4 (outdoor) | `true` | `false` | `true` |
+| Garage | olympus (outdoor) | `true` | `false` | `true` |
+
+### Detection Logic
+
+```javascript
+// Is this a battery-capable camera?
+const isBatteryCamera = camera.supportedFeatures?.battery === true;
+
+// Is it currently plugged in? (charging = on external power)
+const isPluggedIn = camera.currentState?.batteryCharging === true;
+
+// Current battery level
+const batteryLevel = camera.cameraStatus?.batteryPercentage ?? 100;
+
+// Smart default: extend cache for battery cameras not plugged in
+const shouldExtendCache = isBatteryCamera && !isPluggedIn;
 ```
-cameraDetails.uuid
-cameraDetails.model
-cameraDetails.cameraSettings.cameraName
-cameraDetails.cameraSettings.admin.fps
-cameraDetails.cameraSettings.admin.bitRate
-cameraDetails.cameraSettings.admin.firmwareVersion
-cameraDetails.cameraSettings.pictureQuality
-cameraDetails.cameraSettings.shutterOff/shutterHome/shutterAway
-cameraDetails.currentState.webrtcProvider  // KVS or MIST
-cameraDetails.supportedFeatures.privacyShutter
-```
 
-**To investigate:** Add debug logging to dump full `cameraDetails` object and check for battery/power fields.
+### Bonus: HomeKit Battery Service
+
+We can expose battery status to HomeKit:
+- Add `BatteryService` to battery cameras
+- Report `BatteryLevel` (0-100)
+- Report `ChargingState` (charging/not charging)
+- Report `StatusLowBattery` when below threshold
 
 ## Open Questions
 
-1. Does SimpliSafe API expose camera power source (battery vs AC)?
+1. ~~Does SimpliSafe API expose camera power source (battery vs AC)?~~ **Answered: Yes!** See Detection section above.
 2. ~~Does SimpliSafe store motion event thumbnails accessible via API?~~ **Answered: No**
 3. What's the actual HomeKit snapshot request frequency in practice?
 4. Should we log snapshot requests to help users understand the impact?
+
+## Implementation Priority
+
+Based on findings, recommended implementation order:
+
+1. **Auto-detection** - Use `supportedFeatures.battery` and `currentState.batteryCharging` to auto-adjust snapshot cache TTL
+2. **Battery service** - Expose battery level to HomeKit for battery cameras
+3. **User config** - Add optional override for users who want different behavior
 
 ## Files Affected
 
