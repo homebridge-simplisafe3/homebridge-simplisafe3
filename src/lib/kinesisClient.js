@@ -56,10 +56,7 @@ class KinesisClient {
         const startTime = Date.now();
 
         if (this.debug) {
-            this.log('[Kinesis] Requesting live view credentials');
-            this.log(`[Kinesis]   URL: ${url}`);
-            this.log(`[Kinesis]   Camera: ${cameraSerial}`);
-            this.log(`[Kinesis]   Location: ${locationId}`);
+            this.log(`[Kinesis] Requesting live view: camera=${cameraSerial} location=${locationId}`);
         }
 
         try {
@@ -74,25 +71,15 @@ class KinesisClient {
             if (!response.ok) {
                 const errorText = await response.text();
                 const error = new Error(`Live view API failed: ${response.status} ${response.statusText}`);
-                this.log.error(`[Kinesis] Live view request failed after ${this._elapsed(startTime)}`);
-                this.log.error(`[Kinesis]   Status: ${response.status} ${response.statusText}`);
-                this.log.error(`[Kinesis]   Response: ${errorText.substring(0, 500)}`);
+                this.log.error(`[Kinesis] Live view failed: ${response.status} ${response.statusText} (${this._elapsed(startTime)}) - ${errorText.substring(0, 200)}`);
                 throw error;
             }
 
             const data = await response.json();
 
             if (this.debug) {
-                this.log(`[Kinesis] Live view response received in ${this._elapsed(startTime)}`);
-                this.log(`[Kinesis]   Client ID: ${data.clientId}`);
-                this.log(`[Kinesis]   ICE servers: ${data.iceServers?.length || 0}`);
-                if (data.iceServers) {
-                    data.iceServers.forEach((server, i) => {
-                        const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
-                        this.log(`[Kinesis]   ICE[${i}]: ${urls.join(', ')} ${server.username ? '(with credentials)' : '(no credentials)'}`);
-                    });
-                }
-                this.log(`[Kinesis]   Signaling endpoint: ${data.signedChannelEndpoint?.substring(0, 80)}...`);
+                const iceInfo = data.iceServers?.map((s, i) => `ICE${i}:${s.username ? 'auth' : 'noauth'}`).join(' ') || 'none';
+                this.log(`[Kinesis] Live view OK (${this._elapsed(startTime)}): clientId=${data.clientId} ${iceInfo}`);
             }
 
             return data;
@@ -124,9 +111,7 @@ class KinesisClient {
         }));
 
         if (this.debug) {
-            this.log('[Kinesis] Creating RTCPeerConnection');
-            this.log('[Kinesis]   Bundle policy: max-bundle');
-            this.log('[Kinesis]   RTCP mux: require');
+            this.log('[Kinesis] Creating RTCPeerConnection (bundle=max, rtcpMux=require)');
         }
 
         // Create peer connection with ICE servers
@@ -172,23 +157,14 @@ class KinesisClient {
             const timeout = setTimeout(() => {
                 if (!resolved) {
                     resolved = true;
-                    this.log.error(`[Kinesis] Connection timeout after ${CONNECTION_TIMEOUT_MS}ms`);
-                    this.log.error(`[Kinesis]   Local ICE candidates sent: ${localCandidateCount}`);
-                    this.log.error(`[Kinesis]   Remote ICE candidates received: ${remoteCandidateCount}`);
-                    this.log.error(`[Kinesis]   Connection state: ${peerConnection.connectionState}`);
-                    this.log.error(`[Kinesis]   ICE connection state: ${peerConnection.iceConnectionState}`);
-                    this.log.error(`[Kinesis]   ICE gathering state: ${peerConnection.iceGatheringState}`);
-                    this.log.error(`[Kinesis]   Signaling state: ${peerConnection.signalingState}`);
+                    this.log.error(`[Kinesis] Connection timeout (${CONNECTION_TIMEOUT_MS}ms): ice=${localCandidateCount}/${remoteCandidateCount} state=${peerConnection.connectionState} iceState=${peerConnection.iceConnectionState}`);
                     this._cleanup(session);
                     reject(new Error('Kinesis connection timeout - camera may be asleep or unreachable'));
                 }
             }, CONNECTION_TIMEOUT_MS);
 
             signaling.on('error', (err) => {
-                this.log.error(`[Kinesis] Signaling WebSocket error: ${err.message}`);
-                if (this.debug) {
-                    this.log.error('[Kinesis]   Error details:', err);
-                }
+                this.log.error(`[Kinesis] Signaling error: ${err.message}`);
                 if (!resolved) {
                     resolved = true;
                     clearTimeout(timeout);
@@ -226,14 +202,7 @@ class KinesisClient {
                     await peerConnection.setLocalDescription(offer);
 
                     if (this.debug) {
-                        this.log(`[Kinesis] SDP offer created in ${this._elapsed(offerStartTime)}`);
-                        this.log(`[Kinesis]   SDP type: ${offer.type}`);
-                        this.log(`[Kinesis]   SDP length: ${offer.sdp?.length || 0} bytes`);
-                        // Log media lines from SDP for debugging codec negotiation
-                        const mediaLines = offer.sdp?.split('\n').filter(l => l.startsWith('m=')) || [];
-                        mediaLines.forEach(line => {
-                            this.log(`[Kinesis]   ${line.trim()}`);
-                        });
+                        this.log(`[Kinesis] SDP offer created (${this._elapsed(offerStartTime)}, ${offer.sdp?.length || 0} bytes)`);
                     }
 
                     const offerMessage = {
@@ -245,16 +214,10 @@ class KinesisClient {
                         })
                     };
 
-                    if (this.debug) {
-                        this.log(`[Kinesis] Sending SDP offer to client ${liveView.clientId}`);
-                    }
                     signaling.send(JSON.stringify(offerMessage));
 
                 } catch (err) {
-                    this.log.error(`[Kinesis] Failed to create/send SDP offer: ${err.message}`);
-                    if (this.debug) {
-                        this.log.error('[Kinesis]   Error details:', err);
-                    }
+                    this.log.error(`[Kinesis] SDP offer failed: ${err.message}`);
                     if (!resolved) {
                         resolved = true;
                         clearTimeout(timeout);
@@ -294,9 +257,7 @@ class KinesisClient {
                     this.log(`[Kinesis] ICE connection state: ${state}`);
                 }
                 if (state === 'failed') {
-                    this.log.error('[Kinesis] ICE connection failed');
-                    this.log.error(`[Kinesis]   Local candidates sent: ${localCandidateCount}`);
-                    this.log.error(`[Kinesis]   Remote candidates received: ${remoteCandidateCount}`);
+                    this.log.error(`[Kinesis] ICE failed: local=${localCandidateCount} remote=${remoteCandidateCount}`);
                 }
             };
 
@@ -306,13 +267,7 @@ class KinesisClient {
                 const elapsed = this._elapsed(sessionStartTime);
 
                 if (state === 'connected') {
-                    this.log(`[Kinesis] WebRTC connected in ${elapsed}`);
-                    if (this.debug) {
-                        this.log(`[Kinesis]   Local ICE candidates: ${localCandidateCount}`);
-                        this.log(`[Kinesis]   Remote ICE candidates: ${remoteCandidateCount}`);
-                        this.log(`[Kinesis]   Video track: ${session.videoTrack ? 'received' : 'pending'}`);
-                        this.log(`[Kinesis]   Audio track: ${session.audioTrack ? 'received' : 'pending'}`);
-                    }
+                    this.log(`[Kinesis] WebRTC connected (${elapsed}): ice=${localCandidateCount}/${remoteCandidateCount}`);
                     if (!resolved) {
                         resolved = true;
                         clearTimeout(timeout);
@@ -339,16 +294,10 @@ class KinesisClient {
 
                 if (track.kind === 'video') {
                     session.videoTrack = track;
-                    this.log(`[Kinesis] Video track received (${elapsed})`);
-                    if (this.debug) {
-                        this.log(`[Kinesis]   Track ID: ${track.id || 'unknown'}`);
-                    }
+                    if (this.debug) this.log(`[Kinesis] Video track received (${elapsed})`);
                 } else if (track.kind === 'audio') {
                     session.audioTrack = track;
-                    this.log(`[Kinesis] Audio track received (${elapsed})`);
-                    if (this.debug) {
-                        this.log(`[Kinesis]   Track ID: ${track.id || 'unknown'}`);
-                    }
+                    if (this.debug) this.log(`[Kinesis] Audio track received (${elapsed})`);
                 }
             };
 
@@ -356,46 +305,21 @@ class KinesisClient {
             signaling.on('message', async (data) => {
                 try {
                     const message = JSON.parse(data.toString());
-                    const messageType = message.messageType || message.type || 'unknown';
 
                     if (message.messageType === 'SDP_ANSWER') {
                         const answer = JSON.parse(message.messagePayload);
-                        if (this.debug) {
-                            this.log('[Kinesis] Received SDP answer');
-                            this.log(`[Kinesis]   SDP type: ${answer.type}`);
-                            this.log(`[Kinesis]   SDP length: ${answer.sdp?.length || 0} bytes`);
-                        }
-                        await peerConnection.setRemoteDescription({
-                            type: 'answer',
-                            sdp: answer.sdp
-                        });
-                        if (this.debug) {
-                            this.log('[Kinesis] Remote description set successfully');
-                        }
+                        if (this.debug) this.log(`[Kinesis] SDP answer received (${answer.sdp?.length || 0} bytes)`);
+                        await peerConnection.setRemoteDescription({ type: 'answer', sdp: answer.sdp });
 
                     } else if (message.messageType === 'ICE_CANDIDATE') {
                         const candidate = JSON.parse(message.messagePayload);
                         if (candidate.candidate) {
                             remoteCandidateCount++;
-                            if (this.debug) {
-                                this.log(`[Kinesis] Received ICE candidate #${remoteCandidateCount}: ${candidate.candidate?.substring(0, 60)}...`);
-                            }
                             await peerConnection.addIceCandidate(candidate);
-                        } else if (this.debug) {
-                            this.log('[Kinesis] Received end-of-candidates signal');
-                        }
-
-                    } else if (this.debug) {
-                        this.log(`[Kinesis] Received signaling message: ${messageType}`);
-                        if (message.senderClientId) {
-                            this.log(`[Kinesis]   Sender: ${message.senderClientId}`);
                         }
                     }
                 } catch (err) {
-                    this.log.error(`[Kinesis] Error handling signaling message: ${err.message}`);
-                    if (this.debug) {
-                        this.log.error(`[Kinesis]   Raw message: ${data.toString().substring(0, 200)}...`);
-                    }
+                    this.log.error(`[Kinesis] Signaling message error: ${err.message}`);
                 }
             });
         });
