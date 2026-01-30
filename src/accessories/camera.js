@@ -5,6 +5,7 @@ import SimpliSafe3Accessory from './ss3Accessory';
 import { EVENT_TYPES } from '../simplisafe';
 
 import StreamingDelegate from '../lib/streamingDelegate';
+import KinesisStreamingDelegate from '../lib/kinesisStreamingDelegate';
 
 class SS3Camera extends SimpliSafe3Accessory {
     constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, authManager, api) {
@@ -21,8 +22,15 @@ class SS3Camera extends SimpliSafe3Accessory {
             this.ffmpegPath = this.cameraOptions.ffmpegPath;
         }
 
-        const delegate = new StreamingDelegate(this);
+        // Select appropriate streaming delegate based on camera type
+        const delegate = this._isKinesisCamera()
+            ? new KinesisStreamingDelegate(this)
+            : new StreamingDelegate(this);
         this.controller = delegate.controller;
+
+        if (this.debug && this._isKinesisCamera()) {
+            this.log(`Camera '${name}' using Kinesis WebRTC streaming (outdoor camera)`);
+        }
 
         this.startListening();
     }
@@ -85,8 +93,16 @@ class SS3Camera extends SimpliSafe3Accessory {
     }
 
     isUnsupported() {
-        // so far SSOBCM4
-        return this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.providers && this.cameraDetails.supportedFeatures.providers.recording !== 'simplisafe';
+        // Outdoor cameras are now supported via Kinesis WebRTC
+        // Only return true for cameras with unknown/unsupported providers
+        return false;
+    }
+
+    _isKinesisCamera() {
+        // Outdoor cameras (SSOBCM4) use Kinesis WebRTC instead of FLV streaming
+        return this.cameraDetails.supportedFeatures &&
+               this.cameraDetails.supportedFeatures.providers &&
+               this.cameraDetails.supportedFeatures.providers.recording !== 'simplisafe';
     }
 
     startListening() {

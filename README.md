@@ -108,7 +108,7 @@ Device             | Supported          | Notes
 Alarm              | :white_check_mark: | Arming/disarming to home, away and off modes. Sets tamper property on power outage
 SimpliCam          | :white_check_mark: | Audio, video, motion*, no microphone
 Doorbell           | :white_check_mark: | Audio, video, motion, no microphone
-Outdoor Camera     | :x:                | Not supported yet, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
+Outdoor Camera     | :white_check_mark: | Video, motion. Uses Kinesis WebRTC (higher latency due to battery camera wake-up)***
 Smart lock         | :white_check_mark: | Fully supports locking, unlocking
 Entry sensor       | :white_check_mark: | Status not provided as 'push' by SS so is polled based on `sensorRefresh`
 Smoke detector     | :white_check_mark: | Includes support for tamper & fault
@@ -125,6 +125,8 @@ Panic button       | :x:                | State not provided by SimpliSafe
 \** The default SimpliSafe settings for motion sensors are "Disabled" when alarm is "Off" or "Home", in which case motion events will not be accurate since they won't always trigger. For consistency of the Home app, motion sensors need to be switched to either "Secret Alert" or "Alarm" in **every** alarm mode for the sensors to appear in the app.
 For example, setting the motion sensor to Secret Alert in Off and Home mode and Alarm in Away mode **will** display it in the Home app, whereas setting it to Disabled in Off mode, Secret Alert in Home mode and Alarm in Away mode **won't**, since the sensor state and automations in the Home app would be inaccurate.
 Using the "Secret Alert" setting will allow for motion events at all times but note that [this will also record a video clip](https://simplisafe.com/forum/customer-support-forum/installing-and-using-simplisafe/secret-alert-triggers-camera) when motion events are triggered.
+
+\*** Outdoor cameras are battery-powered and sleep aggressively. Initial stream startup can take 4-10 seconds as the camera wakes up and establishes a WebRTC connection. For best results, set the camera shutter to "Open" in the SimpliSafe app settings.
 
 All devices also support low battery warnings.
 
