@@ -5,11 +5,11 @@
 
 ## Camera Models Discovered
 
-| Model | Name | Type | WebRTC | Notes |
-|-------|------|------|--------|-------|
-| SS002 | Front Door | Doorbell | SIMPLISAFE (FLV) | Wired, no battery |
-| SSOBCM4 | Back Yard | Outdoor | MIST (LiveKit) | Battery, supports KVS+MIST |
-| olympus | Garage | Outdoor | KVS (Kinesis) | Battery, supports KVS+MIST |
+| Model | Type | WebRTC Provider | Notes |
+|-------|------|-----------------|-------|
+| SS002 | Doorbell | SIMPLISAFE (FLV) | Wired, no battery |
+| SSOBCM4 | Outdoor | MIST (LiveKit) | Battery, supports KVS+MIST |
+| olympus | Outdoor | KVS (Kinesis) | Battery, supports KVS+MIST |
 
 ## Battery & Power (Implemented in Design Doc)
 
@@ -144,7 +144,7 @@ currentState.webrtcProvider    // Current: "KVS" or "MIST"
 currentState.recordingProvider // Current: "KVS" or "MIST"
 ```
 
-**Note:** Back Yard and Garage both support KVS+MIST but use different current providers.
+**Note:** Outdoor cameras can support both KVS+MIST but may use different current providers.
 
 ### 14. Firmware & Device Info
 ```javascript
@@ -185,6 +185,76 @@ currentState.connected      // boolean
 | `/subscriptions/{subId}/` | Full system + cameras |
 | `/ss3/subscriptions/{subId}/settings/normal` | System settings (no cameras) |
 | `app-hub.../v2/cameras/{uuid}/{subId}/live-view` | WebRTC credentials |
+
+## Sensors & Devices
+
+### Sensor Types
+
+| Type | Description | Key Fields |
+|------|-------------|------------|
+| 1 | Keypad | `lowPowerMode` |
+| 5 | Entry sensor (door/window) | `triggered`, `offline`, `swingerShutdown` |
+| 9 | Motion sensor | `triggered` |
+| 16 | Door lock | See below |
+| 17, 23 | Camera placeholder | Links to camera |
+| 253 | Door lock (alt?) | Unknown |
+
+### Door Lock API (`/doorlock/{subId}`)
+
+Rich data available via dedicated endpoint:
+
+```javascript
+{
+  "status": {
+    "lockState": 1,           // 0=unlocked, 1=locked
+    "lockJamState": 0,        // Jam detection
+    "lockLowBattery": false,
+    "lockDisabled": false,
+    "pinPadOffline": false,
+    "pinPadLowBattery": false,
+    "pinPadState": 0,
+    "calibrationErrDelta": 0,
+    "calibrationErrZero": 0,
+    "lastUpdated": "2026-01-30T16:06:49.724Z"
+  },
+  "flags": {
+    "offline": false,
+    "lowBattery": false
+  },
+  "firmwareVersion": "1.7.2",
+  "nextCalibration": "2026-07-23T16:06:55.167Z",  // Maintenance reminder!
+  "features": {
+    "maxCustomPins": 9
+  }
+}
+```
+
+**Future ideas:**
+- Expose `lockJamState` as obstruction detected
+- Expose `pinPadOffline` / `pinPadLowBattery` as separate battery services
+- Use `nextCalibration` for maintenance notifications
+
+### Entry Sensors
+
+```javascript
+{
+  "flags": {
+    "offline": false,
+    "lowBattery": false,
+    "swingerShutdown": false  // Too many triggers, disabled
+  },
+  "setting": {
+    "off": 0,
+    "home": 1,          // Active in home mode
+    "away": 1,          // Active in away mode
+    "instantTrigger": false,
+    "announceName": false
+  },
+  "status": {
+    "triggered": true   // Currently open/triggered
+  }
+}
+```
 
 ## Not Available (Confirmed)
 

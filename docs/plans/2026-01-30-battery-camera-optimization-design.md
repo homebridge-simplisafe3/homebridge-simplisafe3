@@ -6,7 +6,7 @@
 
 ## Context
 
-SimpliSafe outdoor cameras (Garage, Back Yard) can run on battery power. The new WebRTC streaming implementation needs to minimize unnecessary camera wake-ups to preserve battery life.
+SimpliSafe outdoor cameras can run on battery power. The new WebRTC streaming implementation needs to minimize unnecessary camera wake-ups to preserve battery life.
 
 ## Current Behavior
 
@@ -103,14 +103,14 @@ Add config option to let users choose behavior per camera:
 ```json
 {
     "cameras": {
-        "Garage": {
+        "Outdoor Camera 1": {
             "snapshotMode": "live"  // Default, current behavior
         },
-        "Back Yard": {
+        "Outdoor Camera 2": {
             "snapshotMode": "cached",  // Extended 5-10 min cache
             "snapshotCacheTTL": 300
         },
-        "Front Door": {
+        "Doorbell": {
             "snapshotMode": "disabled"  // Static placeholder
         }
     }
@@ -153,11 +153,11 @@ Note: Option 3 (Motion Thumbnails) was the preferred approach but is **not viabl
 
 ### Real Camera Data
 
-| Camera | Model | battery | wired | batteryCharging |
-|--------|-------|---------|-------|-----------------|
-| Front Door | SS002 (doorbell) | `false` | `true` | `false` |
-| Back Yard | SSOBCM4 (outdoor) | `true` | `false` | `true` |
-| Garage | olympus (outdoor) | `true` | `false` | `true` |
+| Type | Model | battery | wired | batteryCharging |
+|------|-------|---------|-------|-----------------|
+| Doorbell | SS002 | `false` | `true` | `false` |
+| Outdoor | SSOBCM4 | `true` | `false` | `true` (plugged in) |
+| Outdoor | olympus | `true` | `false` | `true` (plugged in) |
 
 ### Detection Logic
 
