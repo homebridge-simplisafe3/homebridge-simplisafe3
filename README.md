@@ -103,22 +103,23 @@ Accepts a list of SimpliSafe device serial numbers (which can be found in the SS
 
 ### Supported Devices
 
-Device             | Supported          | Notes
------------------- | ------------------ | -------------------------------------------------
-Alarm              | :white_check_mark: | Arming/disarming to home, away and off modes. Sets tamper property on power outage
-SimpliCam          | :white_check_mark: | Audio, video, motion*, no microphone
-Doorbell           | :white_check_mark: | Audio, video, motion, no microphone
-Outdoor Camera     | :x:                | Not supported yet, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
-Smart lock         | :white_check_mark: | Fully supports locking, unlocking
-Entry sensor       | :white_check_mark: | Status not provided as 'push' by SS so is polled based on `sensorRefresh`
-Smoke detector     | :white_check_mark: | Includes support for tamper & fault
-CO detector        | :white_check_mark: | Includes support for tamper & fault
-Water sensor       | :white_check_mark: |
-Freeze sensor      | :white_check_mark: | Supports temperature readings, not sensor trigger
-Motion sensor      | :white_check_mark: | Requires motion sensor set to "Secret Alert" or "Alarm" in SimpliSafe settings**
-Glassbreak sensor  | :x:                | State not provided by SimpliSafe
-Keypad             | :x:                | State not provided by SimpliSafe
-Panic button       | :x:                | State not provided by SimpliSafe
+Device                 | Supported          | Notes
+---------------------- | ------------------ | -------------------------------------------------
+Alarm                  | :white_check_mark: | Arming/disarming to home, away and off modes. Sets tamper property on power outage
+SimpliCam              | :white_check_mark: | Audio, video, motion*, no microphone
+Doorbell               | :white_check_mark: | Audio, video, motion, no microphone
+Outdoor Camera         | :x:                | Not supported yet, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
+Wireless Indoor Camera | :x:                | Not supported yet, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
+Smart lock             | :white_check_mark: | Fully supports locking, unlocking
+Entry sensor           | :white_check_mark: | Status not provided as 'push' by SS so is polled based on `sensorRefresh`
+Smoke detector         | :white_check_mark: | Includes support for tamper & fault
+CO detector            | :white_check_mark: | Includes support for tamper & fault
+Water sensor           | :white_check_mark: |
+Freeze sensor          | :white_check_mark: | Supports temperature readings, not sensor trigger
+Motion sensor          | :white_check_mark: | Requires motion sensor set to "Secret Alert" or "Alarm" in SimpliSafe settings**
+Glassbreak sensor      | :x:                | State not provided by SimpliSafe
+Keypad                 | :x:                | State not provided by SimpliSafe
+Panic button           | :x:                | State not provided by SimpliSafe
 
 \* SimpliCams provide motion notifications only if the privacy shutter is open.
 
