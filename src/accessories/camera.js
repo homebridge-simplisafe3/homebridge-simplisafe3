@@ -27,6 +27,12 @@ class SS3Camera extends SimpliSafe3Accessory {
         this.startListening();
     }
 
+    // Cameras use CameraController + separate motion/doorbell services; there's no
+    // single "primary" service to attach an auth-fault indicator to. Skip auto-wiring.
+    _primaryServiceForFault() {
+        return null;
+    }
+
     setAccessory(accessory) {
         super.setAccessory(accessory);
 
@@ -42,24 +48,22 @@ class SS3Camera extends SimpliSafe3Accessory {
         if (!this.accessory.getService(this.api.hap.Service.MotionSensor)) this.accessory.addService(this.api.hap.Service.MotionSensor);
         this.accessory.getService(this.api.hap.Service.MotionSensor)
             .getCharacteristic(this.api.hap.Characteristic.MotionDetected)
-            .on('get', callback => this.getState(callback, this.accessory.getService(this.api.hap.Service.MotionSensor), this.api.hap.Characteristic.MotionDetected));
+            .onGet(() => this.getState(this.accessory.getService(this.api.hap.Service.MotionSensor), this.api.hap.Characteristic.MotionDetected));
 
         // add doorbell after configureController as HKSV creates it own linked motion service
         if (this.cameraDetails.model == 'SS002') { // SSO02 is doorbell cam
             if (!this.accessory.getService(this.api.hap.Service.Doorbell)) this.accessory.addService(this.api.hap.Service.Doorbell);
             this.accessory.getService(this.api.hap.Service.Doorbell)
                 .getCharacteristic(this.api.hap.Characteristic.ProgrammableSwitchEvent)
-                .on('get', callback => this.getState(callback, this.accessory.getService(this.api.hap.Service.Doorbell), this.api.hap.Characteristic.ProgrammableSwitchEvent));
+                .onGet(() => this.getState(this.accessory.getService(this.api.hap.Service.Doorbell), this.api.hap.Characteristic.ProgrammableSwitchEvent));
         }
     }
 
-    getState(callback, service, characteristicType) {
+    getState(service, characteristicType) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            callback(new Error('Request blocked (rate limited)'));
-            return;
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
-        let characteristic = service.getCharacteristic(characteristicType);
-        callback(null, characteristic.value);
+        return service.getCharacteristic(characteristicType).value;
     }
 
     async updateReachability() {
@@ -94,9 +98,12 @@ class SS3Camera extends SimpliSafe3Accessory {
             if (!this._validateEvent(EVENT_TYPES.CAMERA_MOTION, data)) return;
             this.accessory.getService(this.api.hap.Service.MotionSensor).updateCharacteristic(this.api.hap.Characteristic.MotionDetected, true);
             this.motionIsTriggered = true;
-            setTimeout(() => {
+            // Clear any pending reset so overlapping motion events don't race.
+            if (this._motionResetTimer) clearTimeout(this._motionResetTimer);
+            this._motionResetTimer = setTimeout(() => {
                 this.accessory.getService(this.api.hap.Service.MotionSensor).updateCharacteristic(this.api.hap.Characteristic.MotionDetected, false);
                 this.motionIsTriggered = false;
+                this._motionResetTimer = undefined;
             }, 5000);
         });
         this.simplisafe.on(EVENT_TYPES.DOORBELL, (data) => {

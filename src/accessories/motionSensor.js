@@ -21,10 +21,10 @@ class SS3MotionSensor extends SimpliSafe3Accessory {
 
         this.service = this.accessory.getService(this.api.hap.Service.MotionSensor);
         this.service.getCharacteristic(this.api.hap.Characteristic.MotionDetected)
-            .on('get', callback => this.getState(callback));
+            .onGet(() => this.getState());
 
         this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery)
-            .on('get', async callback => this.getBatteryStatus(callback));
+            .onGet(() => this.getBatteryStatus());
     }
 
     async updateReachability() {
@@ -63,27 +63,28 @@ class SS3MotionSensor extends SimpliSafe3Accessory {
         }
     }
 
-    getState(callback) {
+    getState() {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
-
-        let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.MotionDetected);
-        return callback(null, characteristic.value);
+        return this.service.getCharacteristic(this.api.hap.Characteristic.MotionDetected).value;
     }
 
-    async getBatteryStatus(callback) {
+    getBatteryStatus() {
         // No need to ping API for this and HomeKit is not very patient when waiting for it
-        let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery);
-        return callback(null, characteristic.value);
+        return this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery).value;
     }
 
     startListening() {
         this.simplisafe.on(EVENT_TYPES.MOTION, (data) => {
             if (!this._validateEvent(EVENT_TYPES.MOTION, data)) return;
             this.accessory.getService(this.api.hap.Service.MotionSensor).updateCharacteristic(this.api.hap.Characteristic.MotionDetected, true);
-            setTimeout(() => {
+            // Clear any pending reset so rapid-fire motion events don't race and
+            // leave MotionDetected stuck on after the last event ends.
+            if (this._motionResetTimer) clearTimeout(this._motionResetTimer);
+            this._motionResetTimer = setTimeout(() => {
                 this.accessory.getService(this.api.hap.Service.MotionSensor).updateCharacteristic(this.api.hap.Characteristic.MotionDetected, false);
+                this._motionResetTimer = undefined;
             }, 10000);
         });
 

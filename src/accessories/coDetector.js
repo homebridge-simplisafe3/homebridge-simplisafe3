@@ -10,6 +10,12 @@ class SS3CODetector extends SimpliSafe3Accessory {
         this.startListening();
     }
 
+    // CO detector uses StatusFault for sensor malfunction (updated in its
+    // subscription loop). Skip base-class auth-fault wiring to avoid conflicts.
+    _primaryServiceForFault() {
+        return null;
+    }
+
     setAccessory(accessory) {
         super.setAccessory(accessory);
 
@@ -20,16 +26,16 @@ class SS3CODetector extends SimpliSafe3Accessory {
 
         this.service = this.accessory.getService(this.api.hap.Service.CarbonMonoxideSensor);
         this.service.getCharacteristic(this.api.hap.Characteristic.CarbonMonoxideDetected)
-            .on('get', async callback => this.getState(callback, 'triggered'));
+            .onGet(() => this.getState('triggered'));
 
         this.service.getCharacteristic(this.api.hap.Characteristic.StatusTampered)
-            .on('get', async callback => this.getState(callback, 'tamper'));
+            .onGet(() => this.getState('tamper'));
 
         this.service.getCharacteristic(this.api.hap.Characteristic.StatusFault)
-            .on('get', async callback => this.getState(callback, 'malfunction'));
+            .onGet(() => this.getState('malfunction'));
 
         this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery)
-            .on('get', async callback => this.getBatteryStatus(callback));
+            .onGet(() => this.getBatteryStatus());
 
         this.refreshState();
     }
@@ -70,25 +76,16 @@ class SS3CODetector extends SimpliSafe3Accessory {
         }
     }
 
-    async getState(callback, parameter = 'triggered', forceRefresh = false) {
+    async getState(parameter = 'triggered', forceRefresh = false) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
 
         if (!forceRefresh) {
-            let characteristic = null;
-
-            if (parameter == 'triggered') {
-                characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.CarbonMonoxideDetected);
-            } else if (parameter == 'tamper') {
-                characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusTampered);
-            } else if (parameter == 'malfunction') {
-                characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusFault);
-            } else {
-                throw new Error('Requested data type not understood');
-            }
-
-            return callback(null, characteristic.value);
+            if (parameter == 'triggered') return this.service.getCharacteristic(this.api.hap.Characteristic.CarbonMonoxideDetected).value;
+            if (parameter == 'tamper') return this.service.getCharacteristic(this.api.hap.Characteristic.StatusTampered).value;
+            if (parameter == 'malfunction') return this.service.getCharacteristic(this.api.hap.Characteristic.StatusFault).value;
+            throw new Error('Requested data type not understood');
         }
 
         try {
@@ -98,29 +95,25 @@ class SS3CODetector extends SimpliSafe3Accessory {
                 throw new Error('Sensor response not understood');
             }
 
-            let homekitState = null;
-
             if (parameter == 'triggered') {
-                homekitState = sensor.status.triggered ? this.api.hap.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL : this.api.hap.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL;
-            } else if (parameter == 'tamper') {
-                homekitState = sensor.status.tamper ? this.api.hap.Characteristic.StatusTampered.TAMPERED : this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED;
-            } else if (parameter == 'malfunction') {
-                homekitState = sensor.status.malfunction ? this.api.hap.Characteristic.StatusFault.GENERAL_FAULT : this.api.hap.Characteristic.StatusFault.NO_FAULT;
-            } else {
-                throw new Error('Requested data type not understood');
+                return sensor.status.triggered ? this.api.hap.Characteristic.CarbonMonoxideDetected.CO_LEVELS_ABNORMAL : this.api.hap.Characteristic.CarbonMonoxideDetected.CO_LEVELS_NORMAL;
             }
-
-            callback(null, homekitState);
-
+            if (parameter == 'tamper') {
+                return sensor.status.tamper ? this.api.hap.Characteristic.StatusTampered.TAMPERED : this.api.hap.Characteristic.StatusTampered.NOT_TAMPERED;
+            }
+            if (parameter == 'malfunction') {
+                return sensor.status.malfunction ? this.api.hap.Characteristic.StatusFault.GENERAL_FAULT : this.api.hap.Characteristic.StatusFault.NO_FAULT;
+            }
+            throw new Error('Requested data type not understood');
         } catch (err) {
-            callback(new Error(`An error occurred while getting sensor state: ${err}`));
+            this.log.error(`An error occurred while getting sensor state for ${this.name}: ${err}`);
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
     }
 
-    async getBatteryStatus(callback) {
+    getBatteryStatus() {
         // No need to ping API for this and HomeKit is not very patient when waiting for it
-        let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery);
-        return callback(null, characteristic.value);
+        return this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery).value;
     }
 
     startListening() {

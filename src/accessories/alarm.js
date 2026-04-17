@@ -71,6 +71,12 @@ class SS3Alarm extends SimpliSafe3Accessory {
         });
     }
 
+    // Alarm manages its own StatusFault wiring (see constructor), so opt out of
+    // the base class's auto-wiring to avoid double-registered auth listeners.
+    _primaryServiceForFault() {
+        return null;
+    }
+
     setAccessory(accessory) {
         super.setAccessory(accessory);
 
@@ -83,11 +89,11 @@ class SS3Alarm extends SimpliSafe3Accessory {
 
         this.service.getCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState)
             .setProps({ validValues: this.VALID_CURRENT_STATE_VALUES })
-            .on('get', async callback => this.getCurrentState(callback));
+            .onGet(() => this.getCurrentState());
         this.service.getCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState)
             .setProps({ validValues: this.VALID_TARGET_STATE_VALUES })
-            .on('get', async callback => this.getTargetState(callback))
-            .on('set', async (state, callback) => this.setTargetState(state, callback));
+            .onGet(() => this.getTargetState())
+            .onSet(value => this.setTargetState(value));
 
         this.refreshState();
     }
@@ -104,54 +110,53 @@ class SS3Alarm extends SimpliSafe3Accessory {
         }
     }
 
-    async getCurrentState(callback, forceRefresh = false) {
+    async getCurrentState(forceRefresh = false) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState);
-            return callback(null, characteristic.value);
+            return this.service.getCharacteristic(this.api.hap.Characteristic.SecuritySystemCurrentState).value;
         }
 
         try {
             let state = await this.getAlarmState();
             let homekitState = this.SS3_TO_HOMEKIT_CURRENT[state];
             if (this.debug) this.log(`Current alarm state is: ${homekitState}`);
-            callback(null, homekitState);
+            return homekitState;
         } catch (err) {
-            callback(new Error(`An error occurred while getting the current alarm state: ${err}`));
+            this.log.error(`An error occurred while getting the current alarm state: ${err}`);
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
     }
 
-    async getTargetState(callback, forceRefresh = false) {
+    async getTargetState(forceRefresh = false) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState);
-            return callback(null, characteristic.value);
+            return this.service.getCharacteristic(this.api.hap.Characteristic.SecuritySystemTargetState).value;
         }
 
         try {
             let state = await this.getAlarmState();
             let homekitState = this.SS3_TO_HOMEKIT_TARGET[state];
             if (this.debug) this.log(`Target alarm state is: ${homekitState}`);
-            callback(null, homekitState);
+            return homekitState;
         } catch (err) {
-            callback(new Error(`An error occurred while getting the target alarm state: ${err}`));
+            this.log.error(`An error occurred while getting the target alarm state: ${err}`);
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
     }
 
-    async setTargetState(homekitState, callback) {
+    async setTargetState(homekitState) {
         let state = this.HOMEKIT_TARGET_TO_SS3[homekitState];
         if (this.debug) this.log(`Setting target state to ${state}, ${homekitState}`);
 
         if (!this.service) {
             this.log.error('Alarm not linked to Homebridge service');
-            callback(new Error('Alarm not linked to Homebridge service'));
-            return;
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
 
         try {
@@ -170,21 +175,22 @@ class SS3Alarm extends SimpliSafe3Accessory {
             }
             this.nRetries = 0;
             this.setFault(false);
-            callback(null);
         } catch (err) {
-            // We retry 409 = SettingsInProgress, 504 = GatewayTimeout errors up to targetStateMaxRetries times
-            if ([409, 504].includes(parseInt(err.statusCode)) && this.nRetries < targetStateMaxRetries) {
+            // We retry 409 = SettingsInProgress, 504 = GatewayTimeout errors up to targetStateMaxRetries times.
+            // The SimpliSafe request layer throws either an axios error (with err.response.status)
+            // or the raw error body (which may carry err.statusCode); check both.
+            const status = parseInt(err?.response?.status ?? err?.statusCode);
+            if ([409, 504].includes(status) && this.nRetries < targetStateMaxRetries) {
                 if (this.debug) this.log(`${err.type} error while setting alarm state. nRetries: ${this.nRetries}`);
                 this.nRetries++;
-                setTimeout(async () => {
-                    if (this.debug) this.log('Retrying setTargetState.');
-                    await this.setTargetState(homekitState, callback);
-                }, 1000 + 500 * Math.random()); // wait 1.5-ish seconds and try again
+                await new Promise(resolve => setTimeout(resolve, 1000 + 500 * Math.random())); // wait 1.5-ish seconds and try again
+                if (this.debug) this.log('Retrying setTargetState.');
+                await this.setTargetState(homekitState);
             } else {
                 this.log.error('Error while setting alarm state:', err);
                 this.nRetries = 0;
                 this.setFault();
-                callback(err);
+                throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
             }
         }
     }

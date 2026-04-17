@@ -36,6 +36,11 @@ class SS3DoorLock extends SimpliSafe3Accessory {
         });
     }
 
+    // LockMechanism is not spec'd with StatusFault; skip base-class wiring.
+    _primaryServiceForFault() {
+        return null;
+    }
+
     setAccessory(accessory) {
         super.setAccessory(accessory);
 
@@ -47,10 +52,10 @@ class SS3DoorLock extends SimpliSafe3Accessory {
         this.service = this.accessory.getService(this.api.hap.Service.LockMechanism);
 
         this.service.getCharacteristic(this.api.hap.Characteristic.LockCurrentState)
-            .on('get', async callback => this.getCurrentState(callback));
+            .onGet(() => this.getCurrentState());
         this.service.getCharacteristic(this.api.hap.Characteristic.LockTargetState)
-            .on('get', async callback => this.getTargetState(callback))
-            .on('set', async (state, callback) => this.setTargetState(state, callback));
+            .onGet(() => this.getTargetState())
+            .onSet(value => this.setTargetState(value));
 
         this.refreshState();
     }
@@ -90,14 +95,13 @@ class SS3DoorLock extends SimpliSafe3Accessory {
         }
     }
 
-    async getCurrentState(callback, forceRefresh = false) {
+    async getCurrentState(forceRefresh = false) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.LockCurrentState);
-            return callback(null, characteristic.value);
+            return this.service.getCharacteristic(this.api.hap.Characteristic.LockCurrentState).value;
         }
 
         try {
@@ -114,21 +118,20 @@ class SS3DoorLock extends SimpliSafe3Accessory {
             }
 
             if (this.debug) this.log(`Current '${this.name}' lock state is: ${state}, ${homekitState}`);
-            callback(null, homekitState);
+            return homekitState;
         } catch (err) {
-            callback(new Error(`An error occurred while getting the current door lock state: ${err}`));
+            this.log.error(`An error occurred while getting the current door lock state: ${err}`);
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
-
     }
 
-    async getTargetState(callback, forceRefresh = false) {
+    async getTargetState(forceRefresh = false) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.LockTargetState);
-            return callback(null, characteristic.value);
+            return this.service.getCharacteristic(this.api.hap.Characteristic.LockTargetState).value;
         }
 
         try {
@@ -136,19 +139,19 @@ class SS3DoorLock extends SimpliSafe3Accessory {
             let state = lock.status.lockState;
             let homekitState = this.SS3_TO_HOMEKIT_TARGET[state];
             if (this.debug) this.log(`Target '${this.name}' lock state is: ${state}, ${homekitState}`);
-            callback(null, homekitState);
+            return homekitState;
         } catch (err) {
-            callback(new Error(`An error occurred while getting the '${this.name}' target door lock state: ${err}`));
+            this.log.error(`An error occurred while getting the '${this.name}' target door lock state: ${err}`);
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
     }
 
-    async setTargetState(homekitState, callback) {
+    async setTargetState(homekitState) {
         let state = this.HOMEKIT_TARGET_TO_SS3[homekitState];
         if (this.debug) this.log(`Setting '${this.name}' target lock state to ${state}, ${homekitState}`);
 
         if (!this.service) {
-            callback(new Error('Lock not linked to Homebridge service'));
-            return;
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
 
         try {
@@ -156,9 +159,9 @@ class SS3DoorLock extends SimpliSafe3Accessory {
             if (this.debug) this.log(`Updated SS lock state for '${this.name}': ${state}`);
             // techincally this should be LockTargetState but this feels faster and has no apparent side-effects
             this.service.updateCharacteristic(this.api.hap.Characteristic.LockCurrentState, homekitState);
-            callback(null);
         } catch (err) {
-            callback(new Error(`An error occurred while setting the '${this.name}' target door lock state: ${err}`));
+            this.log.error(`An error occurred while setting the '${this.name}' target door lock state: ${err}`);
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
     }
 

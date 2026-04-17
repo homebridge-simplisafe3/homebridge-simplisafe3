@@ -20,10 +20,10 @@ class SS3WaterSensor extends SimpliSafe3Accessory {
 
         this.service = this.accessory.getService(this.api.hap.Service.LeakSensor);
         this.service.getCharacteristic(this.api.hap.Characteristic.LeakDetected)
-            .on('get', async callback => this.getState(callback));
+            .onGet(() => this.getState());
 
         this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery)
-            .on('get', async callback => this.getBatteryStatus(callback));
+            .onGet(() => this.getBatteryStatus());
 
         this.refreshState();
     }
@@ -64,14 +64,13 @@ class SS3WaterSensor extends SimpliSafe3Accessory {
         }
     }
 
-    async getState(callback, forceRefresh = false) {
+    async getState(forceRefresh = false) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.LeakDetected);
-            return callback(null, characteristic.value);
+            return this.service.getCharacteristic(this.api.hap.Characteristic.LeakDetected).value;
         }
 
         try {
@@ -82,18 +81,16 @@ class SS3WaterSensor extends SimpliSafe3Accessory {
             }
 
             let leak = sensor.status.triggered;
-            let homekitState = leak ? this.api.hap.Characteristic.LeakDetected.LEAK_DETECTED : this.api.hap.Characteristic.LeakDetected.LEAK_NOT_DETECTED;
-            callback(null, homekitState);
-
+            return leak ? this.api.hap.Characteristic.LeakDetected.LEAK_DETECTED : this.api.hap.Characteristic.LeakDetected.LEAK_NOT_DETECTED;
         } catch (err) {
-            callback(new Error(`An error occurred while getting sensor state: ${err}`));
+            this.log.error(`An error occurred while getting sensor state for ${this.name}: ${err}`);
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
     }
 
-    async getBatteryStatus(callback) {
+    getBatteryStatus() {
         // No need to ping API for this and HomeKit is not very patient when waiting for it
-        let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery);
-        return callback(null, characteristic.value);
+        return this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery).value;
     }
 
     startListening() {

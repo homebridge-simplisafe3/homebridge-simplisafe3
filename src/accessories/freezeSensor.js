@@ -22,10 +22,10 @@ class SS3FreezeSensor extends SimpliSafe3Accessory {
 
         this.service = this.accessory.getService(this.api.hap.Service.TemperatureSensor);
         this.service.getCharacteristic(this.api.hap.Characteristic.CurrentTemperature)
-            .on('get', async callback => this.getState(callback));
+            .onGet(() => this.getState());
 
         this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery)
-            .on('get', async callback => this.getBatteryStatus(callback));
+            .onGet(() => this.getBatteryStatus());
 
         this.refreshState();
     }
@@ -66,14 +66,13 @@ class SS3FreezeSensor extends SimpliSafe3Accessory {
         }
     }
 
-    async getState(callback, forceRefresh = false) {
+    async getState(forceRefresh = false) {
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
-            return callback(new Error('Request blocked (rate limited)'));
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
 
         if (!forceRefresh) {
-            let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.CurrentTemperature);
-            return callback(null, characteristic.value);
+            return this.service.getCharacteristic(this.api.hap.Characteristic.CurrentTemperature).value;
         }
 
         try {
@@ -83,18 +82,16 @@ class SS3FreezeSensor extends SimpliSafe3Accessory {
                 throw new Error('Sensor response not understood');
             }
 
-            let temperature = fahrenheitToCelsius(sensor.status.temperature);
-            callback(null, temperature);
-
+            return fahrenheitToCelsius(sensor.status.temperature);
         } catch (err) {
-            callback(new Error(`An error occurred while getting sensor state: ${err}`));
+            this.log.error(`An error occurred while getting sensor state for ${this.name}: ${err}`);
+            throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
         }
     }
 
-    async getBatteryStatus(callback) {
+    getBatteryStatus() {
         // No need to ping API for this and HomeKit is not very patient when waiting for it
-        let characteristic = this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery);
-        return callback(null, characteristic.value);
+        return this.service.getCharacteristic(this.api.hap.Characteristic.StatusLowBattery).value;
     }
 
     startListening() {

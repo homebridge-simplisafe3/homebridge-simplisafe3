@@ -25,13 +25,11 @@ class SS3UnreachableAccessory {
 
             for (let characteristic of service.characteristics) {
                 if (characteristic.props.perms.indexOf('pr') > -1) {
-                    // Read
-                    characteristic.on('get', callback => this.unreachable(callback));
+                    characteristic.onGet(() => this.unreachable());
                 }
 
                 if (characteristic.props.perms.indexOf('pw') > -1) {
-                    // Write
-                    characteristic.on('set', (state, callback) => this.unreachable(callback));
+                    characteristic.onSet(() => this.unreachable());
                 }
             }
         }
@@ -46,13 +44,13 @@ class SS3UnreachableAccessory {
 
             for (let characteristic of service.characteristics) {
                 if (characteristic.props.perms.indexOf('pr') > -1) {
-                    // Read
-                    characteristic.removeAllListeners('get');
+                    if (typeof characteristic.removeOnGet === 'function') characteristic.removeOnGet();
+                    else characteristic.removeAllListeners('get');
                 }
 
                 if (characteristic.props.perms.indexOf('pw') > -1) {
-                    // Write
-                    characteristic.removeAllListeners('set');
+                    if (typeof characteristic.removeOnSet === 'function') characteristic.removeOnSet();
+                    else characteristic.removeAllListeners('set');
                 }
             }
         }
@@ -62,9 +60,8 @@ class SS3UnreachableAccessory {
         return false;
     }
 
-    unreachable(callback) {
-        let err = new Error('Accessory unreachable');
-        callback(err);
+    unreachable() {
+        throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
     }
 
 }

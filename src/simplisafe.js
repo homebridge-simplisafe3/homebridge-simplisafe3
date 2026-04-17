@@ -10,7 +10,7 @@ export const VALID_ALARM_STATES = [
     'away'
 ];
 
-export const VALD_LOCK_STATES = [
+export const VALID_LOCK_STATES = [
     'lock',
     'unlock'
 ];
@@ -31,6 +31,43 @@ export const SENSOR_TYPES = {
     'SIREN_2': 13,
     'DOORLOCK': 16,
     'DOORLOCK_2': 253
+};
+
+// SimpliSafe ContactID event codes received over the message queue. Named here
+// so the WebSocket handler below reads semantically rather than as magic numbers.
+export const SIMPLISAFE_EVENT_CIDS = {
+    ALARM_DISARM_MASTER_PIN: 1400,
+    ALARM_CANCEL: 1406,
+    ALARM_DISARM_REMOTE: 1407,
+    MOTION: 1409,
+    HOME_EXIT_DELAY: 9441,
+    HOME_ARM: 3441,
+    HOME_ARM_ALT: 3491,
+    AWAY_EXIT_DELAY_KEYPAD: 9401,
+    AWAY_EXIT_DELAY_REMOTE: 9407,
+    AWAY_ARM_KEYPAD: 3401,
+    AWAY_ARM_REMOTE: 3407,
+    AWAY_ARM_ALT_1: 3487,
+    AWAY_ARM_ALT_2: 3481,
+    ENTRY: 1429,
+    ALARM_TRIGGER_FIRE: 1110,
+    ALARM_TRIGGER_CO: 1154,
+    ALARM_TRIGGER_WATER: 1159,
+    ALARM_TRIGGER_FREEZE: 1162,
+    ALARM_TRIGGER_SMOKE: 1132,
+    ALARM_TRIGGER_HEAT: 1134,
+    ALARM_TRIGGER_PANIC: 1120,
+    CAMERA_MOTION: 1170,
+    POWER_OUTAGE: 1301,
+    POWER_RESTORED: 3301,
+    BASE_STATION_WIFI_LOST: 1350,
+    BASE_STATION_WIFI_RESTORED: 3350,
+    DOORBELL: 1458,
+    USER_INITIATED_TEST: 1601,
+    AUTOMATIC_TEST: 1602,
+    DOORLOCK_UNLOCKED: 9700,
+    DOORLOCK_LOCKED: 9701,
+    DOORLOCK_ERROR: 9703
 };
 
 export const EVENT_TYPES = {
@@ -372,7 +409,7 @@ class SimpliSafe3 extends EventEmitter {
     async setLockState(lockId, newState) {
         let state = newState.toLowerCase();
 
-        if (VALD_LOCK_STATES.indexOf(state) == -1) {
+        if (VALID_LOCK_STATES.indexOf(state) == -1) {
             throw new Error('Invalid target state');
         }
 
@@ -489,7 +526,7 @@ class SimpliSafe3 extends EventEmitter {
 
                 switch (data.eventType) {
                 case 'alarm':
-                    if (data.eventCid == 1601) {
+                    if (data.eventCid == SIMPLISAFE_EVENT_CIDS.USER_INITIATED_TEST) {
                         this.emit(EVENT_TYPES.USER_INITIATED_TEST, data);
                     } else {
                         this.emit(EVENT_TYPES.ALARM_TRIGGER, data);
@@ -506,83 +543,80 @@ class SimpliSafe3 extends EventEmitter {
                 default:
                     // if it's not an alarm event, check by eventCid
                     switch (data.eventCid) {
-                    case 1400:
-                    case 1407:
-                        // 1400 is disarmed with Master PIN, 1407 is disarmed with Remote
+                    case SIMPLISAFE_EVENT_CIDS.ALARM_DISARM_MASTER_PIN:
+                    case SIMPLISAFE_EVENT_CIDS.ALARM_DISARM_REMOTE:
                         this.emit(EVENT_TYPES.ALARM_DISARM, data);
                         this.handleSensorRefreshLockout();
                         break;
-                    case 1406:
+                    case SIMPLISAFE_EVENT_CIDS.ALARM_CANCEL:
                         this.emit(EVENT_TYPES.ALARM_CANCEL, data);
                         this.handleSensorRefreshLockout();
                         break;
-                    case 1409:
+                    case SIMPLISAFE_EVENT_CIDS.MOTION:
                         this.emit(EVENT_TYPES.MOTION, data);
                         break;
-                    case 9441:
+                    case SIMPLISAFE_EVENT_CIDS.HOME_EXIT_DELAY:
                         this.emit(EVENT_TYPES.HOME_EXIT_DELAY, data);
                         break;
-                    case 3441:
-                    case 3491:
+                    case SIMPLISAFE_EVENT_CIDS.HOME_ARM:
+                    case SIMPLISAFE_EVENT_CIDS.HOME_ARM_ALT:
                         this.emit(EVENT_TYPES.HOME_ARM, data);
                         this.handleSensorRefreshLockout();
                         break;
-                    case 9401:
-                    case 9407:
-                        // 9401 is for Keypad, 9407 is for Remote
+                    case SIMPLISAFE_EVENT_CIDS.AWAY_EXIT_DELAY_KEYPAD:
+                    case SIMPLISAFE_EVENT_CIDS.AWAY_EXIT_DELAY_REMOTE:
                         this.emit(EVENT_TYPES.AWAY_EXIT_DELAY, data);
                         break;
-                    case 3401:
-                    case 3407:
-                    case 3487:
-                    case 3481:
-                        // 3401 is for Keypad, 3407 is for Remote
+                    case SIMPLISAFE_EVENT_CIDS.AWAY_ARM_KEYPAD:
+                    case SIMPLISAFE_EVENT_CIDS.AWAY_ARM_REMOTE:
+                    case SIMPLISAFE_EVENT_CIDS.AWAY_ARM_ALT_1:
+                    case SIMPLISAFE_EVENT_CIDS.AWAY_ARM_ALT_2:
                         this.emit(EVENT_TYPES.AWAY_ARM, data);
                         this.handleSensorRefreshLockout();
                         break;
-                    case 1429:
+                    case SIMPLISAFE_EVENT_CIDS.ENTRY:
                         this.emit(EVENT_TYPES.ENTRY, data);
                         break;
-                    case 1110:
-                    case 1154:
-                    case 1159:
-                    case 1162:
-                    case 1132:
-                    case 1134:
-                    case 1120:
+                    case SIMPLISAFE_EVENT_CIDS.ALARM_TRIGGER_FIRE:
+                    case SIMPLISAFE_EVENT_CIDS.ALARM_TRIGGER_CO:
+                    case SIMPLISAFE_EVENT_CIDS.ALARM_TRIGGER_WATER:
+                    case SIMPLISAFE_EVENT_CIDS.ALARM_TRIGGER_FREEZE:
+                    case SIMPLISAFE_EVENT_CIDS.ALARM_TRIGGER_SMOKE:
+                    case SIMPLISAFE_EVENT_CIDS.ALARM_TRIGGER_HEAT:
+                    case SIMPLISAFE_EVENT_CIDS.ALARM_TRIGGER_PANIC:
                         this.emit(EVENT_TYPES.ALARM_TRIGGER, data);
                         break;
-                    case 1170:
+                    case SIMPLISAFE_EVENT_CIDS.CAMERA_MOTION:
                         this.emit(EVENT_TYPES.CAMERA_MOTION, data);
                         break;
-                    case 1301:
+                    case SIMPLISAFE_EVENT_CIDS.POWER_OUTAGE:
                         this.emit(EVENT_TYPES.POWER_OUTAGE, data);
                         break;
-                    case 3301:
+                    case SIMPLISAFE_EVENT_CIDS.POWER_RESTORED:
                         this.emit(EVENT_TYPES.POWER_RESTORED, data);
                         break;
-                    case 1458:
+                    case SIMPLISAFE_EVENT_CIDS.DOORBELL:
                         this.emit(EVENT_TYPES.DOORBELL, data);
                         break;
-                    case 9700:
+                    case SIMPLISAFE_EVENT_CIDS.DOORLOCK_UNLOCKED:
                         this.emit(EVENT_TYPES.DOORLOCK_UNLOCKED, data);
                         break;
-                    case 9701:
+                    case SIMPLISAFE_EVENT_CIDS.DOORLOCK_LOCKED:
                         this.emit(EVENT_TYPES.DOORLOCK_LOCKED, data);
                         break;
-                    case 9703:
+                    case SIMPLISAFE_EVENT_CIDS.DOORLOCK_ERROR:
                         this.emit(EVENT_TYPES.DOORLOCK_ERROR, data);
                         break;
-                    case 1350:
+                    case SIMPLISAFE_EVENT_CIDS.BASE_STATION_WIFI_LOST:
                         this.log.error('Base station WiFi lost, this plugin cannot communicate with the base station until it is restored.');
                         break;
-                    case 3350:
+                    case SIMPLISAFE_EVENT_CIDS.BASE_STATION_WIFI_RESTORED:
                         this.log.warn('Base station WiFi restored.');
                         break;
-                    case 1601:
+                    case SIMPLISAFE_EVENT_CIDS.USER_INITIATED_TEST:
                         // User-initiated test, handled above
                         break;
-                    case 1602:
+                    case SIMPLISAFE_EVENT_CIDS.AUTOMATIC_TEST:
                         // Automatic test
                         break;
                     default:
@@ -624,16 +658,16 @@ class SimpliSafe3 extends EventEmitter {
 
     subscribeToSensor(id, callback) {
         if (!this.sensorRefreshIntervalID) {
-            this.sensorRefreshIntervalID = setInterval(async () => {
+            const tick = async () => {
                 if (this.sensorSubscriptions.length == 0) {
                     return;
                 }
-        
+
                 if (this.refreshLockoutTimeoutID) {
                     if (this.debug) this.log('Sensor refresh lockout in effect, refresh blocked.');
                     return;
                 }
-        
+
                 try {
                     let sensors = await this.getSensors(true);
                     for (let sensor of sensors) {
@@ -654,9 +688,15 @@ class SimpliSafe3 extends EventEmitter {
                         }
                     }
                 }
-        
-            }, this.sensorRefreshTime);
-        
+            };
+
+            // Jitter the first tick so sensor + alarm polling loops don't land on
+            // the same second at startup (avoids a small thundering herd).
+            const initialDelay = this.sensorRefreshTime + Math.floor(Math.random() * 2000);
+            this.sensorRefreshIntervalID = setTimeout(() => {
+                tick();
+                this.sensorRefreshIntervalID = setInterval(tick, this.sensorRefreshTime);
+            }, initialDelay);
         }
 
         this.sensorSubscriptions.push({
@@ -669,12 +709,14 @@ class SimpliSafe3 extends EventEmitter {
         this.sensorSubscriptions = this.sensorSubscriptions.filter(sub => sub.id !== id);
         if (this.sensorSubscriptions.length == 0) {
             clearInterval(this.sensorRefreshIntervalID);
+            clearTimeout(this.sensorRefreshIntervalID);
+            this.sensorRefreshIntervalID = undefined;
         }
     }
 
     subscribeToAlarmSystem(id, callback) {
         if (!this.alarmRefreshIntervalID) {
-            this.alarmRefreshIntervalID = setInterval(async () => {
+            const tick = async () => {
                 if (this.refreshLockoutTimeoutID) {
                     if (this.debug) this.log('Refresh lockout in effect, alarm system refresh blocked.');
                     return;
@@ -698,9 +740,14 @@ class SimpliSafe3 extends EventEmitter {
                         }
                     }
                 }
+            };
 
-            }, alarmRefreshInterval);
-
+            // Jitter startup so sensor + alarm polling don't align on the same tick.
+            const initialDelay = alarmRefreshInterval + Math.floor(Math.random() * 2000);
+            this.alarmRefreshIntervalID = setTimeout(() => {
+                tick();
+                this.alarmRefreshIntervalID = setInterval(tick, alarmRefreshInterval);
+            }, initialDelay);
         }
 
         this.alarmSubscriptions.push({

@@ -19,6 +19,8 @@ const ssOAuth = axios.create({
 axiosRetry(ssOAuth, { retries: 3 });
 
 const SS_OAUTH_AUTH_URL = 'https://auth.simplisafe.com/authorize';
+// Official SimpliSafe iOS app OAuth client ID. Extracted from traffic analysis of the
+// SimpliSafe iOS app; do not change without verifying the current value still works.
 const SS_OAUTH_CLIENT_ID = '42aBZ5lYrVW12jfOuu3CQROitwxg9sN5';
 const SS_OAUTH_AUTH0_CLIENT = 'eyJ2ZXJzaW9uIjoiMi4zLjIiLCJuYW1lIjoiQXV0aDAuc3dpZnQiLCJlbnYiOnsic3dpZnQiOiI1LngiLCJpT1MiOiIxNi4zIn19';
 const SS_OAUTH_REDIRECT_URI = 'com.simplisafe.mobile://auth.simplisafe.com/ios/com.simplisafe.mobile/callback';
