@@ -1,6 +1,10 @@
 # Change Log
 All notable changes are documented here.
 
+## Unreleased
+- **Adds support for the SimpliSafe Outdoor Camera (SSOBCM4)**, which streams via SimpliSafe's LiveKit cluster instead of the legacy `media.simplisafe.com` path. Video only for this release (HomeKit audio is silent for outdoor cams). The camera tile in the Home app populates after the first live view.
+- Internal: introduces a new `getStreamProvider()` method on cameras (`legacy` vs `livekit` vs `none`) to route between the two streaming backends. The legacy SimpliCam / Video Doorbell path is unchanged.
+
 ## 1.10.16 (2025-09-04)
 - Fix: Add fallback refresh for alarm state update by @shamoon in #462
 - Bump brace-expansion from 1.1.11 to 1.1.12 by @dependabot[bot] in #463

@@ -9,6 +9,8 @@ import isDocker from 'is-docker';
 import path from 'path';
 import fs from 'fs';
 
+import LiveKitSource from './liveKitSource';
+
 const dnsLookup = promisify(dns.lookup);
 
 const privacyShutterImage = path.resolve(__dirname, '..', 'images', 'privacyshutter_snapshot.png');
@@ -73,6 +75,11 @@ class StreamingDelegate {
     }
 
     async handleSnapshotRequest(request, callback) {
+        if (this.ss3Camera.getStreamProvider() === 'livekit') {
+            this.handleLiveKitSnapshotRequest(callback);
+            return;
+        }
+
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
             callback(new Error('Camera snapshot request blocked (rate limited)'));
             return;
@@ -212,6 +219,10 @@ class StreamingDelegate {
 
     async handleStreamRequest(request, callback) {
         if (this.ss3Camera.debug) this.log('handleStreamRequest with request:', request);
+
+        if (this.ss3Camera.getStreamProvider() === 'livekit' && request.type === 'start') {
+            return this.handleLiveKitStartStream(request, callback);
+        }
 
         if (this.ss3Camera.isUnsupported()) {
             let err = new Error(`Camera ${this.ss3Camera.name} is unsupported`);
@@ -464,6 +475,212 @@ class StreamingDelegate {
                 callback();
             }
         }
+    }
+
+    handleLiveKitSnapshotRequest(callback) {
+        const cached = this.ss3Camera.getCachedSnapshot();
+        if (cached) {
+            if (this.ss3Camera.debug) this.log(`Serving cached LiveKit snapshot for '${this.cameraDetails.cameraSettings.cameraName}' (${cached.length}B)`);
+            callback(undefined, cached);
+        } else {
+            if (this.ss3Camera.debug) this.log(`No cached LiveKit snapshot yet for '${this.cameraDetails.cameraSettings.cameraName}', returning placeholder`);
+            callback(undefined, unsupportedCameraImageInBytes);
+        }
+    }
+
+    async handleLiveKitStartStream(request, callback) {
+        const sessionId = request.sessionID;
+        if (!sessionId) {
+            callback(new Error('No sessionID on stream start'));
+            return;
+        }
+        const sessionIdentifier = this.api.hap.uuid.unparse(sessionId);
+
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            delete this.pendingSessions[sessionIdentifier];
+            const err = new Error('Camera stream request blocked (rate limited)');
+            this.log.error(err);
+            callback(err);
+            return;
+        }
+
+        const sessionInfo = this.pendingSessions[sessionIdentifier];
+        if (!sessionInfo) {
+            callback(new Error('No pending session for stream start'));
+            return;
+        }
+
+        let source;
+        try {
+            source = new LiveKitSource(this.ss3Camera);
+            const meta = await source.connect();
+            if (!meta || !meta.width || !meta.height) {
+                throw new Error('No video metadata from LiveKit source');
+            }
+
+            const width = meta.width;
+            const height = meta.height;
+            const nativeFps = this.cameraDetails.cameraSettings.admin.fps || 20;
+            const nativeBitrateKbps = Math.round((this.cameraDetails.cameraSettings.admin.bitRate || 2000000) / 1000);
+            const audioBitrate = request.audio.max_bit_rate ?? 96;
+            const audioSamplerate = request.audio.sample_rate ?? 16;
+            const mtu = request.video.mtu ?? 1316;
+
+            let effectiveFps = nativeFps;
+            if (request.video.fps && request.video.fps < effectiveFps) effectiveFps = request.video.fps;
+
+            let effectiveBitrate = nativeBitrateKbps;
+            if (request.video.max_bit_rate && request.video.max_bit_rate < effectiveBitrate) effectiveBitrate = request.video.max_bit_rate;
+
+            let sourceArgs = [
+                ['-f', 'rawvideo'],
+                ['-pix_fmt', 'yuv420p'],
+                ['-s', `${width}x${height}`],
+                ['-r', String(nativeFps)],
+                ['-i', 'pipe:0'],
+                ['-f', 'lavfi'],
+                ['-i', `anullsrc=channel_layout=mono:sample_rate=${audioSamplerate * 1000}`]
+            ];
+
+            let videoArgs = [
+                ['-map', '0:v:0'],
+                ['-vcodec', 'libx264'],
+                ['-tune', 'zerolatency'],
+                ['-preset', 'superfast'],
+                ['-pix_fmt', 'yuv420p'],
+                ['-r', String(effectiveFps)],
+                ['-f', 'rawvideo'],
+                ['-b:v', `${effectiveBitrate}k`],
+                ['-bufsize', `${2 * effectiveBitrate}k`],
+                ['-maxrate', `${effectiveBitrate}k`],
+                ['-payload_type', 99],
+                ['-ssrc', sessionInfo.video_ssrc],
+                ['-f', 'rtp'],
+                ['-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80'],
+                ['-srtp_out_params', sessionInfo.video_srtp.toString('base64')],
+                [`srtp://${sessionInfo.address}:${sessionInfo.video_port}?rtcpport=${sessionInfo.video_port}&localrtcpport=${sessionInfo.video_port}&pkt_size=${mtu}`]
+            ];
+
+            let audioArgs = [
+                ['-map', '1:a:0'],
+                ['-acodec', 'libfdk_aac'],
+                ['-flags', '+global_header'],
+                ['-profile:a', 'aac_eld'],
+                ['-ac', '1'],
+                ['-ar', `${audioSamplerate}k`],
+                ['-b:a', `${audioBitrate}k`],
+                ['-bufsize', `${2 * audioBitrate}k`],
+                ['-payload_type', 110],
+                ['-ssrc', sessionInfo.audio_ssrc],
+                ['-f', 'rtp'],
+                ['-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80'],
+                ['-srtp_out_params', sessionInfo.audio_srtp.toString('base64')],
+                [`srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=188`]
+            ];
+
+            if (request.audio && request.audio.codec == 'OPUS') {
+                let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
+                aCodecArg[1] = 'libopus';
+                let profileArg = audioArgs.find(arg => arg[0] == '-profile:a');
+                audioArgs.splice(audioArgs.indexOf(profileArg), 1);
+            }
+
+            const flatten = (argList) => [].concat(...argList.map(arg => arg.map(a => typeof a == 'string' ? a.trim() : a)));
+            const srcFlat = flatten(sourceArgs);
+            const vidFlat = flatten(videoArgs);
+            const audFlat = flatten(audioArgs);
+
+            const cmd = spawn(this.ss3Camera.ffmpegPath, [...srcFlat, ...vidFlat, ...audFlat], { env: process.env });
+            source.setWriter(cmd.stdin);
+
+            if (this.ss3Camera.debug) {
+                this.log(`Start LiveKit streaming for '${this.ss3Camera.name}' at ${width}x${height}@${effectiveFps}fps`);
+                this.log([this.ss3Camera.ffmpegPath, srcFlat.join(' '), vidFlat.join(' '), audFlat.join(' ')].join(' '));
+            }
+
+            cmd.stdin.on('error', (e) => {
+                if (this.ss3Camera.debug && e.code !== 'EPIPE') this.log.error('LiveKit ffmpeg stdin error:', e.message);
+            });
+
+            let started = false;
+            cmd.stderr.on('data', (data) => {
+                if (!started) {
+                    started = true;
+                    if (this.ss3Camera.debug) this.log('LiveKit FFMPEG received first frame');
+                    callback();
+                }
+                if (this.ss3Camera.debug) this.log(data.toString());
+            });
+
+            cmd.on('error', (err) => {
+                this.log.error('LiveKit stream error:', err);
+                if (!started) callback(err);
+            });
+
+            cmd.on('close', async (code) => {
+                switch (code) {
+                case null: case 0: case 255:
+                    if (this.ss3Camera.debug) this.log('LiveKit camera stopped streaming');
+                    break;
+                default:
+                    if (this.ss3Camera.debug) this.log(`Error: LiveKit FFmpeg exited with code ${code}`);
+                    if (!started) callback(new Error(`Error: FFmpeg exited with code ${code}`));
+                    else this.controller.forceStopStreamingSession(sessionId);
+                    break;
+                }
+                try {
+                    await this.cacheLiveKitSnapshot(source);
+                } finally {
+                    await source.disconnect();
+                }
+            });
+
+            this.ongoingSessions[sessionIdentifier] = cmd;
+        } catch (err) {
+            this.log.error(`Unable to start LiveKit stream: ${err.message || err}`);
+            if (source) { try { await source.disconnect(); } catch (e) { /* ignore */ } }
+            callback(err);
+        }
+
+        delete this.pendingSessions[sessionIdentifier];
+    }
+
+    async cacheLiveKitSnapshot(source) {
+        try {
+            const frame = source.getLatestFrameCopy();
+            if (!frame) return;
+            const jpeg = await this.i420ToJpeg(frame.data, frame.width, frame.height);
+            this.ss3Camera.setCachedSnapshot(jpeg);
+            if (this.ss3Camera.debug) this.log(`Cached LiveKit snapshot for '${this.ss3Camera.name}' (${jpeg.length}B)`);
+        } catch (err) {
+            if (this.ss3Camera.debug) this.log.error(`Failed to cache LiveKit snapshot: ${err.message || err}`);
+        }
+    }
+
+    i420ToJpeg(i420Data, width, height) {
+        return new Promise((resolve, reject) => {
+            const cmd = spawn(this.ss3Camera.ffmpegPath, [
+                '-f', 'rawvideo',
+                '-pix_fmt', 'yuv420p',
+                '-s', `${width}x${height}`,
+                '-i', '-',
+                '-frames:v', '1',
+                '-f', 'image2',
+                '-vcodec', 'mjpeg',
+                '-'
+            ]);
+            const chunks = [];
+            let err = '';
+            cmd.stdout.on('data', (d) => chunks.push(d));
+            cmd.stderr.on('data', (d) => { err += d.toString(); });
+            cmd.on('close', (code) => {
+                if (code === 0) resolve(Buffer.concat(chunks));
+                else reject(new Error(`ffmpeg jpeg exited with ${code}: ${err.slice(-200)}`));
+            });
+            cmd.on('error', reject);
+            cmd.stdin.on('error', () => { /* ignore EPIPE */ });
+            cmd.stdin.end(i420Data);
+        });
     }
 }
 

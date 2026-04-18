@@ -81,6 +81,10 @@ const ssApi = axios.create({
     baseURL: 'https://api.simplisafe.com/v1'
 });
 
+const appHubApi = axios.create({
+    baseURL: 'https://app-hub.prd.aser.simplisafe.com'
+});
+
 class SimpliSafe3 extends EventEmitter {
 
     authManager;
@@ -337,6 +341,38 @@ class SimpliSafe3 extends EventEmitter {
             return system.cameras;
         } else {
             throw new Error('Error getting alarm system');
+        }
+    }
+
+    async getCameraLiveView(cameraUuid) {
+        if (this.isBlocked && Date.now() < this.nextAttempt) {
+            throw new RateLimitError('Blocking request: rate limited');
+        }
+
+        if (!this.subId) {
+            await this.getSubscription();
+        }
+
+        if (!this.authManager.isAuthenticated()) {
+            await this.authManager.refreshCredentials();
+        }
+
+        try {
+            const response = await appHubApi.request({
+                method: 'GET',
+                url: `/v2/cameras/${cameraUuid}/${this.subId}/live-view`,
+                headers: {
+                    Authorization: `${this.authManager.tokenType} ${this.authManager.accessToken}`
+                }
+            });
+            this.resetRateLimitHandler();
+            return response.data;
+        } catch (err) {
+            if (err.response && err.response.status === 403) {
+                this.setRateLimitHandler();
+                throw new RateLimitError(err.response.data);
+            }
+            throw err;
         }
     }
 

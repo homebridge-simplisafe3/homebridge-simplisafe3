@@ -84,9 +84,27 @@ class SS3Camera extends SimpliSafe3Accessory {
         return this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.privacyShutter;
     }
 
+    getStreamProvider() {
+        // Returns 'legacy' for SimpliCams (SS001/SS002/SS003) which stream MJPEG/FLV via media.simplisafe.com.
+        // Returns 'livekit' for cameras whose live stream is routed through SimpliSafe's LiveKit cluster
+        // (e.g. SSOBCM4 outdoor camera). Returns 'none' for anything we don't know how to stream.
+        const providers = this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.providers;
+        if (!providers) return 'legacy';
+        if (providers.recording === 'simplisafe') return 'legacy';
+        if (providers.webrtc) return 'livekit';
+        return 'none';
+    }
+
     isUnsupported() {
-        // so far SSOBCM4
-        return this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.providers && this.cameraDetails.supportedFeatures.providers.recording !== 'simplisafe';
+        return this.getStreamProvider() === 'none';
+    }
+
+    setCachedSnapshot(jpegBuffer) {
+        this.cachedSnapshot = jpegBuffer;
+    }
+
+    getCachedSnapshot() {
+        return this.cachedSnapshot;
     }
 
     startListening() {
