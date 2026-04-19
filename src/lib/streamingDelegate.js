@@ -9,7 +9,7 @@ import isDocker from 'is-docker';
 import path from 'path';
 import fs from 'fs';
 
-import LiveKitSource from './liveKitSource';
+import LiveKitSource, { i420ToJpeg } from './liveKitSource';
 
 const dnsLookup = promisify(dns.lookup);
 
@@ -482,10 +482,16 @@ class StreamingDelegate {
         if (cached) {
             if (this.ss3Camera.debug) this.log(`Serving cached LiveKit snapshot for '${this.cameraDetails.cameraSettings.cameraName}' (${cached.length}B)`);
             callback(undefined, cached);
-        } else {
-            if (this.ss3Camera.debug) this.log(`No cached LiveKit snapshot yet for '${this.cameraDetails.cameraSettings.cameraName}', returning placeholder`);
-            callback(undefined, unsupportedCameraImageInBytes);
+            return;
         }
+
+        if (this.ss3Camera.debug) this.log(`No cached LiveKit snapshot yet for '${this.cameraDetails.cameraSettings.cameraName}', returning placeholder and kicking off warm`);
+        // Trigger an async warm-cache grab so subsequent requests get real footage.
+        // Fire-and-forget; warmSnapshotCache de-dupes concurrent calls.
+        if (typeof this.ss3Camera.warmSnapshotCache === 'function') {
+            this.ss3Camera.warmSnapshotCache();
+        }
+        callback(undefined, privacyShutterImageInBytes);
     }
 
     async handleLiveKitStartStream(request, callback) {
@@ -649,38 +655,12 @@ class StreamingDelegate {
         try {
             const frame = source.getLatestFrameCopy();
             if (!frame) return;
-            const jpeg = await this.i420ToJpeg(frame.data, frame.width, frame.height);
+            const jpeg = await i420ToJpeg(frame.data, frame.width, frame.height, this.ss3Camera.ffmpegPath);
             this.ss3Camera.setCachedSnapshot(jpeg);
             if (this.ss3Camera.debug) this.log(`Cached LiveKit snapshot for '${this.ss3Camera.name}' (${jpeg.length}B)`);
         } catch (err) {
             if (this.ss3Camera.debug) this.log.error(`Failed to cache LiveKit snapshot: ${err.message || err}`);
         }
-    }
-
-    i420ToJpeg(i420Data, width, height) {
-        return new Promise((resolve, reject) => {
-            const cmd = spawn(this.ss3Camera.ffmpegPath, [
-                '-f', 'rawvideo',
-                '-pix_fmt', 'yuv420p',
-                '-s', `${width}x${height}`,
-                '-i', '-',
-                '-frames:v', '1',
-                '-f', 'image2',
-                '-vcodec', 'mjpeg',
-                '-'
-            ]);
-            const chunks = [];
-            let err = '';
-            cmd.stdout.on('data', (d) => chunks.push(d));
-            cmd.stderr.on('data', (d) => { err += d.toString(); });
-            cmd.on('close', (code) => {
-                if (code === 0) resolve(Buffer.concat(chunks));
-                else reject(new Error(`ffmpeg jpeg exited with ${code}: ${err.slice(-200)}`));
-            });
-            cmd.on('error', reject);
-            cmd.stdin.on('error', () => { /* ignore EPIPE */ });
-            cmd.stdin.end(i420Data);
-        });
     }
 }
 

@@ -344,6 +344,42 @@ class SimpliSafe3 extends EventEmitter {
         }
     }
 
+    async wakeCameras() {
+        // SS web app POSTs this before every stream session to wake idle cameras
+        // (notably SSOBCM4 outdoor cam) into the LiveKit room. Fire-and-forget —
+        // the response is 202 Accepted with an operation URL we don't poll.
+        if (this.isBlocked && Date.now() < this.nextAttempt) {
+            throw new RateLimitError('Blocking request: rate limited');
+        }
+
+        if (!this.subId) {
+            await this.getSubscription();
+        }
+
+        if (!this.authManager.isAuthenticated()) {
+            await this.authManager.refreshCredentials();
+        }
+
+        try {
+            await appHubApi.request({
+                method: 'POST',
+                url: `/v1/ss3/subscriptions/${this.subId}/camera-wakeup`,
+                headers: {
+                    Authorization: `${this.authManager.tokenType} ${this.authManager.accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                data: { wakeAll: true }
+            });
+            this.resetRateLimitHandler();
+        } catch (err) {
+            if (err.response && err.response.status === 403) {
+                this.setRateLimitHandler();
+                throw new RateLimitError(err.response.data);
+            }
+            throw err;
+        }
+    }
+
     async getCameraLiveView(cameraUuid) {
         if (this.isBlocked && Date.now() < this.nextAttempt) {
             throw new RateLimitError('Blocking request: rate limited');

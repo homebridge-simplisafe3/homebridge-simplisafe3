@@ -1,7 +1,34 @@
 /*global Buffer */
+import { spawn } from 'child_process';
 import { Room, RoomEvent, TrackKind, VideoStream } from '@livekit/rtc-node';
 
 const TRACK_TIMEOUT_MS = 60000;
+
+export function i420ToJpeg(i420Data, width, height, ffmpegPath) {
+    return new Promise((resolve, reject) => {
+        const cmd = spawn(ffmpegPath, [
+            '-f', 'rawvideo',
+            '-pix_fmt', 'yuv420p',
+            '-s', `${width}x${height}`,
+            '-i', '-',
+            '-frames:v', '1',
+            '-f', 'image2',
+            '-vcodec', 'mjpeg',
+            '-'
+        ]);
+        const chunks = [];
+        let stderr = '';
+        cmd.stdout.on('data', (d) => chunks.push(d));
+        cmd.stderr.on('data', (d) => { stderr += d.toString(); });
+        cmd.on('close', (code) => {
+            if (code === 0) resolve(Buffer.concat(chunks));
+            else reject(new Error(`ffmpeg jpeg exited with ${code}: ${stderr.slice(-200)}`));
+        });
+        cmd.on('error', reject);
+        cmd.stdin.on('error', () => { /* ignore EPIPE */ });
+        cmd.stdin.end(i420Data);
+    });
+}
 
 class LiveKitSource {
     constructor(ss3Camera) {
@@ -22,6 +49,17 @@ class LiveKitSource {
     }
 
     async connect() {
+        // The SS web app fires a POST to /camera-wakeup before every stream session.
+        // Without it, an already-'online' (warm) camera stays out of the LiveKit room
+        // and we time out waiting for its video track. Fire this unconditionally and
+        // treat failures as non-fatal (cold/offline cams get woken by /live-view too).
+        try {
+            await this.simplisafe.wakeCameras();
+            if (this.debug) this.log('LiveKit: camera-wakeup POST accepted');
+        } catch (err) {
+            if (this.debug) this.log(`LiveKit: camera-wakeup failed (continuing): ${err.message || err}`);
+        }
+
         const liveView = await this.simplisafe.getCameraLiveView(this.ss3Camera.id);
         if (!liveView || !liveView.liveKitDetails || !liveView.liveKitDetails.userToken) {
             throw new Error('Missing liveKitDetails in /live-view response');
@@ -89,6 +127,12 @@ class LiveKitSource {
 
     setWriter(writer) {
         this.writer = writer;
+    }
+
+    async captureSnapshotBuffer() {
+        // connect() resolves once the first frame lands.
+        await this.connect();
+        return this.getLatestFrameCopy();
     }
 
     getVideoMeta() {

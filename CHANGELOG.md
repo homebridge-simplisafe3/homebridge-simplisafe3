@@ -2,7 +2,9 @@
 All notable changes are documented here.
 
 ## Unreleased
-- **Adds support for the SimpliSafe Outdoor Camera (SSOBCM4)**, which streams via SimpliSafe's LiveKit cluster instead of the legacy `media.simplisafe.com` path. Video only for this release (HomeKit audio is silent for outdoor cams). The camera tile in the Home app populates after the first live view.
+- **Adds support for the SimpliSafe Outdoor Camera (SSOBCM4)**, which streams via SimpliSafe's LiveKit cluster instead of the legacy `media.simplisafe.com` path. Video only for this release (HomeKit audio is silent for outdoor cams).
+- The plugin proactively fires the same `POST /camera-wakeup` that the SS web app uses before every stream session — this is what actually pushes idle (`cameraStatus: "online"` but not-in-room) cameras into the LiveKit room. Without it the camera never publishes and HomeKit times out waiting for video.
+- Snapshot cache is warmed on plugin startup (one LiveKit round-trip per outdoor cam) so the Home app tile shows a real image instead of a "camera not supported" banner as soon as the plugin is up. The tile fallback before the first warm completes is now the neutral privacy-shutter image rather than the unsupported-camera red banner.
 - Internal: introduces a new `getStreamProvider()` method on cameras (`legacy` vs `livekit` vs `none`) to route between the two streaming backends. The legacy SimpliCam / Video Doorbell path is unchanged.
 
 ## 1.10.16 (2025-09-04)
