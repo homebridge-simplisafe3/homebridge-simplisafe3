@@ -7,5 +7,3 @@
 /lib
 node_modules
 .DS_Store
-/exploration
-/homebridge-simplisafe3-*.tgz

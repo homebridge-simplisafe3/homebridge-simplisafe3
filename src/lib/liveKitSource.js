@@ -102,25 +102,45 @@ class LiveKitSource {
     }
 
     async _consumeVideo() {
-        for await (const event of this.videoStream) {
-            if (this._stopping) break;
-            const frame = event && event.frame ? event.frame : event;
-            if (!frame || !frame.data) continue;
+        // Drop frames while FFmpeg stdin backpressures (slow consumers like RPi).
+        // Queuing every raw I420 frame would OOM fast (1080p ~3MB/frame @ 20fps ≈ 60MB/s).
+        let backpressure = false;
+        const onDrain = () => { backpressure = false; };
 
-            if (!this.videoMeta) {
-                this.videoMeta = { width: frame.width, height: frame.height, type: frame.type };
-                if (this.debug) this.log(`LiveKit: first frame ${frame.width}x${frame.height} type=${frame.type}`);
-                if (this._metaResolve) {
-                    this._metaResolve(this.videoMeta);
-                    this._metaResolve = null;
+        try {
+            for await (const event of this.videoStream) {
+                if (this._stopping) break;
+                const frame = event && event.frame ? event.frame : event;
+                if (!frame || !frame.data) continue;
+
+                if (!this.videoMeta) {
+                    this.videoMeta = { width: frame.width, height: frame.height, type: frame.type };
+                    if (this.debug) this.log(`LiveKit: first frame ${frame.width}x${frame.height} type=${frame.type}`);
+                    if (this._metaResolve) {
+                        this._metaResolve(this.videoMeta);
+                        this._metaResolve = null;
+                    }
+                }
+
+                this.latestFrame = frame;
+
+                if (this.writer && this.writer.writable && !this.writer.destroyed) {
+                    if (backpressure) continue;
+                    const buf = Buffer.from(frame.data.buffer, frame.data.byteOffset || 0, frame.data.byteLength);
+                    if (!this.writer.write(buf)) {
+                        backpressure = true;
+                        this.writer.once('drain', onDrain);
+                    }
                 }
             }
-
-            this.latestFrame = frame;
-
-            if (this.writer && this.writer.writable && !this.writer.destroyed) {
-                const buf = Buffer.from(frame.data.buffer, frame.data.byteOffset || 0, frame.data.byteLength);
-                this.writer.write(buf);
+        } finally {
+            // Iterator ended (camera went away, room closed, etc.) — send EOF to FFmpeg
+            // so its 'close' handler runs and HomeKit's streaming session is torn down.
+            if (this.writer && !this.writer.destroyed) {
+                try {
+                    this.writer.removeListener('drain', onDrain);
+                    this.writer.end();
+                } catch (e) { /* ignore */ }
             }
         }
     }
