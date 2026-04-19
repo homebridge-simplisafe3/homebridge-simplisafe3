@@ -80,12 +80,21 @@ class SS3Platform {
                     else {
                         this.simplisafe.startListening();
                         this.createNewPlatformAccessories();
+                        this.warmLiveKitSnapshots();
                     }
                 })
                 .catch(err => {
                     this.log.error('Initial accessories refresh failed with error:', err.toJSON ? err.toJSON() : err);
                 });
         });
+    }
+
+    warmLiveKitSnapshots() {
+        for (let device of this.devices) {
+            if (typeof device.warmSnapshotCache === 'function') {
+                device.warmSnapshotCache();
+            }
+        }
     }
 
     configureAccessory(accessory) {

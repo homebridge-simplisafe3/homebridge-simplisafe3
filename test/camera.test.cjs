@@ -31,15 +31,38 @@ test('supportsPrivacyShutter reflects the camera feature flag', () => {
 });
 
 test('isUnsupported flags non-simplisafe recording providers', () => {
-    const supported = SS3Camera.prototype.isUnsupported.call({
-        cameraDetails: { supportedFeatures: { providers: { recording: 'simplisafe' } } },
+    const withDetails = (cameraDetails) => ({
+        cameraDetails,
+        getStreamProvider: SS3Camera.prototype.getStreamProvider,
     });
-    const unsupported = SS3Camera.prototype.isUnsupported.call({
-        cameraDetails: { supportedFeatures: { providers: { recording: 'webrtc' } } },
-    });
+
+    const supported = SS3Camera.prototype.isUnsupported.call(
+        withDetails({ supportedFeatures: { providers: { recording: 'simplisafe' } } })
+    );
+    const unsupported = SS3Camera.prototype.isUnsupported.call(
+        withDetails({ supportedFeatures: { providers: { recording: 'webrtc' } } })
+    );
 
     assert.equal(supported, false);
     assert.equal(unsupported, true);
+});
+
+test('getStreamProvider routes SimpliCams to legacy, outdoor cams to livekit, unknown to none', () => {
+    const provider = (providers) => SS3Camera.prototype.getStreamProvider.call({
+        cameraDetails: { supportedFeatures: { providers } },
+    });
+
+    // No providers block → default legacy (older API shape without supportedFeatures.providers)
+    assert.equal(
+        SS3Camera.prototype.getStreamProvider.call({ cameraDetails: { supportedFeatures: {} } }),
+        'legacy'
+    );
+    // SimpliCam / Video Doorbell
+    assert.equal(provider({ recording: 'simplisafe' }), 'legacy');
+    // Outdoor Camera (SSOBCM4)
+    assert.equal(provider({ webrtc: 'livekit' }), 'livekit');
+    // Unknown future model
+    assert.equal(provider({ recording: 'webrtc' }), 'none');
 });
 
 test('_validateEvent accepts direct and internal camera matches', () => {

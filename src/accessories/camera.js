@@ -5,6 +5,7 @@ import SimpliSafe3Accessory from './ss3Accessory';
 import { EVENT_TYPES } from '../simplisafe';
 
 import StreamingDelegate from '../lib/streamingDelegate';
+import LiveKitSource, { i420ToJpeg } from '../lib/liveKitSource';
 
 class SS3Camera extends SimpliSafe3Accessory {
     constructor(name, id, cameraDetails, cameraOptions, log, debug, simplisafe, authManager, api) {
@@ -84,9 +85,49 @@ class SS3Camera extends SimpliSafe3Accessory {
         return this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.privacyShutter;
     }
 
+    getStreamProvider() {
+        // Returns 'legacy' for SimpliCams (SS001/SS002/SS003) which stream MJPEG/FLV via media.simplisafe.com.
+        // Returns 'livekit' for cameras whose live stream is routed through SimpliSafe's LiveKit cluster
+        // (e.g. SSOBCM4 outdoor camera). Returns 'none' for anything we don't know how to stream.
+        const providers = this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.providers;
+        if (!providers) return 'legacy';
+        if (providers.recording === 'simplisafe') return 'legacy';
+        if (providers.webrtc) return 'livekit';
+        return 'none';
+    }
+
     isUnsupported() {
-        // so far SSOBCM4
-        return this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.providers && this.cameraDetails.supportedFeatures.providers.recording !== 'simplisafe';
+        return this.getStreamProvider() === 'none';
+    }
+
+    setCachedSnapshot(jpegBuffer) {
+        this.cachedSnapshot = jpegBuffer;
+    }
+
+    getCachedSnapshot() {
+        return this.cachedSnapshot;
+    }
+
+    async warmSnapshotCache() {
+        if (this.getStreamProvider() !== 'livekit') return;
+        if (!this.ffmpegPath) return;
+        if (this.warmingSnapshot) return;           // de-dupe concurrent calls
+        this.warmingSnapshot = true;
+
+        const source = new LiveKitSource(this);
+        try {
+            if (this.debug) this.log(`Warming LiveKit snapshot cache for '${this.name}'`);
+            const frame = await source.captureSnapshotBuffer();
+            if (!frame) throw new Error('No frame captured');
+            const jpeg = await i420ToJpeg(frame.data, frame.width, frame.height, this.ffmpegPath);
+            this.setCachedSnapshot(jpeg);
+            if (this.debug) this.log(`Warmed LiveKit snapshot cache for '${this.name}' (${jpeg.length}B)`);
+        } catch (err) {
+            if (this.debug) this.log.error(`warmSnapshotCache failed for '${this.name}': ${err.message || err}`);
+        } finally {
+            try { await source.disconnect(); } catch (e) { /* ignore */ }
+            this.warmingSnapshot = false;
+        }
     }
 
     startListening() {
