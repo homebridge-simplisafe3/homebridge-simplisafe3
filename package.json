@@ -114,6 +114,7 @@
     "deploy": "npm publish dist/",
     "release": "./scripts/release.sh",
     "start": "nodemon --exec babel-node src/index.js",
-    "test": "echo NO TESTS"
+    "test": "npm run build && npm run test:unit",
+    "test:unit": "node --test test/**/*.test.cjs"
   }
 }
