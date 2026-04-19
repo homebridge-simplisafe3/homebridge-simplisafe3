@@ -150,9 +150,14 @@ class LiveKitSource {
     }
 
     async captureSnapshotBuffer() {
-        // connect() resolves once the first frame lands.
-        await this.connect();
-        return this.getLatestFrameCopy();
+        // connect() resolves once the first frame lands. getLatestFrameCopy()
+        // returns a deep copy, so we can safely disconnect before returning.
+        try {
+            await this.connect();
+            return this.getLatestFrameCopy();
+        } finally {
+            await this.disconnect();
+        }
     }
 
     getVideoMeta() {
@@ -181,11 +186,18 @@ class LiveKitSource {
         if (this.room) {
             try { await this.room.disconnect(); } catch (e) { /* ignore */ }
         }
+        // Wait for the background _consumeVideo coroutine to actually exit.
+        // Without this, disconnect() returns while the LiveKit H.264 decoder
+        // is still running, burning CPU forever on resource-constrained hosts.
+        if (this._consumerTask) {
+            try { await this._consumerTask; } catch (e) { /* ignore */ }
+        }
 
         this.room = null;
         this.videoTrack = null;
         this.videoStream = null;
         this.latestFrame = null;
+        this._consumerTask = null;
     }
 }
 
