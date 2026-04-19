@@ -37,7 +37,7 @@
   },
   "engines": {
     "homebridge": ">=1.3.5 || ^2.0.0-beta.0",
-    "node": ">=14.13.1"
+    "node": ">=18.0.0"
   },
   "eslintConfig": {
     "env": {
@@ -115,6 +115,7 @@
     "deploy": "npm publish dist/",
     "release": "./scripts/release.sh",
     "start": "nodemon --exec babel-node src/index.js",
-    "test": "echo NO TESTS"
+    "test": "npm run build && npm run test:unit",
+    "test:unit": "node --test test/**/*.test.cjs"
   }
 }

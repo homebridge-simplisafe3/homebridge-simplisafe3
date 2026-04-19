@@ -10,6 +10,7 @@ on:
 
 jobs:
   build:
+    name: Build and Test
     runs-on: ubuntu-latest
 
     steps:
@@ -19,4 +20,5 @@ jobs:
       with:
         node-version: 22
     - run: npm ci
-    - run: npm run build --if-present
+    - run: npm run build
+    - run: npm run test:unit
