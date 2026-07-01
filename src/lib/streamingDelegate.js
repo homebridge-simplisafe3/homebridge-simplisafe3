@@ -16,6 +16,13 @@ const privacyShutterImageInBytes = fs.readFileSync(privacyShutterImage);
 const unsupportedCameraImage = path.resolve(__dirname, '..', 'images', 'unsupportedcamera_snapshot.png');
 const unsupportedCameraImageInBytes = fs.readFileSync(unsupportedCameraImage);
 
+// Cache the most recent snapshot per (camera, width) for a few seconds so the snapshot
+// HomeKit fetches before opening a live stream doesn't trigger a slow mjpg request every
+// time. Motion-triggered snapshots always fetch fresh; nothing older than the max-age is served.
+const snapshotCache = {};
+const snapshotInflight = {};
+const SNAPSHOT_CACHE_MAX_AGE = 15000; // ms
+
 class StreamingDelegate {
     constructor(ss3Camera) {
         this.ss3Camera = ss3Camera;
@@ -130,7 +137,23 @@ class StreamingDelegate {
             rejectUnauthorized: false // OK because we are using IP and just polled DNS
         };
 
-        jpegExtract(url).then(img => {
+        const cacheKey = `${this.ss3Camera.cameraDetails.uuid}:${request.width}`;
+        const cached = snapshotCache[cacheKey];
+        if (!this.ss3Camera.motionIsTriggered && cached && (Date.now() - cached.time) < SNAPSHOT_CACHE_MAX_AGE) {
+            if (this.ss3Camera.debug) this.log(`Served cached snapshot for '${this.cameraDetails.cameraSettings.cameraName}' (${request.width}px, ${Math.round((Date.now() - cached.time) / 1000)}s old)`);
+            callback(undefined, cached.img);
+            return;
+        }
+
+        let inflight = snapshotInflight[cacheKey];
+        if (!inflight) {
+            inflight = jpegExtract(url).then(img => {
+                snapshotCache[cacheKey] = { img, time: Date.now() };
+                return img;
+            }).finally(() => { delete snapshotInflight[cacheKey]; });
+            snapshotInflight[cacheKey] = inflight;
+        }
+        inflight.then(img => {
             if (this.ss3Camera.debug) this.log(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(img.length/1000)}kB image`);
             callback(undefined, img);
         }).catch(err => {
