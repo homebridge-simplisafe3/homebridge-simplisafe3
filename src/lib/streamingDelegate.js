@@ -16,6 +16,17 @@ const privacyShutterImageInBytes = fs.readFileSync(privacyShutterImage);
 const unsupportedCameraImage = path.resolve(__dirname, '..', 'images', 'unsupportedcamera_snapshot.png');
 const unsupportedCameraImageInBytes = fs.readFileSync(unsupportedCameraImage);
 
+// HomeKit fetches a snapshot for every visible camera tile before it will open a live
+// stream, and it processes requests on a HAP connection strictly one at a time — so each
+// slow mjpg fetch (~3-5s on an idle camera) queues the live-stream request behind it.
+// Cache the most recent snapshot per (camera, width) briefly and serve it instantly,
+// refreshing in the background, so tile requests can't delay the live view.
+// Motion-triggered snapshots always fetch fresh; nothing older than the max-age is served.
+const snapshotCache = {};
+const snapshotInflight = {};
+const SNAPSHOT_SERVE_MAX_AGE = 60 * 1000; // ms; upper bound on served snapshot age
+const SNAPSHOT_REFRESH_AFTER = 15 * 1000; // ms; background-refresh a served snapshot older than this
+
 class StreamingDelegate {
     constructor(ss3Camera) {
         this.ss3Camera = ss3Camera;
@@ -113,6 +124,35 @@ class StreamingDelegate {
             }
         }
 
+        const cacheKey = `${this.ss3Camera.cameraDetails.uuid}:${request.width}`;
+        const cached = snapshotCache[cacheKey];
+        if (!this.ss3Camera.motionIsTriggered && cached && (Date.now() - cached.time) < SNAPSHOT_SERVE_MAX_AGE) {
+            const age = Date.now() - cached.time;
+            if (this.ss3Camera.debug) this.log(`Served cached snapshot for '${this.cameraDetails.cameraSettings.cameraName}' (${request.width}px, ${Math.round(age / 1000)}s old)`);
+            callback(undefined, cached.img);
+            // Refresh in the background (coalesced, does its own DNS) so the tile stays current.
+            if (age > SNAPSHOT_REFRESH_AFTER && !snapshotInflight[cacheKey]) {
+                const refresh = (async () => {
+                    try {
+                        let newIpAddress = await dnsLookup('media.simplisafe.com');
+                        this.serverIpAddress = newIpAddress.address;
+                    } catch (err) { /* keep last known IP */ }
+                    const img = await jpegExtract({
+                        url: `https://${this.serverIpAddress}/v1/${this.ss3Camera.cameraDetails.uuid}/mjpg?x=${request.width}&fr=1`,
+                        headers: {
+                            'Authorization': `Bearer ${this.ss3Camera.authManager.accessToken}`
+                        },
+                        rejectUnauthorized: false
+                    });
+                    snapshotCache[cacheKey] = { img: img, time: Date.now() };
+                    return img;
+                })();
+                snapshotInflight[cacheKey] = refresh;
+                refresh.catch(() => {}).then(() => { delete snapshotInflight[cacheKey]; });
+            }
+            return;
+        }
+
         try {
             let newIpAddress = await dnsLookup('media.simplisafe.com');
             this.serverIpAddress = newIpAddress.address;
@@ -130,11 +170,21 @@ class StreamingDelegate {
             rejectUnauthorized: false // OK because we are using IP and just polled DNS
         };
 
-        jpegExtract(url).then(img => {
+        // Coalesce concurrent fetches for the same (camera, width).
+        let fetch = snapshotInflight[cacheKey];
+        if (!fetch) {
+            fetch = jpegExtract(url).then(img => {
+                snapshotCache[cacheKey] = { img: img, time: Date.now() };
+                return img;
+            });
+            snapshotInflight[cacheKey] = fetch;
+            fetch.catch(() => {}).then(() => { delete snapshotInflight[cacheKey]; });
+        }
+        fetch.then(img => {
             if (this.ss3Camera.debug) this.log(`Closed '${this.cameraDetails.cameraSettings.cameraName}' snapshot request with ${Math.round(img.length/1000)}kB image`);
             callback(undefined, img);
         }).catch(err => {
-            this.log.error('An error occurred while making snapshot request:', err.statusCode ? err.statusCode : '', err.statusMessage ? err.statusMessage : '');
+            this.log.error(`An error occurred while making snapshot request for '${this.cameraDetails.cameraSettings.cameraName}':`, err.statusCode || err.statusMessage || err.message || err);
             if (this.ss3Camera.debug) this.log.error(err);
             callback(err);
         });
