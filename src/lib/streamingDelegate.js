@@ -312,10 +312,15 @@ class StreamingDelegate {
                         }
                     }
 
+                    // Do not request audioEncoding=AAC: it makes SimpliSafe's cloud provision a
+                    // server-side audio transcoder before it sends the first byte, adding ~3s to
+                    // every stream start (measured cold first-byte ~5.0s with the param vs ~1.9s
+                    // without; the native app does not request it). The camera's native audio
+                    // (speex) is decoded by ffmpeg locally and re-encoded to AAC-ELD/OPUS below.
                     let sourceArgs = [
                         ['-re'],
                         ['-headers', `Authorization: Bearer ${this.ss3Camera.authManager.accessToken}`],
-                        ['-i', `https://${this.serverIpAddress}/v1/${this.ss3Camera.cameraDetails.uuid}/flv?x=${width}&audioEncoding=AAC`]
+                        ['-i', `https://${this.serverIpAddress}/v1/${this.ss3Camera.cameraDetails.uuid}/flv?x=${width}`]
                     ];
 
                     let videoArgs = [
@@ -364,8 +369,6 @@ class StreamingDelegate {
 
                     if (request.audio && request.audio.codec == 'OPUS') {
                         // Request is for OPUS codec, serve that
-                        let iArg = sourceArgs.find(arg => arg[0] == '-i');
-                        iArg[1] = iArg[1].replace('&audioEncoding=AAC', '');
                         let aCodecArg = audioArgs.find(arg => arg[0] == '-acodec');
                         aCodecArg[1] = 'libopus';
                         let profileArg = audioArgs.find(arg => arg[0] == '-profile:a');
