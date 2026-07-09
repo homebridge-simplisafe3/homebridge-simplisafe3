@@ -317,8 +317,14 @@ class StreamingDelegate {
                     // every stream start (measured cold first-byte ~5.0s with the param vs ~1.9s
                     // without; the native app does not request it). The camera's native audio
                     // (speex) is decoded by ffmpeg locally and re-encoded to AAC-ELD/OPUS below.
+                    // -analyzeduration 1s: ffmpeg's default probe reads ~5s of the live stream
+                    // before opening the input, but the source is decodable immediately (it
+                    // begins with SPS/PPS and a keyframe). Measured first encoded frame:
+                    // ~6.6s -> ~3s. Output audio params come from the encoder config, so the
+                    // shorter probe is safe.
                     let sourceArgs = [
                         ['-re'],
+                        ['-analyzeduration', 1000000],
                         ['-headers', `Authorization: Bearer ${this.ss3Camera.authManager.accessToken}`],
                         ['-i', `https://${this.serverIpAddress}/v1/${this.ss3Camera.cameraDetails.uuid}/flv?x=${width}`]
                     ];
