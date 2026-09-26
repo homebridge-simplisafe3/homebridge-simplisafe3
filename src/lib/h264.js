@@ -3,8 +3,10 @@
 
 const startCode = Buffer.from([0, 0, 0, 1]);
 
-// Collects SPS/PPS/IDR out of RTP payloads so a snapshot can be decoded from the
-// live stream. Depacketization only, no decoding
+// Collects a whole keyframe out of RTP payloads so a snapshot can be decoded from
+// the live stream. Depacketization only, no decoding.
+// A keyframe is usually several slices sharing one RTP timestamp, so NALs are
+// gathered per access unit rather than kept individually
 class KeyframeCollector {
     constructor() {
         this.reset();
@@ -13,35 +15,39 @@ class KeyframeCollector {
     reset() {
         this.sps = null;
         this.pps = null;
-        this.idr = null;
+        this.keyframe = null;
+        this.currentTimestamp = null;
+        this.accessUnit = [];
         this.fragment = null;
     }
 
     get complete() {
-        return !!(this.sps && this.pps && this.idr);
+        return !!this.keyframe;
     }
 
-    _store(type, nal) {
-        if (type === 7) this.sps = nal;
-        else if (type === 8) this.pps = nal;
-        else if (type === 5) this.idr = nal;
+    annexB() {
+        return this.keyframe;
     }
 
-    push(payload) {
+    push(payload, timestamp, marker) {
         if (!payload || !payload.length) return;
+
+        if (this.currentTimestamp !== null && timestamp !== this.currentTimestamp) {
+            this._endAccessUnit();
+        }
+        this.currentTimestamp = timestamp;
 
         const type = payload[0] & 0x1f;
 
         if (type >= 1 && type <= 23) {
-            this._store(type, Buffer.from(payload));
+            this._store(Buffer.from(payload));
         } else if (type === 24) { // STAP-A, several NALs in one packet
             let offset = 1;
             while (offset + 2 <= payload.length) {
                 const length = payload.readUInt16BE(offset);
                 offset += 2;
                 if (offset + length > payload.length) break;
-                const nal = Buffer.from(payload.subarray(offset, offset + length));
-                this._store(nal[0] & 0x1f, nal);
+                this._store(Buffer.from(payload.subarray(offset, offset + length)));
                 offset += length;
             }
         } else if (type === 28) { // FU-A, one NAL split across packets
@@ -56,17 +62,38 @@ class KeyframeCollector {
             } else if (this.fragment && this.fragment.type === nalType) {
                 this.fragment.chunks.push(Buffer.from(payload.subarray(2)));
                 if (header & 0x40) { // end
-                    this._store(nalType, Buffer.concat(this.fragment.chunks));
+                    this._store(Buffer.concat(this.fragment.chunks));
                     this.fragment = null;
                 }
             }
         }
+
+        if (marker) this._endAccessUnit();
     }
 
-    // Annex B elementary stream, ready to hand to ffmpeg
-    annexB() {
-        if (!this.complete) return null;
-        return Buffer.concat([startCode, this.sps, startCode, this.pps, startCode, this.idr]);
+    _store(nal) {
+        if (!nal.length) return;
+        const type = nal[0] & 0x1f;
+
+        // Parameter sets are sent repeatedly, keep the latest outside the access unit
+        if (type === 7) this.sps = nal;
+        else if (type === 8) this.pps = nal;
+        else this.accessUnit.push(nal);
+    }
+
+    // An access unit holding an IDR is a complete keyframe, emit every slice of it
+    _endAccessUnit() {
+        if (this.keyframe) { this.accessUnit = []; return; }
+
+        const hasIdr = this.accessUnit.some(nal => (nal[0] & 0x1f) === 5);
+        if (hasIdr && this.sps && this.pps) {
+            const parts = [startCode, this.sps, startCode, this.pps];
+            for (const nal of this.accessUnit) parts.push(startCode, nal);
+            this.keyframe = Buffer.concat(parts);
+        }
+
+        this.accessUnit = [];
+        this.fragment = null;
     }
 }
 
