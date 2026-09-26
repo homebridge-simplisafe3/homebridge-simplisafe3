@@ -24,6 +24,10 @@ class SS3Camera extends SimpliSafe3Accessory {
         const delegate = new StreamingDelegate(this);
         this.controller = delegate.controller;
 
+        if (this.isUnsupported()) {
+            this.log.warn(`Camera '${this.name}' streams via '${this.getWebRTCProvider()}' which is not supported yet. Please report it, with debug logs, at https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240`);
+        }
+
         this.startListening();
     }
 
@@ -86,10 +90,14 @@ class SS3Camera extends SimpliSafe3Accessory {
 
     // 'legacy' streams FLV from media.simplisafe.com, 'livekit' uses LiveKit keyed on admin.webRTCProvider,
     // not model (newer cameras use codenames e.g. 'mockingbird')
-    getStreamProvider() {
-        const provider = this.cameraDetails.cameraSettings
+    getWebRTCProvider() {
+        return this.cameraDetails.cameraSettings
             && this.cameraDetails.cameraSettings.admin
             && this.cameraDetails.cameraSettings.admin.webRTCProvider;
+    }
+
+    getStreamProvider() {
+        const provider = this.getWebRTCProvider();
 
         if (!provider || provider === 'simplisafe') return 'legacy';
         if (provider === 'mist') return 'livekit';

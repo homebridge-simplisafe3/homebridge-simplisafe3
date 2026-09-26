@@ -33,6 +33,7 @@ test('supportsPrivacyShutter reflects the camera feature flag', () => {
 const withProvider = (webRTCProvider) => ({
     cameraDetails: { cameraSettings: { admin: webRTCProvider === undefined ? {} : { webRTCProvider } } },
     getStreamProvider: SS3Camera.prototype.getStreamProvider,
+    getWebRTCProvider: SS3Camera.prototype.getWebRTCProvider,
 });
 
 test('getStreamProvider maps webRTCProvider to a streaming path', () => {
@@ -44,7 +45,9 @@ test('getStreamProvider maps webRTCProvider to a streaming path', () => {
     assert.equal(SS3Camera.prototype.getStreamProvider.call(withProvider('kvs')), 'none');
     // Older payloads with no provider fall back to the legacy path
     assert.equal(SS3Camera.prototype.getStreamProvider.call(withProvider(undefined)), 'legacy');
-    assert.equal(SS3Camera.prototype.getStreamProvider.call({ cameraDetails: {} }), 'legacy');
+    assert.equal(SS3Camera.prototype.getStreamProvider.call({
+        cameraDetails: {}, getWebRTCProvider: SS3Camera.prototype.getWebRTCProvider,
+    }), 'legacy');
 });
 
 test('isUnsupported only flags providers we cannot stream', () => {
@@ -128,4 +131,9 @@ test('getState returns the characteristic value when unblocked', () => {
     );
 
     assert.deepEqual(callbackArgs, [null, true]);
+});
+
+test('getWebRTCProvider surfaces the raw value so unsupported cameras can be reported', () => {
+    assert.equal(SS3Camera.prototype.getWebRTCProvider.call(withProvider('kvs')), 'kvs');
+    assert.equal(SS3Camera.prototype.getWebRTCProvider.call({ cameraDetails: {} }), undefined);
 });

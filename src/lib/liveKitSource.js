@@ -54,7 +54,10 @@ class LiveKitSource {
             const timeoutID = setTimeout(() => {
                 if (!settled) {
                     settled = true;
-                    reject(new Error(`Timed out after ${trackTimeout}ms waiting for video from ${this.ss3Camera.name}`));
+                    // Battery cameras sleep and may need a wake request first, which is not implemented
+                    const features = this.ss3Camera.cameraDetails && this.ss3Camera.cameraDetails.supportedFeatures;
+                    const hint = features && features.wired === false ? ' This camera is battery powered, which is not supported yet.' : '';
+                    reject(new Error(`Timed out after ${trackTimeout}ms waiting for video from ${this.ss3Camera.name}.${hint}`));
                 }
             }, trackTimeout);
 
