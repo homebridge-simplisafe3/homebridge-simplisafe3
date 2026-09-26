@@ -107,9 +107,10 @@ Device                 | Supported          | Notes
 ---------------------- | ------------------ | -------------------------------------------------
 Alarm                  | :white_check_mark: | Arming/disarming to home, away and off modes. Sets tamper property on power outage
 SimpliCam              | :white_check_mark: | Audio, video, motion*, no microphone
-Doorbell               | :white_check_mark: | Audio, video, motion, no microphone
-Outdoor Camera         | :x:                | Not supported yet, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
-Wireless Indoor Camera | :x:                | Not supported yet, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
+Video Doorbell Pro     | :white_check_mark: | Audio, video, motion, no microphone
+Video Doorbell Series 2| :white_check_mark: | Audio, video, motion, no microphone
+Outdoor Camera         | :grey_question:    | Untested, may work, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
+Wireless Indoor Camera | :grey_question:    | Untested, may work, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
 Smart lock             | :white_check_mark: | Fully supports locking, unlocking
 Entry sensor           | :white_check_mark: | Status not provided as 'push' by SS so is polled based on `sensorRefresh`
 Smoke detector         | :white_check_mark: | Includes support for tamper & fault
@@ -130,7 +131,11 @@ Using the "Secret Alert" setting will allow for motion events at all times but n
 All devices also support low battery warnings.
 
 ### Camera Support
-To enable camera support, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin). Currently only the SimpliCam and Video Doorbell Pro are supported.
+To enable camera support, simply switch `"cameras": true` in your `config.json` (or set via Config UI X admin).
+
+Cameras stream one of two ways depending on the model. The SimpliCam and Video Doorbell Pro use SimpliSafe's original streaming endpoint and are transcoded with ffmpeg. Newer cameras such as the Video Doorbell Series 2 stream over SimpliSafe's LiveKit service, and their H.264 video is passed through to HomeKit untouched, so no video transcoding happens at all (audio is still converted).
+
+Only the SimpliCam, Video Doorbell Pro and Video Doorbell Series 2 have been tested against real hardware. Other newer cameras may work if SimpliSafe streams them the same way, and [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240) is the place to report whether they do.
 
 #### Camera Options
 This plugin includes [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) to automatically include a compatible build of ffmpeg and thus the plugin works "out of the box" without requiring a custom ffmpeg build.
@@ -149,6 +154,8 @@ For advanced scenarios including specifying a custom ffmpeg build or command lin
 Any arguments provided in `sourceOptions`, `videoOptions` and `audioOptions` will be added to the list of arguments passed to ffmpeg, or will replace the default ones if these already exist.
 To add an argument that requires no additional parameter, e.g. `-re`, then add it as `"-re"`.
 To remove a default argument, define it with `false` as its value, e.g. `"-tune false"`.
+
+*Note that `sourceOptions`, `videoOptions` and hardware acceleration only affect cameras that are transcoded, so they have no effect on the video from e.g. Video Doorbell Series 2.*
 
 #### FFMPEG Hardware Acceleration
  The bundled build of ffmpeg *includes* hardware acceleration on supported Raspberry Pi models (disabled as of Raspberry Pi 5) but in order to enable this you must check the setting **Advanced Camera Settings** > **Enable Hardware Acceleration for Raspberry Pi** (or set `"enableHwaccelRpi"` under `"cameraOptions"` to `true` in `config.json`).
