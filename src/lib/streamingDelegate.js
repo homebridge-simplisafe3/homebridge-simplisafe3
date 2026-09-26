@@ -8,7 +8,6 @@ import { promisify } from 'util';
 import isDocker from 'is-docker';
 import path from 'path';
 import fs from 'fs';
-import os from 'os';
 import dgram from 'dgram';
 import { SrtpSession, ProtectionProfileAes128CmHmacSha1_80 } from 'werift';
 
@@ -652,7 +651,7 @@ class StreamingDelegate {
         let videoSrtp = this.createSrtpSession(sessionInfo.video_srtp);
         let keyframe = new KeyframeCollector();
 
-        let session = { source: source, socket: socket, audioProcess: null, audioSocket: null, sdpPath: null };
+        let session = { source: source, socket: socket, audioProcess: null, audioSocket: null };
         this.liveKitSessions[sessionIdentifier] = session;
 
         source.onVideoRtp = rtp => {
@@ -693,9 +692,9 @@ class StreamingDelegate {
     // The camera publishes Opus, HomeKit asked for AAC-ELD. Audio only, so cheap
     startOpusToAacTranscode(request, sessionInfo, session, source) {
         let localPort = 50000 + Math.floor(Math.random() * 5000);
-        session.sdpPath = path.join(os.tmpdir(), `ss3-opus-${localPort}.sdp`);
 
-        fs.writeFileSync(session.sdpPath, [
+        // Fed to ffmpeg on stdin
+        let sdp = [
             'v=0',
             'o=- 0 0 IN IP4 127.0.0.1',
             's=SimpliSafe',
@@ -704,14 +703,14 @@ class StreamingDelegate {
             `m=audio ${localPort} RTP/AVP 111`,
             'a=rtpmap:111 opus/48000/2',
             ''
-        ].join('\n'));
+        ].join('\n');
 
         let samplerate = (request.audio && request.audio.sample_rate) ?? 16;
         let bitrate = (request.audio && request.audio.max_bit_rate) ?? 24;
 
         session.audioProcess = spawn(this.ss3Camera.ffmpegPath, [
             '-hide_banner', '-loglevel', 'error',
-            '-protocol_whitelist', 'file,udp,rtp', '-f', 'sdp', '-i', session.sdpPath,
+            '-protocol_whitelist', 'pipe,udp,rtp', '-f', 'sdp', '-i', 'pipe:0',
             '-acodec', 'libfdk_aac', '-profile:a', 'aac_eld', '-flags', '+global_header',
             '-ac', '1', '-ar', `${samplerate}k`, '-b:a', `${bitrate}k`,
             '-payload_type', audioPayloadType,
@@ -726,6 +725,8 @@ class StreamingDelegate {
         session.audioProcess.stderr.on('data', data => {
             if (this.ss3Camera.debug) this.log('Audio ffmpeg:', data.toString().trim());
         });
+        session.audioProcess.stdin.on('error', () => {}); // ignore EPIPE if ffmpeg exits early
+        session.audioProcess.stdin.end(sdp);
 
         session.audioSocket = dgram.createSocket('udp4');
         source.onAudioRtp = rtp => {
@@ -744,7 +745,6 @@ class StreamingDelegate {
         try { if (session.audioProcess) session.audioProcess.kill('SIGKILL'); } catch (e) { /* already gone */ }
         try { if (session.audioSocket) session.audioSocket.close(); } catch (e) { /* already gone */ }
         try { session.socket.close(); } catch (e) { /* already gone */ }
-        try { if (session.sdpPath) fs.unlinkSync(session.sdpPath); } catch (e) { /* already gone */ }
     }
 }
 
