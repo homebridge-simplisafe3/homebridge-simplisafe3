@@ -24,6 +24,10 @@ class SS3Camera extends SimpliSafe3Accessory {
         const delegate = new StreamingDelegate(this);
         this.controller = delegate.controller;
 
+        if (this.isUnsupported()) {
+            this.log.warn(`Camera '${this.name}' streams via '${this.getWebRTCProvider()}' which is not supported yet. Please report it, with debug logs, at https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240`);
+        }
+
         this.startListening();
     }
 
@@ -45,7 +49,7 @@ class SS3Camera extends SimpliSafe3Accessory {
             .on('get', callback => this.getState(callback, this.accessory.getService(this.api.hap.Service.MotionSensor), this.api.hap.Characteristic.MotionDetected));
 
         // add doorbell after configureController as HKSV creates it own linked motion service
-        if (this.cameraDetails.model == 'SS002') { // SSO02 is doorbell cam
+        if (this.isDoorbell()) {
             if (!this.accessory.getService(this.api.hap.Service.Doorbell)) this.accessory.addService(this.api.hap.Service.Doorbell);
             this.accessory.getService(this.api.hap.Service.Doorbell)
                 .getCharacteristic(this.api.hap.Characteristic.ProgrammableSwitchEvent)
@@ -84,9 +88,28 @@ class SS3Camera extends SimpliSafe3Accessory {
         return this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.privacyShutter;
     }
 
+    // 'legacy' streams FLV from media.simplisafe.com, 'livekit' uses LiveKit keyed on admin.webRTCProvider,
+    // not model (newer cameras use codenames e.g. 'mockingbird')
+    getWebRTCProvider() {
+        return this.cameraDetails.cameraSettings
+            && this.cameraDetails.cameraSettings.admin
+            && this.cameraDetails.cameraSettings.admin.webRTCProvider;
+    }
+
+    getStreamProvider() {
+        const provider = this.getWebRTCProvider();
+
+        if (!provider || provider === 'simplisafe') return 'legacy';
+        if (provider === 'mist') return 'livekit';
+        return 'none';
+    }
+
     isUnsupported() {
-        // so far SSOBCM4
-        return this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.providers && this.cameraDetails.supportedFeatures.providers.recording !== 'simplisafe';
+        return this.getStreamProvider() === 'none';
+    }
+
+    isDoorbell() {
+        return !!(this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.doorbell);
     }
 
     startListening() {

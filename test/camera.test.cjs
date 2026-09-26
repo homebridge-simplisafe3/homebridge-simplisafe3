@@ -30,16 +30,39 @@ test('supportsPrivacyShutter reflects the camera feature flag', () => {
     assert.equal(withoutShutter, false);
 });
 
-test('isUnsupported flags non-simplisafe recording providers', () => {
-    const supported = SS3Camera.prototype.isUnsupported.call({
-        cameraDetails: { supportedFeatures: { providers: { recording: 'simplisafe' } } },
-    });
-    const unsupported = SS3Camera.prototype.isUnsupported.call({
-        cameraDetails: { supportedFeatures: { providers: { recording: 'webrtc' } } },
-    });
+const withProvider = (webRTCProvider) => ({
+    cameraDetails: { cameraSettings: { admin: webRTCProvider === undefined ? {} : { webRTCProvider } } },
+    getStreamProvider: SS3Camera.prototype.getStreamProvider,
+    getWebRTCProvider: SS3Camera.prototype.getWebRTCProvider,
+});
 
-    assert.equal(supported, false);
-    assert.equal(unsupported, true);
+test('getStreamProvider maps webRTCProvider to a streaming path', () => {
+    // SimpliCam / Video Doorbell Pro
+    assert.equal(SS3Camera.prototype.getStreamProvider.call(withProvider('simplisafe')), 'legacy');
+    // Video Doorbell Series 2 ('mockingbird')
+    assert.equal(SS3Camera.prototype.getStreamProvider.call(withProvider('mist')), 'livekit');
+    // Something we have not seen
+    assert.equal(SS3Camera.prototype.getStreamProvider.call(withProvider('kvs')), 'none');
+    // Older payloads with no provider fall back to the legacy path
+    assert.equal(SS3Camera.prototype.getStreamProvider.call(withProvider(undefined)), 'legacy');
+    assert.equal(SS3Camera.prototype.getStreamProvider.call({
+        cameraDetails: {}, getWebRTCProvider: SS3Camera.prototype.getWebRTCProvider,
+    }), 'legacy');
+});
+
+test('isUnsupported only flags providers we cannot stream', () => {
+    assert.equal(SS3Camera.prototype.isUnsupported.call(withProvider('simplisafe')), false);
+    assert.equal(SS3Camera.prototype.isUnsupported.call(withProvider('mist')), false);
+    assert.equal(SS3Camera.prototype.isUnsupported.call(withProvider('kvs')), true);
+});
+
+test('isDoorbell uses the feature flag rather than the model string', () => {
+    const isDoorbell = (supportedFeatures) => SS3Camera.prototype.isDoorbell.call({ cameraDetails: { supportedFeatures } });
+
+    assert.equal(isDoorbell({ doorbell: true }), true);
+    assert.equal(isDoorbell({ doorbell: false }), false);
+    assert.equal(isDoorbell({}), false);
+    assert.equal(SS3Camera.prototype.isDoorbell.call({ cameraDetails: {} }), false);
 });
 
 test('_validateEvent accepts direct and internal camera matches', () => {
@@ -108,4 +131,9 @@ test('getState returns the characteristic value when unblocked', () => {
     );
 
     assert.deepEqual(callbackArgs, [null, true]);
+});
+
+test('getWebRTCProvider surfaces the raw value so unsupported cameras can be reported', () => {
+    assert.equal(SS3Camera.prototype.getWebRTCProvider.call(withProvider('kvs')), 'kvs');
+    assert.equal(SS3Camera.prototype.getWebRTCProvider.call({ cameraDetails: {} }), undefined);
 });
