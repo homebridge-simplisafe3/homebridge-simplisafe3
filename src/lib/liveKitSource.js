@@ -20,11 +20,21 @@ class LiveKitSource {
 
         this.onVideoRtp = null;
         this.onAudioRtp = null;
+        this.onSessionEnded = null;
 
         this.ws = null;
         this.pc = null;
         this.pingIntervalID = null;
         this.closed = false;
+        this.streaming = false;
+    }
+
+    // Fires only when a running session dies on us, not on a deliberate close
+    _sessionEnded(reason) {
+        if (this.closed || !this.streaming) return;
+        const notify = this.onSessionEnded;
+        this.close();
+        if (notify) notify(reason);
     }
 
     // Resolves once the first video RTP packet arrives i.e. media is flowing
@@ -63,8 +73,11 @@ class LiveKitSource {
                 }
             };
 
-            this.ws.on('error', err => settle(err));
-            this.ws.on('close', () => settle(new Error('LiveKit signalling closed before video started')));
+            this.ws.on('error', err => { settle(err); this._sessionEnded(err.message); });
+            this.ws.on('close', () => {
+                settle(new Error('LiveKit signalling closed before video started'));
+                this._sessionEnded('signalling closed');
+            });
 
             this.ws.on('message', async data => {
                 let response;
@@ -107,6 +120,7 @@ class LiveKitSource {
                 case 'leave':
                     if (this.debug) this.log('LiveKit: server ended the session');
                     settle(new Error('LiveKit server ended the session'));
+                    this._sessionEnded('server ended the session');
                     this.close();
                     break;
                 }
@@ -155,6 +169,7 @@ class LiveKitSource {
                 if (this.closed) return;
 
                 if (track.kind === 'video') {
+                    this.streaming = true;
                     if (this._onFirstVideo) {
                         const notify = this._onFirstVideo;
                         this._onFirstVideo = null;
@@ -179,8 +194,11 @@ class LiveKitSource {
         this.closed = true;
 
         clearInterval(this.pingIntervalID);
+        this.streaming = false;
         this.onVideoRtp = null;
         this.onAudioRtp = null;
+        this.onSessionEnded = null;
+        this.onSessionEnded = null;
 
         try {
             if (this.pc) this.pc.close();

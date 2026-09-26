@@ -19,6 +19,8 @@ const dnsLookup = promisify(dns.lookup);
 const videoPayloadType = 99;
 const audioPayloadType = 110;
 const snapshotCacheTime = 60000; // ms
+const prepareTimeout = 20000; // ms, give up on a prepared session HomeKit never started
+const keyframeTimeout = 15000; // ms, waiting for a keyframe to build a snapshot from
 
 const privacyShutterImage = path.resolve(__dirname, '..', 'images', 'privacyshutter_snapshot.png');
 const privacyShutterImageInBytes = fs.readFileSync(privacyShutterImage);
@@ -229,14 +231,24 @@ class StreamingDelegate {
             type: ip.isV4Format(myIPAddress) ? 'v4' : 'v6'
         };
 
+        let sessionIdentifier = this.api.hap.uuid.unparse(sessionID);
+
         // Join now, the handshake takes several seconds which is too slow to run inside handleStreamRequest
         if (this.ss3Camera.getStreamProvider() === 'livekit') {
             sessionInfo.liveKitSource = new LiveKitSource(this.ss3Camera);
             sessionInfo.liveKitReady = sessionInfo.liveKitSource.connect();
             sessionInfo.liveKitReady.catch(() => {}); // handled in handleStreamRequest
+
+            // HomeKit does not always follow up with a 'start', don't hold the room open waiting
+            sessionInfo.prepareTimeoutID = setTimeout(() => {
+                if (this.pendingSessions[sessionIdentifier] !== sessionInfo) return;
+                delete this.pendingSessions[sessionIdentifier];
+                sessionInfo.liveKitSource.close();
+                if (this.ss3Camera.debug) this.log(`Closed LiveKit session for '${this.ss3Camera.name}' that was prepared but never started`);
+            }, prepareTimeout);
         }
 
-        this.pendingSessions[this.api.hap.uuid.unparse(sessionID)] = sessionInfo;
+        this.pendingSessions[sessionIdentifier] = sessionInfo;
 
         callback(undefined, response);
     }
@@ -572,6 +584,12 @@ class StreamingDelegate {
             return;
         }
 
+        // A stream is already collecting keyframes, serve what we have rather than joining again
+        if (this.cachedSnapshot && Object.keys(this.liveKitSessions).length) {
+            callback(undefined, this.cachedSnapshot);
+            return;
+        }
+
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
             callback(new Error('Camera snapshot request blocked (rate limited)'));
             return;
@@ -592,18 +610,18 @@ class StreamingDelegate {
         let source = new LiveKitSource(this.ss3Camera);
         let keyframe = new KeyframeCollector();
 
-        try {
-            let captured = new Promise((resolve, reject) => {
-                let timeoutID = setTimeout(() => reject(new Error('Timed out waiting for a keyframe')), 15000);
-                source.onVideoRtp = rtp => {
-                    keyframe.push(rtp.payload);
-                    if (keyframe.complete) {
-                        clearTimeout(timeoutID);
-                        resolve(keyframe.annexB());
-                    }
-                };
-            });
+        let timeoutID;
+        let captured = new Promise((resolve, reject) => {
+            timeoutID = setTimeout(() => reject(new Error('Timed out waiting for a keyframe')), keyframeTimeout);
+            source.onVideoRtp = rtp => {
+                keyframe.push(rtp.payload);
+                if (keyframe.complete) resolve(keyframe.annexB());
+            };
+        });
+        // connect() may reject before this is ever awaited, so it always needs a handler
+        captured.catch(() => {});
 
+        try {
             await source.connect();
             let annexB = await captured;
             let jpeg = await this.jpegFromKeyframe(annexB);
@@ -613,6 +631,7 @@ class StreamingDelegate {
             if (this.ss3Camera.debug) this.log(`Cached snapshot for '${this.ss3Camera.name}' (${Math.round(jpeg.length / 1000)}kB)`);
             return jpeg;
         } finally {
+            clearTimeout(timeoutID);
             source.close();
             this.snapshotWarming = null;
         }
@@ -638,6 +657,8 @@ class StreamingDelegate {
     }
 
     startLiveKitStream(request, sessionIdentifier, sessionInfo, callback) {
+        clearTimeout(sessionInfo.prepareTimeoutID);
+
         if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
             sessionInfo.liveKitSource.close();
             let err = new Error('Camera stream request blocked (rate limited)');
@@ -646,6 +667,17 @@ class StreamingDelegate {
             return;
         }
 
+        try {
+            this.setupLiveKitStream(request, sessionIdentifier, sessionInfo, callback);
+        } catch (err) {
+            this.log.error(`Could not start LiveKit stream for '${this.ss3Camera.name}':`, err.message);
+            this.stopLiveKitStream(sessionIdentifier);
+            sessionInfo.liveKitSource.close();
+            callback(err);
+        }
+    }
+
+    setupLiveKitStream(request, sessionIdentifier, sessionInfo, callback) {
         let source = sessionInfo.liveKitSource;
         let socket = dgram.createSocket('udp4');
         let videoSrtp = this.createSrtpSession(sessionInfo.video_srtp);
@@ -672,6 +704,14 @@ class StreamingDelegate {
                 this.startOpusToAacTranscode(request, sessionInfo, session, source);
             }
         }
+
+        source.onSessionEnded = reason => {
+            this.log.error(`LiveKit session for '${this.ss3Camera.name}' ended: ${reason}`);
+            this.stopLiveKitStream(sessionIdentifier);
+            try {
+                this.controller.forceStopStreamingSession(request.sessionID);
+            } catch (e) { /* session may already be gone */ }
+        };
 
         // Media starts once the pre-warmed join finishes, HomeKit is acked now so it does not time out
         callback();

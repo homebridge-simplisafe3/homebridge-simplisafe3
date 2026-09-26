@@ -162,3 +162,38 @@ test('handleStreamRequest acknowledges a reconfigure request', async () => {
 
     assert.equal(args[0], undefined);
 });
+
+test('livekit snapshot prefers a stale cache over joining the room twice', async () => {
+    const delegate = new StreamingDelegate(createCameraStub({ getStreamProvider: () => 'livekit' }));
+    const stale = Buffer.from('stale-jpeg');
+    delegate.cachedSnapshot = stale;
+    delegate.cachedSnapshotExpires = Date.now() - 1000;   // expired
+    delegate.liveKitSessions['uuid:active'] = {};          // a stream is running
+
+    const args = await new Promise((resolve) => {
+        delegate.handleSnapshotRequest({ width: 1280, height: 720 }, (...a) => resolve(a));
+    });
+
+    assert.equal(args[0], undefined);
+    assert.equal(args[1], stale);
+    assert.equal(delegate.snapshotWarming, null);          // no second room was opened
+});
+
+test('startLiveKitStream reports setup failures instead of leaving HAP hanging', () => {
+    const delegate = new StreamingDelegate(createCameraStub({ getStreamProvider: () => 'livekit' }));
+    let closed = false;
+    const sessionInfo = {
+        address: '192.168.1.5',
+        video_port: 5010,
+        video_srtp: undefined,                             // makes createSrtpSession throw
+        liveKitSource: { close: () => { closed = true; } },
+        liveKitReady: Promise.resolve(),
+    };
+
+    let callbackArgs;
+    delegate.startLiveKitStream({ sessionID: 'x', audio: {} }, 'uuid:x', sessionInfo, (...a) => { callbackArgs = a; });
+
+    assert.ok(callbackArgs, 'callback must always be called');
+    assert.ok(callbackArgs[0] instanceof Error);
+    assert.equal(closed, true, 'the pre-warmed source must be closed');
+});
