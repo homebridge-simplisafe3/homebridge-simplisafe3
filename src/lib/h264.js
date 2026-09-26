@@ -29,8 +29,9 @@ class KeyframeCollector {
         return this.keyframe;
     }
 
-    push(payload, timestamp, marker) {
-        if (!payload || !payload.length) return;
+    push(payload, header) {
+        if (!payload || !payload.length || !header) return;
+        const { timestamp, marker, sequenceNumber } = header;
 
         if (this.currentTimestamp !== null && timestamp !== this.currentTimestamp) {
             this._endAccessUnit();
@@ -51,17 +52,26 @@ class KeyframeCollector {
                 offset += length;
             }
         } else if (type === 28) { // FU-A, one NAL split across packets
-            const header = payload[1];
-            const nalType = header & 0x1f;
+            const fuHeader = payload[1];
+            const nalType = fuHeader & 0x1f;
 
-            if (header & 0x80) { // start
+            if (fuHeader & 0x80) { // start
                 this.fragment = {
                     type: nalType,
-                    chunks: [Buffer.from([(payload[0] & 0x60) | nalType]), Buffer.from(payload.subarray(2))]
+                    chunks: [Buffer.from([(payload[0] & 0x60) | nalType]), Buffer.from(payload.subarray(2))],
+                    nextSequence: (sequenceNumber + 1) & 0xffff
                 };
             } else if (this.fragment && this.fragment.type === nalType) {
+                // A gap means a lost or reordered fragment. Concatenating across it
+                // yields a corrupt NAL and a smeared picture, so drop the whole frame
+                if (sequenceNumber !== this.fragment.nextSequence) {
+                    this.fragment = null;
+                    this.accessUnit = [];
+                    return;
+                }
                 this.fragment.chunks.push(Buffer.from(payload.subarray(2)));
-                if (header & 0x40) { // end
+                this.fragment.nextSequence = (sequenceNumber + 1) & 0xffff;
+                if (fuHeader & 0x40) { // end
                     this._store(Buffer.concat(this.fragment.chunks));
                     this.fragment = null;
                 }

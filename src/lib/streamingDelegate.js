@@ -614,7 +614,7 @@ class StreamingDelegate {
         let captured = new Promise((resolve, reject) => {
             timeoutID = setTimeout(() => reject(new Error('Timed out waiting for a keyframe')), keyframeTimeout);
             source.onVideoRtp = rtp => {
-                keyframe.push(rtp.payload, rtp.header.timestamp, rtp.header.marker);
+                keyframe.push(rtp.payload, rtp.header);
                 if (keyframe.complete) resolve(keyframe.annexB());
             };
         });
@@ -688,7 +688,7 @@ class StreamingDelegate {
 
         source.onVideoRtp = rtp => {
             if (!this.cachedSnapshot || Date.now() >= this.cachedSnapshotExpires) {
-                keyframe.push(rtp.payload, rtp.header.timestamp, rtp.header.marker);
+                keyframe.push(rtp.payload, rtp.header);
                 if (keyframe.complete) this.cacheSnapshotFromStream(keyframe);
             }
             this.forwardRtp(rtp, videoSrtp, socket, videoPayloadType, sessionInfo.video_ssrc, sessionInfo.video_port, sessionInfo.address);
