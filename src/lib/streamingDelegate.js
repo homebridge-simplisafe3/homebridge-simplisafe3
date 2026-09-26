@@ -8,8 +8,18 @@ import { promisify } from 'util';
 import isDocker from 'is-docker';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
+import dgram from 'dgram';
+import { SrtpSession, ProtectionProfileAes128CmHmacSha1_80 } from 'werift';
+
+import LiveKitSource from './liveKitSource';
+import KeyframeCollector from './h264';
 
 const dnsLookup = promisify(dns.lookup);
+
+const videoPayloadType = 99;
+const audioPayloadType = 110;
+const snapshotCacheTime = 60000; // ms
 
 const privacyShutterImage = path.resolve(__dirname, '..', 'images', 'privacyshutter_snapshot.png');
 const privacyShutterImageInBytes = fs.readFileSync(privacyShutterImage);
@@ -27,6 +37,11 @@ class StreamingDelegate {
 
         this.pendingSessions = {};
         this.ongoingSessions = {};
+        this.liveKitSessions = {};
+        this.cachedSnapshot = null;
+        this.cachedSnapshotExpires = 0;
+        this.snapshotBusy = false;
+        this.snapshotWarming = null;
 
         let fps = this.cameraDetails.cameraSettings.admin.fps;
         let streamingOptions = {
@@ -59,6 +74,11 @@ class StreamingDelegate {
             }
         };
 
+        // Series 2 doorbell is square, offer matching resolutions alongside the 4:3 / 16:9 defaults
+        if (this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.aspectRatio === '1:1') {
+            streamingOptions.video.resolutions.push([640, 640, fps], [960, 960, fps], [1280, 1280, fps], [1536, 1536, fps]);
+        }
+
         let resolution = this.cameraDetails.cameraSettings.pictureQuality;
         let maxSupportedHeight = +(resolution.split('p')[0]);
         streamingOptions.video.resolutions = streamingOptions.video.resolutions.filter(r => r[1] <= maxSupportedHeight);
@@ -80,6 +100,11 @@ class StreamingDelegate {
 
         let resolution = `${request.width}x${request.height}`;
         if (this.ss3Camera.debug) this.log(`Handling camera snapshot for '${this.cameraDetails.cameraSettings.cameraName}' at ${resolution}`);
+
+        if (this.ss3Camera.getStreamProvider() === 'livekit') {
+            this.handleLiveKitSnapshotRequest(callback);
+            return;
+        }
 
         if (this.ss3Camera.isUnsupported()) {
             this.handleUnsupportedCameraSnapshotRequest(callback);
@@ -205,6 +230,13 @@ class StreamingDelegate {
             type: ip.isV4Format(myIPAddress) ? 'v4' : 'v6'
         };
 
+        // Join now, the handshake takes several seconds which is too slow to run inside handleStreamRequest
+        if (this.ss3Camera.getStreamProvider() === 'livekit') {
+            sessionInfo.liveKitSource = new LiveKitSource(this.ss3Camera);
+            sessionInfo.liveKitReady = sessionInfo.liveKitSource.connect();
+            sessionInfo.liveKitReady.catch(() => {}); // handled in handleStreamRequest
+        }
+
         this.pendingSessions[this.api.hap.uuid.unparse(sessionID)] = sessionInfo;
 
         callback(undefined, response);
@@ -212,6 +244,20 @@ class StreamingDelegate {
 
     async handleStreamRequest(request, callback) {
         if (this.ss3Camera.debug) this.log('handleStreamRequest with request:', request);
+
+        if (this.ss3Camera.getStreamProvider() === 'livekit' && request.type == 'start') {
+            let sessionIdentifier = this.api.hap.uuid.unparse(request.sessionID);
+            let sessionInfo = this.pendingSessions[sessionIdentifier];
+            delete this.pendingSessions[sessionIdentifier];
+
+            if (!sessionInfo) {
+                callback(new Error('No pending session for stream start'));
+                return;
+            }
+
+            this.startLiveKitStream(request, sessionIdentifier, sessionInfo, callback);
+            return;
+        }
 
         if (this.ss3Camera.isUnsupported()) {
             let err = new Error(`Camera ${this.ss3Camera.name} is unsupported`);
@@ -461,9 +507,244 @@ class StreamingDelegate {
                 }
 
                 delete this.ongoingSessions[sessionIdentifier];
+                this.stopLiveKitStream(sessionIdentifier);
+                callback();
+            } else {
+                // 'reconfigure', nothing to change but HAP still needs the callback
                 callback();
             }
         }
+    }
+
+    createSrtpSession(keyAndSalt) {
+        return new SrtpSession({
+            profile: ProtectionProfileAes128CmHmacSha1_80,
+            keys: {
+                localMasterKey: keyAndSalt.subarray(0, 16),
+                localMasterSalt: keyAndSalt.subarray(16, 30),
+                remoteMasterKey: keyAndSalt.subarray(0, 16),
+                remoteMasterSalt: keyAndSalt.subarray(16, 30)
+            }
+        });
+    }
+
+    // Re-stamp RTP for HomeKit then encrypt with the keys it gave us in prepareStream
+    forwardRtp(rtp, srtp, socket, payloadType, ssrc, port, address) {
+        let header = rtp.header;
+        header.payloadType = payloadType;
+        header.ssrc = ssrc;
+        header.extension = false;
+        header.extensions = [];
+
+        try {
+            socket.send(srtp.encrypt(rtp.payload, header), port, address);
+        } catch (e) {
+            if (this.ss3Camera.debug) this.log.error('Error forwarding RTP to HomeKit:', e.message);
+        }
+    }
+
+    jpegFromKeyframe(annexB) {
+        return new Promise((resolve, reject) => {
+            let cmd = spawn(this.ss3Camera.ffmpegPath, [
+                '-hide_banner', '-loglevel', 'error',
+                '-f', 'h264', '-i', 'pipe:0',
+                '-frames:v', '1',
+                '-vf', 'scale=\'min(1280,iw)\':-2',
+                '-f', 'image2', '-vcodec', 'mjpeg', '-q:v', '5', 'pipe:1'
+            ], { env: process.env });
+
+            let chunks = [];
+            let stderr = '';
+            cmd.stdout.on('data', data => chunks.push(data));
+            cmd.stderr.on('data', data => { stderr += data.toString(); });
+            cmd.on('error', reject);
+            cmd.on('close', code => {
+                if (code === 0 && chunks.length) resolve(Buffer.concat(chunks));
+                else reject(new Error(`ffmpeg exited with ${code}: ${stderr.slice(-200)}`));
+            });
+            cmd.stdin.on('error', () => {}); // ignore EPIPE
+            cmd.stdin.end(annexB);
+        });
+    }
+
+    async handleLiveKitSnapshotRequest(callback) {
+        if (this.cachedSnapshot && Date.now() < this.cachedSnapshotExpires) {
+            callback(undefined, this.cachedSnapshot);
+            return;
+        }
+
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            callback(new Error('Camera snapshot request blocked (rate limited)'));
+            return;
+        }
+
+        try {
+            if (!this.snapshotWarming) this.snapshotWarming = this.warmSnapshot();
+            let snapshot = await this.snapshotWarming;
+            callback(undefined, snapshot);
+        } catch (err) {
+            this.log.error(`Could not get snapshot for '${this.ss3Camera.name}':`, err.message);
+            callback(err);
+        }
+    }
+
+    // Briefly joins the room to grab a keyframe, used when nothing is streaming
+    async warmSnapshot() {
+        let source = new LiveKitSource(this.ss3Camera);
+        let keyframe = new KeyframeCollector();
+
+        try {
+            let captured = new Promise((resolve, reject) => {
+                let timeoutID = setTimeout(() => reject(new Error('Timed out waiting for a keyframe')), 15000);
+                source.onVideoRtp = rtp => {
+                    keyframe.push(rtp.payload);
+                    if (keyframe.complete) {
+                        clearTimeout(timeoutID);
+                        resolve(keyframe.annexB());
+                    }
+                };
+            });
+
+            await source.connect();
+            let annexB = await captured;
+            let jpeg = await this.jpegFromKeyframe(annexB);
+
+            this.cachedSnapshot = jpeg;
+            this.cachedSnapshotExpires = Date.now() + snapshotCacheTime;
+            if (this.ss3Camera.debug) this.log(`Cached snapshot for '${this.ss3Camera.name}' (${Math.round(jpeg.length / 1000)}kB)`);
+            return jpeg;
+        } finally {
+            source.close();
+            this.snapshotWarming = null;
+        }
+    }
+
+    // Caches a snapshot from a stream already in flight, costs one decoded frame
+    cacheSnapshotFromStream(keyframe) {
+        if (this.snapshotBusy || Date.now() < this.cachedSnapshotExpires) return;
+
+        this.snapshotBusy = true;
+        let annexB = keyframe.annexB();
+        keyframe.reset();
+
+        this.jpegFromKeyframe(annexB)
+            .then(jpeg => {
+                this.cachedSnapshot = jpeg;
+                this.cachedSnapshotExpires = Date.now() + snapshotCacheTime;
+            })
+            .catch(err => {
+                if (this.ss3Camera.debug) this.log.error('Snapshot decode failed:', err.message);
+            })
+            .finally(() => { this.snapshotBusy = false; });
+    }
+
+    startLiveKitStream(request, sessionIdentifier, sessionInfo, callback) {
+        if (this.simplisafe.isBlocked && Date.now() < this.simplisafe.nextAttempt) {
+            sessionInfo.liveKitSource.close();
+            let err = new Error('Camera stream request blocked (rate limited)');
+            this.log.error(err);
+            callback(err);
+            return;
+        }
+
+        let source = sessionInfo.liveKitSource;
+        let socket = dgram.createSocket('udp4');
+        let videoSrtp = this.createSrtpSession(sessionInfo.video_srtp);
+        let keyframe = new KeyframeCollector();
+
+        let session = { source: source, socket: socket, audioProcess: null, audioSocket: null, sdpPath: null };
+        this.liveKitSessions[sessionIdentifier] = session;
+
+        source.onVideoRtp = rtp => {
+            if (!this.cachedSnapshot || Date.now() >= this.cachedSnapshotExpires) {
+                keyframe.push(rtp.payload);
+                if (keyframe.complete) this.cacheSnapshotFromStream(keyframe);
+            }
+            this.forwardRtp(rtp, videoSrtp, socket, videoPayloadType, sessionInfo.video_ssrc, sessionInfo.video_port, sessionInfo.address);
+        };
+
+        if (sessionInfo.audio_port) {
+            if (request.audio && request.audio.codec == 'OPUS') {
+                let audioSrtp = this.createSrtpSession(sessionInfo.audio_srtp);
+                source.onAudioRtp = rtp => {
+                    this.forwardRtp(rtp, audioSrtp, socket, audioPayloadType, sessionInfo.audio_ssrc, sessionInfo.audio_port, sessionInfo.address);
+                };
+            } else {
+                this.startOpusToAacTranscode(request, sessionInfo, session, source);
+            }
+        }
+
+        // Media starts once the pre-warmed join finishes, HomeKit is acked now so it does not time out
+        callback();
+
+        sessionInfo.liveKitReady
+            .then(() => {
+                if (this.ss3Camera.debug) this.log(`Streaming '${this.ss3Camera.name}' from LiveKit without transcoding`);
+            })
+            .catch(err => {
+                this.log.error(`LiveKit stream failed for '${this.ss3Camera.name}':`, err.message);
+                this.stopLiveKitStream(sessionIdentifier);
+                try {
+                    this.controller.forceStopStreamingSession(request.sessionID);
+                } catch (e) { /* session may already be gone */ }
+            });
+    }
+
+    // The camera publishes Opus, HomeKit asked for AAC-ELD. Audio only, so cheap
+    startOpusToAacTranscode(request, sessionInfo, session, source) {
+        let localPort = 50000 + Math.floor(Math.random() * 5000);
+        session.sdpPath = path.join(os.tmpdir(), `ss3-opus-${localPort}.sdp`);
+
+        fs.writeFileSync(session.sdpPath, [
+            'v=0',
+            'o=- 0 0 IN IP4 127.0.0.1',
+            's=SimpliSafe',
+            'c=IN IP4 127.0.0.1',
+            't=0 0',
+            `m=audio ${localPort} RTP/AVP 111`,
+            'a=rtpmap:111 opus/48000/2',
+            ''
+        ].join('\n'));
+
+        let samplerate = (request.audio && request.audio.sample_rate) ?? 16;
+        let bitrate = (request.audio && request.audio.max_bit_rate) ?? 24;
+
+        session.audioProcess = spawn(this.ss3Camera.ffmpegPath, [
+            '-hide_banner', '-loglevel', 'error',
+            '-protocol_whitelist', 'file,udp,rtp', '-f', 'sdp', '-i', session.sdpPath,
+            '-acodec', 'libfdk_aac', '-profile:a', 'aac_eld', '-flags', '+global_header',
+            '-ac', '1', '-ar', `${samplerate}k`, '-b:a', `${bitrate}k`,
+            '-payload_type', audioPayloadType,
+            '-ssrc', sessionInfo.audio_ssrc,
+            '-f', 'rtp',
+            '-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80',
+            '-srtp_out_params', sessionInfo.audio_srtp.toString('base64'),
+            `srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=188`
+        ], { env: process.env });
+
+        session.audioProcess.on('error', err => this.log.error('Audio transcode failed to start:', err.message));
+        session.audioProcess.stderr.on('data', data => {
+            if (this.ss3Camera.debug) this.log('Audio ffmpeg:', data.toString().trim());
+        });
+
+        session.audioSocket = dgram.createSocket('udp4');
+        source.onAudioRtp = rtp => {
+            try {
+                session.audioSocket.send(rtp.serialize(), localPort, '127.0.0.1');
+            } catch (e) { /* transcode is optional, never break video for it */ }
+        };
+    }
+
+    stopLiveKitStream(sessionIdentifier) {
+        let session = this.liveKitSessions[sessionIdentifier];
+        if (!session) return;
+        delete this.liveKitSessions[sessionIdentifier];
+
+        try { session.source.close(); } catch (e) { /* already gone */ }
+        try { if (session.audioProcess) session.audioProcess.kill('SIGKILL'); } catch (e) { /* already gone */ }
+        try { if (session.audioSocket) session.audioSocket.close(); } catch (e) { /* already gone */ }
+        try { session.socket.close(); } catch (e) { /* already gone */ }
+        try { if (session.sdpPath) fs.unlinkSync(session.sdpPath); } catch (e) { /* already gone */ }
     }
 }
 

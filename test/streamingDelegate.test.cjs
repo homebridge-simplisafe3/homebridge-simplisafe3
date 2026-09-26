@@ -46,6 +46,7 @@ function createCameraStub(overrides = {}) {
         name: 'Garage Camera',
         authManager: { accessToken: 'token-123' },
         isUnsupported: () => false,
+        getStreamProvider: () => 'legacy',
         supportsPrivacyShutter: () => false,
         motionIsTriggered: false,
         ...overrides,
@@ -59,6 +60,40 @@ test('constructor limits advertised resolutions to the configured picture qualit
     assert.ok(heights.every((height) => height <= 720));
     assert.ok(heights.includes(720));
     assert.ok(!heights.includes(1080));
+});
+
+test('constructor offers square resolutions for 1:1 cameras', () => {
+    const square = new StreamingDelegate(createCameraStub({
+        cameraDetails: {
+            uuid: 'camera-uuid',
+            supportedFeatures: { aspectRatio: '1:1' },
+            cameraSettings: { admin: { fps: 20, bitRate: 300 }, pictureQuality: '1536p', cameraName: 'Front Door' },
+        },
+    }));
+    const wide = new StreamingDelegate(createCameraStub());
+
+    const isSquare = (r) => r[0] === r[1];
+    assert.ok(square.controller.streamingOptions.video.resolutions.some(isSquare));
+    assert.ok(!wide.controller.streamingOptions.video.resolutions.some(isSquare));
+});
+
+test('livekit snapshot request serves a cached frame while it is fresh', async () => {
+    const delegate = new StreamingDelegate(createCameraStub({ getStreamProvider: () => 'livekit' }));
+    const cached = Buffer.from('jpeg-bytes');
+    delegate.cachedSnapshot = cached;
+    delegate.cachedSnapshotExpires = Date.now() + 60000;
+
+    const args = await new Promise((resolve) => {
+        delegate.handleSnapshotRequest({ width: 1280, height: 720 }, (...a) => resolve(a));
+    });
+
+    assert.equal(args[0], undefined);
+    assert.equal(args[1], cached);
+});
+
+test('stopLiveKitStream is a no-op for an unknown session', () => {
+    const delegate = new StreamingDelegate(createCameraStub({ getStreamProvider: () => 'livekit' }));
+    assert.doesNotThrow(() => delegate.stopLiveKitStream('uuid:missing'));
 });
 
 test('prepareStream records pending session details for audio and video', () => {
@@ -116,4 +151,14 @@ test('handlePrivacyShutterClosedSnapshotRequest returns the static privacy image
         assert.ok(Buffer.isBuffer(image));
         assert.ok(image.length > 0);
     });
+});
+
+test('handleStreamRequest acknowledges a reconfigure request', async () => {
+    const delegate = new StreamingDelegate(createCameraStub({ getStreamProvider: () => 'livekit' }));
+
+    const args = await new Promise((resolve) => {
+        delegate.handleStreamRequest({ type: 'reconfigure', sessionID: 'session-9' }, (...a) => resolve(a));
+    });
+
+    assert.equal(args[0], undefined);
 });
