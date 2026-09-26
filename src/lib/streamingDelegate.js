@@ -614,7 +614,7 @@ class StreamingDelegate {
         let captured = new Promise((resolve, reject) => {
             timeoutID = setTimeout(() => reject(new Error('Timed out waiting for a keyframe')), keyframeTimeout);
             source.onVideoRtp = rtp => {
-                keyframe.push(rtp.payload);
+                keyframe.push(rtp.payload, rtp.header.timestamp, rtp.header.marker);
                 if (keyframe.complete) resolve(keyframe.annexB());
             };
         });
@@ -683,12 +683,12 @@ class StreamingDelegate {
         let videoSrtp = this.createSrtpSession(sessionInfo.video_srtp);
         let keyframe = new KeyframeCollector();
 
-        let session = { source: source, socket: socket, audioProcess: null, audioSocket: null };
+        let session = { source: source, socket: socket, audioProcess: null, audioSocket: null, stopped: false };
         this.liveKitSessions[sessionIdentifier] = session;
 
         source.onVideoRtp = rtp => {
             if (!this.cachedSnapshot || Date.now() >= this.cachedSnapshotExpires) {
-                keyframe.push(rtp.payload);
+                keyframe.push(rtp.payload, rtp.header.timestamp, rtp.header.marker);
                 if (keyframe.complete) this.cacheSnapshotFromStream(keyframe);
             }
             this.forwardRtp(rtp, videoSrtp, socket, videoPayloadType, sessionInfo.video_ssrc, sessionInfo.video_port, sessionInfo.address);
@@ -701,7 +701,8 @@ class StreamingDelegate {
                     this.forwardRtp(rtp, audioSrtp, socket, audioPayloadType, sessionInfo.audio_ssrc, sessionInfo.audio_port, sessionInfo.address);
                 };
             } else {
-                this.startOpusToAacTranscode(request, sessionInfo, session, source);
+                this.startOpusToAacTranscode(request, sessionInfo, session, source)
+                    .catch(err => this.log.error(`Could not start audio for '${this.ss3Camera.name}':`, err.message));
             }
         }
 
@@ -729,9 +730,44 @@ class StreamingDelegate {
             });
     }
 
+    bindProbe(port) {
+        return new Promise(resolve => {
+            let socket = dgram.createSocket('udp4');
+            socket.once('error', () => resolve(null));
+            socket.bind(port, '127.0.0.1', () => resolve(socket));
+        });
+    }
+
+    closeProbe(socket) {
+        return new Promise(resolve => socket.close(resolve));
+    }
+
+    // ffmpeg binds the RTP port and the RTCP port above it, so both must be free
+    async reserveUdpPort(attempts = 20) {
+        for (let attempt = 0; attempt < attempts; attempt++) {
+            let rtp = await this.bindProbe(0);
+            if (!rtp) continue;
+
+            let port = rtp.address().port;
+            if (port % 2 !== 0) { // RTP conventionally uses an even port
+                await this.closeProbe(rtp);
+                continue;
+            }
+
+            let rtcp = await this.bindProbe(port + 1);
+            await this.closeProbe(rtp);
+            if (rtcp) {
+                await this.closeProbe(rtcp);
+                return port;
+            }
+        }
+        throw new Error('Could not find a free UDP port pair for audio');
+    }
+
     // The camera publishes Opus, HomeKit asked for AAC-ELD. Audio only, so cheap
-    startOpusToAacTranscode(request, sessionInfo, session, source) {
-        let localPort = 50000 + Math.floor(Math.random() * 5000);
+    async startOpusToAacTranscode(request, sessionInfo, session, source) {
+        let localPort = await this.reserveUdpPort();
+        if (session.stopped) return;
 
         // Fed to ffmpeg on stdin
         let sdp = [
@@ -779,6 +815,7 @@ class StreamingDelegate {
     stopLiveKitStream(sessionIdentifier) {
         let session = this.liveKitSessions[sessionIdentifier];
         if (!session) return;
+        session.stopped = true;
         delete this.liveKitSessions[sessionIdentifier];
 
         try { session.source.close(); } catch (e) { /* already gone */ }
