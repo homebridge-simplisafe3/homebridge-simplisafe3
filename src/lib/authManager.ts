@@ -1,17 +1,34 @@
 // © 2021 Michael Shamoon
 // SimpliSafe 3 Authentication Manager
 
-const crypto = require('crypto');
-const axios = require('axios');
-const axiosRetry = require('axios-retry');
-const fs = require('fs');
-const path = require('path');
-const events = require('events');
+import crypto from 'crypto';
+import axios from 'axios';
+import type { AxiosError } from 'axios';
+import axiosRetry from 'axios-retry';
+import fs from 'fs';
+import path from 'path';
+import { EventEmitter } from 'events';
 
 export const AUTH_EVENTS = {
     REFRESH_CREDENTIALS_SUCCESS: 'REFRESH_CREDENTIALS_SUCCESS',
     REFRESH_CREDENTIALS_FAILURE: 'REFRESH_CREDENTIALS_FAILURE',
 };
+
+// homebridge Logging or console.log
+type Logger = ((...args: unknown[]) => void) & { error?: (...args: unknown[]) => void };
+
+interface TokenResponse {
+    access_token: string;
+    refresh_token?: string;
+    expires_in: number | string;
+    token_type: string;
+}
+
+interface StoredAccount {
+    accessToken?: string | null;
+    refreshToken?: string | null;
+    codeVerifier?: string;
+}
 
 const ssOAuth = axios.create({
     baseURL: 'https://auth.simplisafe.com/oauth'
@@ -29,19 +46,19 @@ const SS_OAUTH_DEVICE_UUID = '0000007E-0000-1000-8000-0026BB765291'; // anything
 
 const accountsFilename = 'simplisafe3auth.json';
 
-class SimpliSafe3AuthenticationManager extends events.EventEmitter {
-    storagePath;
-    accessToken;
-    refreshToken;
+class SimpliSafe3AuthenticationManager extends EventEmitter {
+    storagePath: string;
+    accessToken?: string | null;
+    refreshToken?: string | null;
     tokenType = 'Bearer';
-    codeVerifier;
-    codeChallenge;
-    expiry;
-    refreshInterval;
-    log;
-    debug;
+    codeVerifier!: string;
+    codeChallenge: string;
+    expiry?: number;
+    refreshInterval?: ReturnType<typeof setInterval>;
+    log: Logger;
+    debug: boolean;
 
-    constructor(storagePath, log, debug) {
+    constructor(storagePath: string, log?: Logger, debug?: boolean) {
         super();
         this.storagePath = storagePath;
         this.log = log || console.log;
@@ -53,7 +70,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         this.codeChallenge = this.base64URLEncode(this.sha256(this.codeVerifier));
     }
 
-    getSSAuthURL() {
+    getSSAuthURL(): string {
         const loginURL = new URL(SS_OAUTH_AUTH_URL);
         loginURL.searchParams.append('client_id', SS_OAUTH_CLIENT_ID);
         loginURL.searchParams.append('scope', 'SCOPE'); // otherwise this gets URI encoded
@@ -68,17 +85,17 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         return loginURL.toString().replace('SCOPE', SS_OAUTH_SCOPE).replace('AUDIENCE', SS_OAUTH_AUDIENCE);
     }
 
-    _storagePathExists() {
+    private _storagePathExists(): boolean {
         return fs.existsSync(this.storagePath);
     }
 
-    accountsFileExists() {
+    accountsFileExists(): boolean {
         if (!this._storagePathExists()) return false;
         const accountsFile = path.join(this.storagePath, accountsFilename);
         return fs.existsSync(accountsFile);
     }
 
-    parseAccountsFile() {
+    parseAccountsFile(): void {
         if (this.accountsFileExists()) {
             let fileContents;
 
@@ -88,23 +105,23 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 fileContents = '{}';
             }
 
-            const account = JSON.parse(fileContents);
+            const account: StoredAccount = JSON.parse(fileContents);
 
             if (account.accessToken !== undefined) {
                 this.accessToken = account.accessToken;
                 this.refreshToken = account.refreshToken;
-                this.codeVerifier = account.codeVerifier;
+                this.codeVerifier = account.codeVerifier as string;
             }
         } else if (!this._storagePathExists()) {
             throw new Error(`Supplied path ${this.storagePath} does not exist`);
         }
     }
 
-    isAuthenticated() {
-        return this.refreshToken !== null && Date.now() < this.expiry;
+    isAuthenticated(): boolean {
+        return this.refreshToken !== null && this.expiry !== undefined && Date.now() < this.expiry;
     }
 
-    parseCodeFromURL(redirectURLStr) {
+    parseCodeFromURL(redirectURLStr: string): string {
         let code;
         try {
             const redirectURL = new URL(redirectURLStr);
@@ -120,20 +137,20 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         return code;
     }
 
-    base64URLEncode(str) {
+    base64URLEncode(str: Buffer): string {
         return str.toString('base64')
             .replace(/\+/g, '-')
             .replace(/\//g, '_')
             .replace(/=/g, '');
     }
 
-    sha256(buffer) {
+    sha256(buffer: crypto.BinaryLike): Buffer {
         return crypto.createHash('sha256').update(buffer).digest();
     }
 
-    async getToken(authorizationCode) {
+    async getToken(authorizationCode: string): Promise<string | null | undefined> {
         try {
-            const tokenResponse = await ssOAuth.post('/token', {
+            const tokenResponse = await ssOAuth.post<TokenResponse>('/token', {
                 grant_type: 'authorization_code',
                 client_id: SS_OAUTH_CLIENT_ID,
                 code_verifier: this.codeVerifier,
@@ -144,11 +161,12 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             await this._storeToken(tokenResponse.data);
             return this.accessToken;
         } catch (err) {
-            throw new Error('Error getting token: ' + err.message ? err.message : err.toString());
+            const error = err as Error;
+            throw new Error('Error getting token: ' + error.message ? error.message : error.toString());
         }
     }
 
-    async refreshCredentials() {
+    async refreshCredentials(): Promise<void> {
         if (!this.accountsFileExists() && this.refreshToken == undefined) {
             throw new Error('No valid authentication credentials detected.');
         }
@@ -158,7 +176,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
                 // E.g. re-trying after failed attempt
                 this.parseAccountsFile();
             }
-            const refreshTokenResponse = await ssOAuth.post('/token', {
+            const refreshTokenResponse = await ssOAuth.post<TokenResponse>('/token', {
                 grant_type: 'refresh_token',
                 client_id: SS_OAUTH_CLIENT_ID,
                 refresh_token: this.refreshToken
@@ -174,7 +192,8 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             if (this.log && this.debug) this.log('SimpliSafe credentials refresh was successful');
         } catch (err) {
             if (this.log && this.debug) this.log('SimpliSafe credentials refresh failed');
-            if (err.response && (String(err.response.status).indexOf('4') == 0 || err.response.data == 'Unauthorized')) {
+            const error = err as AxiosError;
+            if (error.response && (String(error.response.status).indexOf('4') == 0 || error.response.data == 'Unauthorized')) {
                 // this is a true auth failure
                 this.refreshToken = this.accessToken = null;
                 this.emit(AUTH_EVENTS.REFRESH_CREDENTIALS_FAILURE);
@@ -183,13 +202,13 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         }
     }
 
-    async _storeToken(token) {
+    private async _storeToken(token: TokenResponse): Promise<void> {
         this.accessToken = token.access_token;
         this.refreshToken = token.refresh_token ?? this.refreshToken;
-        this.expiry = Date.now() + (parseInt(token.expires_in) * 1000);
+        this.expiry = Date.now() + (parseInt(String(token.expires_in)) * 1000);
         this.tokenType = token.token_type;
 
-        const account = {
+        const account: StoredAccount = {
             accessToken: this.accessToken,
             codeVerifier: this.codeVerifier,
             refreshToken: this.refreshToken
@@ -202,7 +221,7 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
             );
         } catch (err) {
             if (this.log && this.log.error) this.log.error('Unable to write accounts file.', err);
-            throw new Error(`Failed storing token with error message "${err.message}"`);
+            throw new Error(`Failed storing token with error message "${(err as Error).message}"`);
         }
 
         if (this.refreshInterval) {
@@ -211,17 +230,16 @@ class SimpliSafe3AuthenticationManager extends events.EventEmitter {
         this.refreshInterval = setInterval(() => {
             if (this.log && this.debug) this.log('Preemptively authenticating with SimpliSafe');
             this.refreshCredentials()
-                .catch(err => {
+                .catch((err: AxiosError) => {
                     if (this.log && this.log.error) this.log.error(err.toJSON ? err.toJSON() : err);
                     if (err.response && (err.response.status == 403 || err.response.data == 'Unauthorized')) {
                         clearInterval(this.refreshInterval); // just disable until next successful one
                     }
                 });
-        }, parseInt(token.expires_in) * 1000 - 300000);
+        }, parseInt(String(token.expires_in)) * 1000 - 300000);
     }
 
 }
 
-module.exports.SimpliSafe3AuthenticationManager = SimpliSafe3AuthenticationManager;
-module.exports.AUTH_EVENTS = AUTH_EVENTS;
+export { SimpliSafe3AuthenticationManager };
 export default SimpliSafe3AuthenticationManager;
