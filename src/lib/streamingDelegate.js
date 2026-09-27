@@ -691,7 +691,7 @@ class StreamingDelegate {
         let videoSrtp = this.createSrtpSession(sessionInfo.video_srtp);
         let keyframe = new KeyframeCollector();
 
-        let session = { source: source, socket: socket, audioProcess: null, audioSocket: null, stopped: false };
+        let session = { source: source, socket: socket, stopped: false };
         this.liveKitSessions[sessionIdentifier] = session;
 
         source.onVideoRtp = rtp => {
@@ -706,16 +706,16 @@ class StreamingDelegate {
         let startAudio = () => {
             if (!sessionInfo.audio_port || session.stopped) return;
 
-            if (request.audio && request.audio.codec == 'OPUS') {
-                let audioSrtp = this.createSrtpSession(sessionInfo.audio_srtp);
-                source.onAudioRtp = rtp => {
-                    this.forwardRtp(rtp, audioSrtp, socket, audioPayloadType, sessionInfo.audio_ssrc, sessionInfo.audio_port, sessionInfo.address);
-                };
-                if (this.ss3Camera.debug) this.log(`Audio: forwarding Opus to ${sessionInfo.address}:${sessionInfo.audio_port}, no transcode`);
-            } else {
-                this.startOpusToAacTranscode(request, sessionInfo, session, source)
-                    .catch(err => this.log.error(`Could not start audio for '${this.ss3Camera.name}':`, err.message));
+            if (!request.audio || request.audio.codec !== 'OPUS') {
+                this.log.warn(`HomeKit asked for ${request.audio && request.audio.codec} audio on '${this.ss3Camera.name}'. Remove and re-add the camera in the Home app to pick up Opus.`);
+                return;
             }
+
+            let audioSrtp = this.createSrtpSession(sessionInfo.audio_srtp);
+            source.onAudioRtp = rtp => {
+                this.forwardRtp(rtp, audioSrtp, socket, audioPayloadType, sessionInfo.audio_ssrc, sessionInfo.audio_port, sessionInfo.address);
+            };
+            if (this.ss3Camera.debug) this.log(`Audio: forwarding Opus to ${sessionInfo.address}:${sessionInfo.audio_port}`);
         };
 
         source.onSessionEnded = reason => {
@@ -743,89 +743,9 @@ class StreamingDelegate {
             });
     }
 
-    bindProbe(port) {
-        return new Promise(resolve => {
-            let socket = dgram.createSocket('udp4');
-            socket.once('error', () => resolve(null));
-            socket.bind(port, '127.0.0.1', () => resolve(socket));
-        });
-    }
 
-    closeProbe(socket) {
-        return new Promise(resolve => socket.close(resolve));
-    }
 
-    // ffmpeg binds the RTP port and the RTCP port above it, so both must be free
-    async reserveUdpPort(attempts = 20) {
-        for (let attempt = 0; attempt < attempts; attempt++) {
-            let rtp = await this.bindProbe(0);
-            if (!rtp) continue;
 
-            let port = rtp.address().port;
-            if (port % 2 !== 0) { // RTP conventionally uses an even port
-                await this.closeProbe(rtp);
-                continue;
-            }
-
-            let rtcp = await this.bindProbe(port + 1);
-            await this.closeProbe(rtp);
-            if (rtcp) {
-                await this.closeProbe(rtcp);
-                return port;
-            }
-        }
-        throw new Error('Could not find a free UDP port pair for audio');
-    }
-
-    // The camera publishes Opus, HomeKit asked for AAC-ELD. Audio only, so cheap
-    async startOpusToAacTranscode(request, sessionInfo, session, source) {
-        let localPort = await this.reserveUdpPort();
-        if (session.stopped) return;
-
-        // Fed to ffmpeg on stdin
-        let sdp = [
-            'v=0',
-            'o=- 0 0 IN IP4 127.0.0.1',
-            's=SimpliSafe',
-            'c=IN IP4 127.0.0.1',
-            't=0 0',
-            `m=audio ${localPort} RTP/AVP 111`,
-            'a=rtpmap:111 opus/48000/2',
-            ''
-        ].join('\n');
-
-        let samplerate = (request.audio && request.audio.sample_rate) ?? 16;
-        let bitrate = (request.audio && request.audio.max_bit_rate) ?? 24;
-
-        session.audioProcess = spawn(this.ss3Camera.ffmpegPath, [
-            '-hide_banner', '-loglevel', 'error',
-            '-protocol_whitelist', 'pipe,udp,rtp', '-f', 'sdp', '-i', 'pipe:0',
-            '-acodec', 'libfdk_aac', '-profile:a', 'aac_eld', '-flags', '+global_header',
-            '-ac', '1', '-ar', `${samplerate}k`, '-b:a', `${bitrate}k`,
-            '-payload_type', audioPayloadType,
-            '-ssrc', sessionInfo.audio_ssrc,
-            '-f', 'rtp',
-            '-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80',
-            '-srtp_out_params', sessionInfo.audio_srtp.toString('base64'),
-            `srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&pkt_size=188`
-        ], { env: process.env });
-
-        session.audioProcess.on('error', err => this.log.error('Audio transcode failed to start:', err.message));
-        session.audioProcess.stderr.on('data', data => {
-            if (this.ss3Camera.debug) this.log('Audio ffmpeg:', data.toString().trim());
-        });
-        session.audioProcess.stdin.on('error', () => {}); // ignore EPIPE if ffmpeg exits early
-        session.audioProcess.stdin.end(sdp);
-
-        session.audioSocket = dgram.createSocket('udp4');
-        source.onAudioRtp = rtp => {
-            try {
-                session.audioSocket.send(rtp.serialize(), localPort, '127.0.0.1');
-            } catch (e) { /* transcode is optional, never break video for it */ }
-        };
-
-        if (this.ss3Camera.debug) this.log(`Audio: opus to ffmpeg on 127.0.0.1:${localPort}, AAC-ELD out to ${sessionInfo.address}:${sessionInfo.audio_port}`);
-    }
 
     stopLiveKitStream(sessionIdentifier) {
         let session = this.liveKitSessions[sessionIdentifier];
@@ -834,8 +754,6 @@ class StreamingDelegate {
         delete this.liveKitSessions[sessionIdentifier];
 
         try { session.source.close(); } catch (e) { /* already gone */ }
-        try { if (session.audioProcess) session.audioProcess.kill('SIGKILL'); } catch (e) { /* already gone */ }
-        try { if (session.audioSocket) session.audioSocket.close(); } catch (e) { /* already gone */ }
         try { session.socket.close(); } catch (e) { /* already gone */ }
     }
 }
