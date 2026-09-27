@@ -15,11 +15,13 @@ jobs:
   build-publish-npm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org/
+      # OIDC trusted publishing needs npm 11.5.1+, Node 22 still ships npm 10
+      - run: npm install -g npm@latest && npm --version
       - run: |
           git config --global user.name 'Version Tracker'
           git config --global user.email 'version-tracker@users.noreply.github.com'
