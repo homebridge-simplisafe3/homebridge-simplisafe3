@@ -1,17 +1,37 @@
-// Drafted by Claude Opus 5
+// Drafted by Claude Opus 5.5
 
 const startCode = Buffer.from([0, 0, 0, 1]);
+
+// Subset of werift's RtpHeader that depacketization needs
+export interface RtpHeaderFields {
+    timestamp: number;
+    marker: boolean;
+    sequenceNumber: number;
+}
+
+interface Fragment {
+    type: number;
+    chunks: Buffer[];
+    nextSequence: number;
+}
 
 // Collects a whole keyframe out of RTP payloads so a snapshot can be decoded from
 // the live stream. Depacketization only, no decoding.
 // A keyframe is usually several slices sharing one RTP timestamp, so NALs are
 // gathered per access unit rather than kept individually
 class KeyframeCollector {
+    declare private sps: Buffer | null;
+    declare private pps: Buffer | null;
+    declare private keyframe: Buffer | null;
+    declare private currentTimestamp: number | null;
+    declare private accessUnit: Buffer[];
+    declare private fragment: Fragment | null;
+
     constructor() {
         this.reset();
     }
 
-    reset() {
+    reset(): void {
         this.sps = null;
         this.pps = null;
         this.keyframe = null;
@@ -20,15 +40,15 @@ class KeyframeCollector {
         this.fragment = null;
     }
 
-    get complete() {
+    get complete(): boolean {
         return !!this.keyframe;
     }
 
-    annexB() {
+    annexB(): Buffer | null {
         return this.keyframe;
     }
 
-    push(payload, header) {
+    push(payload: Buffer | null | undefined, header: RtpHeaderFields | null | undefined): void {
         if (!payload || !payload.length || !header) return;
         const { timestamp, marker, sequenceNumber } = header;
 
@@ -80,7 +100,7 @@ class KeyframeCollector {
         if (marker) this._endAccessUnit();
     }
 
-    _store(nal) {
+    private _store(nal: Buffer): void {
         if (!nal.length) return;
         const type = nal[0] & 0x1f;
 
@@ -91,7 +111,7 @@ class KeyframeCollector {
     }
 
     // An access unit holding an IDR is a complete keyframe, emit every slice of it
-    _endAccessUnit() {
+    private _endAccessUnit(): void {
         if (this.keyframe) { this.accessUnit = []; return; }
 
         const hasIdr = this.accessUnit.some(nal => (nal[0] & 0x1f) === 5);

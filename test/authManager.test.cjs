@@ -16,6 +16,14 @@ function createLogger() {
     return fn;
 }
 
+test('exports match what homebridge-ui and the login command require', () => {
+    const authModule = loadAuthManager();
+
+    assert.equal(typeof authModule.default, 'function');
+    assert.equal(authModule.SimpliSafe3AuthenticationManager, authModule.default);
+    assert.deepEqual(Object.keys(authModule.AUTH_EVENTS), ['REFRESH_CREDENTIALS_SUCCESS', 'REFRESH_CREDENTIALS_FAILURE']);
+});
+
 test('getSSAuthURL embeds expected OAuth parameters', () => {
     const { default: AuthManager } = loadAuthManager();
     const manager = new AuthManager(createTempStorage(), createLogger(), false);
