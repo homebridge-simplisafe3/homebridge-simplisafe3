@@ -794,7 +794,7 @@ class StreamingDelegate {
             '-f', 'rtp',
             '-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80',
             '-srtp_out_params', sessionInfo.audio_srtp.toString('base64'),
-            `srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&localrtcpport=${sessionInfo.audio_port}&pkt_size=188`
+            `srtp://${sessionInfo.address}:${sessionInfo.audio_port}?rtcpport=${sessionInfo.audio_port}&pkt_size=188`
         ], { env: process.env });
 
         session.audioProcess.on('error', err => this.log.error('Audio transcode failed to start:', err.message));
@@ -810,6 +810,8 @@ class StreamingDelegate {
                 session.audioSocket.send(rtp.serialize(), localPort, '127.0.0.1');
             } catch (e) { /* transcode is optional, never break video for it */ }
         };
+
+        if (this.ss3Camera.debug) this.log(`Audio: opus to ffmpeg on 127.0.0.1:${localPort}, AAC-ELD out to ${sessionInfo.address}:${sessionInfo.audio_port}`);
     }
 
     stopLiveKitStream(sessionIdentifier) {
