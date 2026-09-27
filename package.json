@@ -120,6 +120,7 @@
     "deploy": "npm publish dist/",
     "start": "nodemon --exec babel-node src/index.js",
     "test": "npm run build && npm run test:unit",
-    "test:unit": "node --test test/**/*.test.cjs"
+    "test:unit": "node --test test/*.test.cjs",
+    "lint": "eslint src"
   }
 }

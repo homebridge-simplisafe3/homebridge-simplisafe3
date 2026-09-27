@@ -249,7 +249,7 @@ class SS3Alarm extends SimpliSafe3Accessory {
 
         this.simplisafe.on(EVENT_TYPES.USER_INITIATED_TEST, (data) => {
             if (!this._validateEvent(EVENT_TYPES.USER_INITIATED_TEST, data)) return;
-            this.log.warn(`Detected user-initiated test, not a true alarm.`);
+            this.log.warn('Detected user-initiated test, not a true alarm.');
         });
     }
 

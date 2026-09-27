@@ -527,7 +527,7 @@ class SimpliSafe3 extends EventEmitter {
                     }, socketHeartbeatInterval + (5000 * Math.random()));
                     break;
                 default:
-                    if (this.debug) this.log('Received unknown service message:', message)
+                    if (this.debug) this.log('Received unknown service message:', message);
                 }
             } else if (message.source == 'messagequeue') {
                 let data = message.data;

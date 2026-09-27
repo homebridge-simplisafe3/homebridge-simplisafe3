@@ -10,7 +10,7 @@ export const homebridgeDir = Flags.build({
     default: () => {
         return isDocker() ? '/homebridge/' : path.join(os.homedir(), '.homebridge');
     }
-})
+});
 
 class Login extends Command {
     static flags = {
