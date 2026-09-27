@@ -74,6 +74,16 @@ class StreamingDelegate {
             }
         };
 
+        // LiveKit cameras publish Opus already, so ask HomeKit for it and forward the RTP
+        if (this.ss3Camera.getStreamProvider() === 'livekit') {
+            streamingOptions.audio.codecs = [
+                {
+                    type: this.api.hap.AudioStreamingCodecType.OPUS,
+                    samplerate: this.api.hap.AudioStreamingSamplerate.KHZ_24
+                }
+            ];
+        }
+
         // Series 2 doorbell is square, offer matching resolutions alongside the 4:3 / 16:9 defaults
         if (this.cameraDetails.supportedFeatures && this.cameraDetails.supportedFeatures.aspectRatio === '1:1') {
             streamingOptions.video.resolutions.push([640, 640, fps], [960, 960, fps], [1280, 1280, fps], [1536, 1536, fps]);
@@ -692,17 +702,21 @@ class StreamingDelegate {
             this.forwardRtp(rtp, videoSrtp, socket, videoPayloadType, sessionInfo.video_ssrc, sessionInfo.video_port, sessionInfo.address);
         };
 
-        if (sessionInfo.audio_port) {
+        // Deferred until LiveKit has connected
+        let startAudio = () => {
+            if (!sessionInfo.audio_port || session.stopped) return;
+
             if (request.audio && request.audio.codec == 'OPUS') {
                 let audioSrtp = this.createSrtpSession(sessionInfo.audio_srtp);
                 source.onAudioRtp = rtp => {
                     this.forwardRtp(rtp, audioSrtp, socket, audioPayloadType, sessionInfo.audio_ssrc, sessionInfo.audio_port, sessionInfo.address);
                 };
+                if (this.ss3Camera.debug) this.log(`Audio: forwarding Opus to ${sessionInfo.address}:${sessionInfo.audio_port}, no transcode`);
             } else {
                 this.startOpusToAacTranscode(request, sessionInfo, session, source)
                     .catch(err => this.log.error(`Could not start audio for '${this.ss3Camera.name}':`, err.message));
             }
-        }
+        };
 
         source.onSessionEnded = reason => {
             this.log.error(`LiveKit session for '${this.ss3Camera.name}' ended: ${reason}`);
@@ -718,6 +732,7 @@ class StreamingDelegate {
         sessionInfo.liveKitReady
             .then(() => {
                 if (this.ss3Camera.debug) this.log(`Streaming '${this.ss3Camera.name}' from LiveKit without transcoding`);
+                startAudio();
             })
             .catch(err => {
                 this.log.error(`LiveKit stream failed for '${this.ss3Camera.name}':`, err.message);
