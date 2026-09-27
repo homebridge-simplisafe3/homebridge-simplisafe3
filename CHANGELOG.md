@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.11.1 (2026-09-26)
+- Fix: Audio on the Video Doorbell Series 2 could intermittently fail to start
+
 ## v1.11.0 (2026-09-26)
 - Adds support for the Video Doorbell Series 2 by @shamoon in #516
 
