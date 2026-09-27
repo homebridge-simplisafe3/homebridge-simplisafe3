@@ -4,15 +4,9 @@
             "@babel/preset-env",
             {
                 "targets": {
-                    "node": "8"
-                },
-                "useBuiltIns": "usage",
-                "corejs": 3,
-                "shippedProposals": true
+                    "node": "18"
+                }
             }
         ]
-    ],
-    "plugins": [
-        "@babel/plugin-proposal-class-properties"
     ]
 }
