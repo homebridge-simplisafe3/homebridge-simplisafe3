@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.11.0 (2026-09-26)
+- Adds support for the Video Doorbell Series 2 by @shamoon in #516
+
 ## 1.10.16 (2025-09-04)
 - Fix: Add fallback refresh for alarm state update by @shamoon in #462
 - Bump brace-expansion from 1.1.11 to 1.1.12 by @dependabot[bot] in #463
