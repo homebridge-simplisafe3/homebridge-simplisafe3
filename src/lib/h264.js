@@ -1,5 +1,4 @@
 // Drafted by Claude Opus 5
-/*global Buffer */
 
 const startCode = Buffer.from([0, 0, 0, 1]);
 

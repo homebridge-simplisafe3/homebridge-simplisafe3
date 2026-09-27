@@ -1,11 +1,10 @@
-/*global Buffer, process */
 import { spawn } from 'child_process';
 import jpegExtract from 'jpeg-extract';
 import crypto from 'crypto';
-import ip from 'ip';
 import dns from 'dns';
 import { promisify } from 'util';
 import isDocker from 'is-docker';
+import { localIPv4Address } from './network';
 import path from 'path';
 import fs from 'fs';
 import dgram from 'dgram';
@@ -225,10 +224,9 @@ class StreamingDelegate {
             sessionInfo.audio_ssrc = ssrc;
         }
 
-        let myIPAddress = ip.address();
         response.address = {
-            address: myIPAddress,
-            type: ip.isV4Format(myIPAddress) ? 'v4' : 'v6'
+            address: localIPv4Address(),
+            type: 'v4'
         };
 
         let sessionIdentifier = this.api.hap.uuid.unparse(sessionID);
