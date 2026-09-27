@@ -25,7 +25,7 @@ const SS_OAUTH_REDIRECT_URI = 'com.simplisafe.mobile://auth.simplisafe.com/ios/c
 const SS_OAUTH_SCOPE = 'offline_access%20email%20openid%20https://api.simplisafe.com/scopes/user:platform';
 const SS_OAUTH_AUDIENCE = 'https://api.simplisafe.com/';
 const SS_OAUTH_DEVICE = 'iPhone';
-const SS_OAUTH_DEVICE_UUID = "0000007E-0000-1000-8000-0026BB765291"; // anything, e.g. hap.Service.SecuritySystem.UUID
+const SS_OAUTH_DEVICE_UUID = '0000007E-0000-1000-8000-0026BB765291'; // anything, e.g. hap.Service.SecuritySystem.UUID
 
 const accountsFilename = 'simplisafe3auth.json';
 
