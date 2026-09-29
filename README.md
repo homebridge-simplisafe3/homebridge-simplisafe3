@@ -109,8 +109,8 @@ Alarm                  | :white_check_mark: | Arming/disarming to home, away and
 SimpliCam              | :white_check_mark: | Audio, video, motion*, no microphone
 Video Doorbell Pro     | :white_check_mark: | Audio, video, motion, no microphone
 Video Doorbell Series 2| :white_check_mark: | Audio, video, motion, no microphone
-Outdoor Camera         | :grey_question:    | Untested, may work, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
-Wireless Indoor Camera | :grey_question:    | Untested, may work, see [#240](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240)
+Outdoor Camera         | :white_check_mark: | Audio, video, motion, no microphone
+Wireless Indoor Camera | :grey_question:    | Untested, may work, please [report your findings](https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/new?category=general)
 Smart lock             | :white_check_mark: | Fully supports locking, unlocking
 Entry sensor           | :white_check_mark: | Status not provided as 'push' by SS so is polled based on `sensorRefresh`
 Smoke detector         | :white_check_mark: | Includes support for tamper & fault
