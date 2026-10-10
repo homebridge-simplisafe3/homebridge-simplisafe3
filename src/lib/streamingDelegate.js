@@ -20,6 +20,8 @@ const audioPayloadType = 110;
 const snapshotCacheTime = 60000; // ms
 const prepareTimeout = 20000; // ms, give up on a prepared session HomeKit never started
 const keyframeTimeout = 15000; // ms, waiting for a keyframe to build a snapshot from
+const snapshotRequestTimeout = 8000; // ms, HomeKit drops the accessory if we take much longer
+const snapshotRetryDelay = 60000; // ms, back off before poking a camera that just failed
 
 const privacyShutterImage = path.resolve(__dirname, '..', 'images', 'privacyshutter_snapshot.png');
 const privacyShutterImageInBytes = fs.readFileSync(privacyShutterImage);
@@ -42,6 +44,7 @@ class StreamingDelegate {
         this.cachedSnapshotExpires = 0;
         this.snapshotBusy = false;
         this.snapshotWarming = null;
+        this.snapshotRetryAfter = 0;
 
         let fps = this.cameraDetails.cameraSettings.admin.fps;
         let streamingOptions = {
@@ -587,14 +590,10 @@ class StreamingDelegate {
     }
 
     async handleLiveKitSnapshotRequest(callback) {
-        if (this.cachedSnapshot && Date.now() < this.cachedSnapshotExpires) {
+        // Anything cached beats making HomeKit wait
+        if (this.cachedSnapshot) {
             callback(undefined, this.cachedSnapshot);
-            return;
-        }
-
-        // A stream is already collecting keyframes, serve what we have rather than joining again
-        if (this.cachedSnapshot && Object.keys(this.liveKitSessions).length) {
-            callback(undefined, this.cachedSnapshot);
+            if (Date.now() >= this.cachedSnapshotExpires) this.refreshSnapshot();
             return;
         }
 
@@ -603,14 +602,32 @@ class StreamingDelegate {
             return;
         }
 
+        // Nothing to fall back on, the only path that can make HomeKit wait
         try {
-            if (!this.snapshotWarming) this.snapshotWarming = this.warmSnapshot();
-            let snapshot = await this.snapshotWarming;
+            let warming = this.refreshSnapshot();
+            if (!warming) throw new Error('Waiting before retrying the camera');
+
+            let snapshot = await Promise.race([
+                warming,
+                new Promise((resolve, reject) => setTimeout(() => reject(new Error('Camera did not produce a frame in time')), snapshotRequestTimeout))
+            ]);
             callback(undefined, snapshot);
         } catch (err) {
             this.log.error(`Could not get snapshot for '${this.ss3Camera.name}':`, err.message);
             callback(err);
         }
+    }
+
+    // Deduped + rate-limited. Returns the in flight warm, or null while backing off
+    refreshSnapshot() {
+        if (this.snapshotWarming) return this.snapshotWarming;
+        if (Date.now() < this.snapshotRetryAfter) return null;
+
+        this.snapshotWarming = this.warmSnapshot();
+        this.snapshotWarming.catch(() => {
+            this.snapshotRetryAfter = Date.now() + snapshotRetryDelay;
+        });
+        return this.snapshotWarming;
     }
 
     // Briefly joins the room to grab a keyframe, used when nothing is streaming

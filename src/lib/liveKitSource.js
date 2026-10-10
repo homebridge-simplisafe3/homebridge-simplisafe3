@@ -39,6 +39,12 @@ class LiveKitSource {
 
     // Resolves once the first video RTP packet arrives i.e. media is flowing
     async connect() {
+        try {
+            await this.simplisafe.wakeCameras();
+        } catch (err) {
+            if (this.debug) this.log(`LiveKit: wake request failed, continuing: ${err.message}`);
+        }
+
         const liveView = await this.simplisafe.getCameraLiveView(this.ss3Camera.id);
         if (this.debug) this.log(`LiveKit: ${this.ss3Camera.name} cameraStatus ${liveView.cameraStatus}`);
 
@@ -158,6 +164,10 @@ class LiveKitSource {
                     payloadType: 111
                 })]
             }
+        });
+
+        this.pc.connectionStateChange.subscribe(state => {
+            if (this.debug) this.log(`LiveKit: connection ${state} for ${this.ss3Camera.name}`);
         });
 
         this.pc.onIceCandidate.subscribe(candidate => {
