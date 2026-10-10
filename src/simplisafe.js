@@ -349,6 +349,27 @@ class SimpliSafe3 extends EventEmitter {
         }
     }
 
+    // Idle cameras stop publishing, so the SimpliSafe apps wake them before every stream
+    async wakeCameras() {
+        if (!this.subId) {
+            await this.getSubscription();
+        }
+
+        if (!this.authManager.isAuthenticated()) {
+            await this.authManager.refreshCredentials();
+        }
+
+        await appHubApi.request({
+            method: 'POST',
+            url: `/v1/ss3/subscriptions/${this.subId}/camera-wakeup`,
+            headers: {
+                Authorization: `${this.authManager.tokenType} ${this.authManager.accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            data: { wakeAll: true }
+        });
+    }
+
     // Returns LiveKit room details for cameras (internally 'MIST')
     // token is short lived so it must be fetched per stream, not cached
     async getCameraLiveView(cameraUuid) {
