@@ -1,0 +1,98 @@
+name: 'Repository Maintenance'
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+concurrency:
+  group: lock
+jobs:
+  lock-threads:
+    name: 'Lock Old Threads'
+    if: github.repository_owner == 'homebridge-simplisafe3'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      discussions: write
+    steps:
+      - uses: dessant/lock-threads@89ae32b08ed1a541efecbab17912962a5e38981c # v6.0.2
+        with:
+          issue-inactive-days: '30'
+          pr-inactive-days: '30'
+          discussion-inactive-days: '30'
+          log-output: true
+          issue-comment: >
+            This issue has been automatically locked since there has not been any recent activity after it was closed. Please open a new discussion or issue for related concerns.
+
+          pr-comment: >
+            This pull request has been automatically locked since there has not been any recent activity after it was closed. Please open a new discussion or issue for related concerns.
+
+          discussion-comment: >
+            This discussion has been automatically locked since there has not been any recent activity after it was closed. Please open a new discussion for related concerns.
+
+  close-discussions:
+    name: 'Close Answered and Outdated Discussions'
+    if: github.repository_owner == 'homebridge-simplisafe3'
+    runs-on: ubuntu-latest
+    permissions:
+      discussions: write
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const CUTOFF_DAYS = 365;
+            const EXEMPT_LABEL = 'enhancement';
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - CUTOFF_DAYS);
+
+            const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+            const query = `query($owner:String!, $name:String!, $after:String) {
+              repository(owner:$owner, name:$name) {
+                discussions(first:100, after:$after, states:[OPEN]) {
+                  pageInfo { hasNextPage, endCursor }
+                  nodes {
+                    id
+                    number
+                    updatedAt
+                    isAnswered
+                    labels(first:20) { nodes { name } }
+                  }
+                }
+              }
+            }`;
+
+            const discussions = [];
+            let after = null;
+            do {
+              const result = await github.graphql(query, { owner: context.repo.owner, name: context.repo.repo, after });
+              const page = result.repository.discussions;
+              discussions.push(...page.nodes);
+              after = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+            } while (after);
+
+            console.log(`Checking ${discussions.length} open discussions`);
+
+            const closeDiscussion = async (discussion, body, reason) => {
+              await github.graphql(`mutation($discussion:ID!, $body:String!) {
+                addDiscussionComment(input:{discussionId:$discussion, body:$body}) { clientMutationId }
+              }`, { discussion: discussion.id, body });
+              await github.graphql(`mutation($discussion:ID!, $reason:DiscussionCloseReason!) {
+                closeDiscussion(input:{discussionId:$discussion, reason:$reason}) { clientMutationId }
+              }`, { discussion: discussion.id, reason });
+              await sleep(1000);
+            };
+
+            for (const discussion of discussions) {
+              if (discussion.isAnswered) {
+                console.log(`Closing answered discussion #${discussion.number}`);
+                await closeDiscussion(discussion, 'This discussion has been automatically closed because it was marked as answered.', 'RESOLVED');
+                continue;
+              }
+
+              const exempt = discussion.labels.nodes.some(label => label.name === EXEMPT_LABEL);
+              if (!exempt && new Date(discussion.updatedAt) < cutoff) {
+                console.log(`Closing outdated discussion #${discussion.number}, last updated at ${discussion.updatedAt}`);
+                await closeDiscussion(discussion, 'This discussion has been automatically closed due to inactivity.', 'OUTDATED');
+              }
+            }
