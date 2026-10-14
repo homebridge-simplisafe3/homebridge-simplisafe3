@@ -21,8 +21,8 @@ class SS3Camera extends SimpliSafe3Accessory {
             this.ffmpegPath = this.cameraOptions.ffmpegPath;
         }
 
-        const delegate = new StreamingDelegate(this);
-        this.controller = delegate.controller;
+        this.streamingDelegate = new StreamingDelegate(this);
+        this.controller = this.streamingDelegate.controller;
 
         if (this.isUnsupported()) {
             this.log.warn(`Camera '${this.name}' streams via '${this.getWebRTCProvider()}' which is not supported yet. Please report it, with debug logs, at https://github.com/homebridge-simplisafe3/homebridge-simplisafe3/discussions/240`);
@@ -115,6 +115,7 @@ class SS3Camera extends SimpliSafe3Accessory {
     startListening() {
         this.simplisafe.on(EVENT_TYPES.CAMERA_MOTION, (data) => {
             if (!this._validateEvent(EVENT_TYPES.CAMERA_MOTION, data)) return;
+            this.streamingDelegate.refreshSnapshotFromEvent(data);
             this.accessory.getService(this.api.hap.Service.MotionSensor).updateCharacteristic(this.api.hap.Characteristic.MotionDetected, true);
             this.motionIsTriggered = true;
             setTimeout(() => {
@@ -124,6 +125,7 @@ class SS3Camera extends SimpliSafe3Accessory {
         });
         this.simplisafe.on(EVENT_TYPES.DOORBELL, (data) => {
             if (!this._validateEvent(EVENT_TYPES.DOORBELL, data)) return;
+            this.streamingDelegate.refreshSnapshotFromEvent(data);
             this.accessory.getService(this.api.hap.Service.Doorbell).getCharacteristic(this.api.hap.Characteristic.ProgrammableSwitchEvent).setValue(0);
         });
     }
