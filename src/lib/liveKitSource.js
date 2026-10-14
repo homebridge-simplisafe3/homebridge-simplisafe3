@@ -5,8 +5,12 @@ import {
     SignalResponse,
     SessionDescription,
     TrickleRequest,
-    SignalTarget
+    SignalTarget,
+    TrackType,
+    TrackSource,
+    AudioTrackFeature
 } from '@livekit/protocol';
+import { OpusTrackStats, parseToc, describeToc } from './opus';
 
 const trackTimeout = 30000; // ms, how long to wait for the camera's video track
 
@@ -27,6 +31,7 @@ class LiveKitSource {
         this.pingIntervalID = null;
         this.closed = false;
         this.streaming = false;
+        this.audioStats = [];
     }
 
     // Fires only when a running session dies on us, not on a deliberate close
@@ -118,6 +123,10 @@ class LiveKitSource {
                     break;
                 }
 
+                case 'update':
+                    if (this.debug) this._logTracks(message.value.participants);
+                    break;
+
                 case 'trickle':
                     try {
                         await this.pc.addIceCandidate(JSON.parse(message.value.candidateInit));
@@ -141,6 +150,7 @@ class LiveKitSource {
 
     _handleJoin(join, send) {
         if (this.debug) this.log(`LiveKit: joined room ${join.room && join.room.name}`);
+        if (this.debug) this._logTracks(join.otherParticipants);
 
         this.pc = new RTCPeerConnection({
             iceServers: (join.iceServers || []).map(server => ({
@@ -178,8 +188,20 @@ class LiveKitSource {
         this.pc.onTrack.subscribe(track => {
             if (this.debug) this.log(`LiveKit: subscribed to ${track.kind} (${track.codec && track.codec.mimeType})`);
 
+            let stats = null;
+            if (this.debug && track.kind === 'audio') {
+                stats = new OpusTrackStats();
+                this.audioStats.push({ track: track, stats: stats });
+                this.log(`LiveKit: audio track ${track.id} ssrc ${track.ssrc} fmtp ${track.codec && track.codec.parameters} channels ${track.codec && track.codec.channels}`);
+            }
+
             track.onReceiveRtp.subscribe(rtp => {
                 if (this.closed) return;
+
+                if (stats) {
+                    if (!stats.packets) this.log(`LiveKit: first audio on ${track.id}: pt ${rtp.header.payloadType}, ${rtp.payload.length}B, ${describeToc(parseToc(rtp.payload))}`);
+                    stats.push(rtp.payload, rtp.header);
+                }
 
                 if (track.kind === 'video') {
                     this.streaming = true;
@@ -202,11 +224,25 @@ class LiveKitSource {
         }
     }
 
+    // What the camera says it publishes, before any media arrives
+    _logTracks(participants) {
+        for (const participant of participants || []) {
+            for (const info of participant.tracks || []) {
+                const features = (info.audioFeatures || []).map(f => AudioTrackFeature[f]).join('|') || 'none';
+                this.log(`LiveKit: ${participant.identity} publishes ${TrackType[info.type]} ${info.sid} '${info.name}' source ${TrackSource[info.source]} ${info.mimeType} stereo ${info.stereo} disableDtx ${info.disableDtx} muted ${info.muted} features ${features}`);
+            }
+        }
+    }
+
     close() {
         if (this.closed) return;
         this.closed = true;
 
         clearInterval(this.pingIntervalID);
+        for (const { track, stats } of this.audioStats) {
+            this.log(`LiveKit: audio ${track.id} on ${this.ss3Camera.name}: ${stats.summary()}`);
+        }
+        this.audioStats = [];
         this.streaming = false;
         this.onVideoRtp = null;
         this.onAudioRtp = null;
