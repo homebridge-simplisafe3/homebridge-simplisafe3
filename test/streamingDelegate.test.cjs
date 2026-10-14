@@ -197,3 +197,108 @@ test('startLiveKitStream reports setup failures instead of leaving HAP hanging',
     assert.ok(callbackArgs[0] instanceof Error);
     assert.equal(closed, true, 'the pre-warmed source must be closed');
 });
+
+function cameraEvent(cameraId) {
+    return {
+        video: {
+            [cameraId]: {
+                timestamp: 1792008324,
+                _links: {
+                    'snapshot/jpg': {
+                        href: `https://remix.example/v1/snapshot/${cameraId}/1725425/time/1792008313?account=1&region=us-west-2{&width}`,
+                        templated: true,
+                    },
+                },
+            },
+        },
+    };
+}
+
+function eventCameraStub(overrides = {}) {
+    return createCameraStub({
+        id: 'cam-1',
+        getStreamProvider: () => 'livekit',
+        authManager: { tokenType: 'Bearer', accessToken: 'token-123' },
+        ...overrides,
+    });
+}
+
+test('eventSnapshotUrl points the recording snapshot at the moment of the event', () => {
+    const delegate = new StreamingDelegate(eventCameraStub());
+
+    assert.equal(
+        delegate.eventSnapshotUrl(cameraEvent('cam-1')),
+        'https://remix.example/v1/snapshot/cam-1/1725425/time/1792008324?account=1&region=us-west-2&width=1280'
+    );
+    assert.equal(delegate.eventSnapshotUrl(cameraEvent('other-cam')), null);
+    assert.equal(delegate.eventSnapshotUrl({}), null);
+    assert.equal(delegate.eventSnapshotUrl(undefined), null);
+});
+
+test('refreshSnapshotFromEvent ignores non livekit cameras', (t) => {
+    const delegate = new StreamingDelegate(eventCameraStub({ getStreamProvider: () => 'legacy' }));
+    const fetchMock = t.mock.method(global, 'fetch', async () => ({ ok: false, status: 404 }));
+
+    delegate.refreshSnapshotFromEvent(cameraEvent('cam-1'));
+
+    assert.equal(delegate.eventSnapshot, null);
+    assert.equal(fetchMock.mock.callCount(), 0);
+});
+
+test('fetchEventSnapshot polls past 404s until the recording has the frame', async (t) => {
+    const delegate = new StreamingDelegate(eventCameraStub());
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff]);
+    const responses = [
+        { ok: false, status: 404 },
+        { ok: true, status: 200, arrayBuffer: async () => jpeg },
+    ];
+    let authHeader;
+    t.mock.method(global, 'fetch', async (url, options) => {
+        authHeader = options.headers.Authorization;
+        return responses.shift();
+    });
+    t.mock.method(global, 'setTimeout', (fn) => { fn(); return 0; });
+
+    const result = await delegate.fetchEventSnapshot('https://remix.example/snap');
+
+    assert.deepEqual(result, jpeg);
+    assert.deepEqual(delegate.cachedSnapshot, jpeg);
+    assert.ok(delegate.cachedSnapshotExpires > Date.now());
+    assert.equal(authHeader, 'Bearer token-123');
+});
+
+test('fetchEventSnapshot gives up on errors other than 404', async (t) => {
+    const delegate = new StreamingDelegate(eventCameraStub());
+    t.mock.method(global, 'fetch', async () => ({ ok: false, status: 401 }));
+
+    await assert.rejects(delegate.fetchEventSnapshot('https://remix.example/snap'), /HTTP 401/);
+});
+
+test('livekit snapshot waits for an in flight event snapshot over the stale cache', async () => {
+    const delegate = new StreamingDelegate(eventCameraStub());
+    const fresh = Buffer.from('fresh-jpeg');
+    delegate.cachedSnapshot = Buffer.from('stale-jpeg');
+    delegate.cachedSnapshotExpires = Date.now() + 60000;
+    delegate.eventSnapshot = new Promise((resolve) => setTimeout(() => resolve(fresh), 10));
+
+    const args = await new Promise((resolve) => {
+        delegate.handleSnapshotRequest({ width: 1280, height: 720 }, (...a) => resolve(a));
+    });
+
+    assert.equal(args[1], fresh);
+});
+
+test('livekit snapshot falls back to the cache when the event snapshot fails', async () => {
+    const delegate = new StreamingDelegate(eventCameraStub());
+    const cached = Buffer.from('cached-jpeg');
+    delegate.cachedSnapshot = cached;
+    delegate.cachedSnapshotExpires = Date.now() + 60000;
+    delegate.eventSnapshot = Promise.resolve(null);
+
+    const args = await new Promise((resolve) => {
+        delegate.handleSnapshotRequest({ width: 1280, height: 720 }, (...a) => resolve(a));
+    });
+
+    assert.equal(args[0], undefined);
+    assert.equal(args[1], cached);
+});
