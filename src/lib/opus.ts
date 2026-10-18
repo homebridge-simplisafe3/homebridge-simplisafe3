@@ -9,19 +9,9 @@ export interface OpusToc {
     frames: number;
 }
 
-// Subset of werift's RtpHeader the stats need
-export interface RtpHeaderFields {
-    timestamp: number;
-    payloadType: number;
-    ssrc: number;
-    extension: boolean;
-    padding: boolean;
-}
-
 const silkMs = [10, 20, 40, 60];
 const hybridMs = [10, 20];
 const celtMs = [2.5, 5, 10, 20];
-const maxDeltas = 8;
 
 // RFC 6716 section 3.1, reads the TOC byte without decoding anything
 export function parseToc(payload: Buffer): OpusToc | null {
@@ -143,55 +133,5 @@ export class OpusRepacketizer {
             this.sequenceNumber = (this.sequenceNumber + 1) & 0xffff;
             return { header, payload };
         });
-    }
-}
-
-export function describeToc(toc: OpusToc | null): string {
-    if (!toc) return 'empty';
-    return `${toc.mode} ${toc.stereo ? 'stereo' : 'mono'} ${toc.frames}x${toc.frameMs}ms`;
-}
-
-// Per-track tally of what an Opus RTP stream actually carries, for debug logs
-export class OpusTrackStats {
-    declare packets: number;
-    declare bytes: number;
-    declare first: RtpHeaderFields | null;
-    declare private lastTimestamp: number | null;
-    declare private tocs: Map<string, number>;
-    declare private deltas: Map<number, number>;
-    declare private extensions: number;
-
-    constructor() {
-        this.packets = 0;
-        this.bytes = 0;
-        this.first = null;
-        this.lastTimestamp = null;
-        this.tocs = new Map();
-        this.deltas = new Map();
-        this.extensions = 0;
-    }
-
-    push(payload: Buffer, header: RtpHeaderFields): void {
-        if (!this.first) this.first = { ...header };
-        this.packets++;
-        this.bytes += payload.length;
-        if (header.extension) this.extensions++;
-
-        const key = describeToc(parseToc(payload));
-        this.tocs.set(key, (this.tocs.get(key) ?? 0) + 1);
-
-        if (this.lastTimestamp !== null) {
-            const delta = (header.timestamp - this.lastTimestamp) >>> 0;
-            if (this.deltas.has(delta) || this.deltas.size < maxDeltas) this.deltas.set(delta, (this.deltas.get(delta) ?? 0) + 1);
-        }
-        this.lastTimestamp = header.timestamp;
-    }
-
-    summary(): string {
-        if (!this.packets) return 'no packets';
-        const tocs = [...this.tocs].map(([k, n]) => `${k}: ${n}`).join(', ');
-        const deltas = [...this.deltas].sort((a, b) => b[1] - a[1]).map(([d, n]) => `${d}: ${n}`).join(', ');
-        const avg = Math.round(this.bytes / this.packets);
-        return `${this.packets} packets, avg ${avg}B, extensions ${this.extensions}, frames [${tocs}], timestamp steps [${deltas}]`;
     }
 }
