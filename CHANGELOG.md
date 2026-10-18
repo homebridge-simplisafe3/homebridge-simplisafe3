@@ -1,8 +1,14 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.11.4 (unreleased)
+- Fix: no audio on the Outdoor Camera and other LiveKit cameras that send multi-frame Opus packets (#526)
+
+## v1.11.3 (2026-10-10)
+- Improve LiveKit camera wake and snapshot reliability in #525
+
 ## v1.11.2 (2026-09-27)
-- Use direct Opus encoding for Video Doorbell Series 2 audio
+- Use direct Opus encoding for Video Doorbell Series 2 audio in #521
 
 ## v1.11.1 (2026-09-26)
 - Fix: Audio on the Video Doorbell Series 2 could intermittently fail to start

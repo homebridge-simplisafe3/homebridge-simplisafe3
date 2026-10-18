@@ -12,6 +12,7 @@ import { SrtpSession, ProtectionProfileAes128CmHmacSha1_80 } from 'werift';
 
 import LiveKitSource from './liveKitSource';
 import KeyframeCollector from './h264';
+import { OpusRepacketizer } from './opus';
 
 const dnsLookup = promisify(dns.lookup);
 
@@ -20,6 +21,11 @@ const audioPayloadType = 110;
 const snapshotCacheTime = 60000; // ms
 const prepareTimeout = 20000; // ms, give up on a prepared session HomeKit never started
 const keyframeTimeout = 15000; // ms, waiting for a keyframe to build a snapshot from
+const snapshotRequestTimeout = 8000; // ms, HomeKit drops the accessory if we take much longer
+const snapshotRetryDelay = 60000; // ms, back off before poking a camera that just failed
+const eventSnapshotTimeout = 15000; // ms, how long an event's recording may take to show up
+const eventSnapshotPollInterval = 1000; // ms
+const eventSnapshotWait = 3000; // ms, notification thumbnails give up a few seconds after asking
 
 const privacyShutterImage = path.resolve(__dirname, '..', 'images', 'privacyshutter_snapshot.png');
 const privacyShutterImageInBytes = fs.readFileSync(privacyShutterImage);
@@ -42,6 +48,8 @@ class StreamingDelegate {
         this.cachedSnapshotExpires = 0;
         this.snapshotBusy = false;
         this.snapshotWarming = null;
+        this.snapshotRetryAfter = 0;
+        this.eventSnapshot = null;
 
         let fps = this.cameraDetails.cameraSettings.admin.fps;
         let streamingOptions = {
@@ -587,14 +595,22 @@ class StreamingDelegate {
     }
 
     async handleLiveKitSnapshotRequest(callback) {
-        if (this.cachedSnapshot && Date.now() < this.cachedSnapshotExpires) {
-            callback(undefined, this.cachedSnapshot);
-            return;
+        // Motion is fetching the event's recording snapshot, usually ~2s so worth a short wait
+        if (this.eventSnapshot) {
+            let fresh = await Promise.race([
+                this.eventSnapshot,
+                new Promise(resolve => setTimeout(() => resolve(null), eventSnapshotWait))
+            ]);
+            if (fresh) {
+                callback(undefined, fresh);
+                return;
+            }
         }
 
-        // A stream is already collecting keyframes, serve what we have rather than joining again
-        if (this.cachedSnapshot && Object.keys(this.liveKitSessions).length) {
+        // Anything cached beats making HomeKit wait
+        if (this.cachedSnapshot) {
             callback(undefined, this.cachedSnapshot);
+            if (Date.now() >= this.cachedSnapshotExpires) this.refreshSnapshot();
             return;
         }
 
@@ -603,14 +619,77 @@ class StreamingDelegate {
             return;
         }
 
+        // Nothing to fall back on, the only path that can make HomeKit wait
         try {
-            if (!this.snapshotWarming) this.snapshotWarming = this.warmSnapshot();
-            let snapshot = await this.snapshotWarming;
+            let warming = this.refreshSnapshot();
+            if (!warming) throw new Error('Waiting before retrying the camera');
+
+            let snapshot = await Promise.race([
+                warming,
+                new Promise((resolve, reject) => setTimeout(() => reject(new Error('Camera did not produce a frame in time')), snapshotRequestTimeout))
+            ]);
             callback(undefined, snapshot);
         } catch (err) {
             this.log.error(`Could not get snapshot for '${this.ss3Camera.name}':`, err.message);
             callback(err);
         }
+    }
+
+    // Camera events link to their recording, its snapshot is fresher and quicker than joining the room
+    refreshSnapshotFromEvent(event) {
+        if (this.ss3Camera.getStreamProvider() !== 'livekit' || this.eventSnapshot) return;
+        let url = this.eventSnapshotUrl(event);
+        if (!url) return;
+
+        this.eventSnapshot = this.fetchEventSnapshot(url)
+            .catch(err => {
+                if (this.ss3Camera.debug) this.log(`Could not get event snapshot for '${this.ss3Camera.name}': ${err.message}`);
+                return null;
+            })
+            .finally(() => { this.eventSnapshot = null; });
+    }
+
+    eventSnapshotUrl(event) {
+        let video = event && event.video && event.video[this.ss3Camera.id];
+        let link = video && video._links && video._links['snapshot/jpg'];
+        if (!link || !link.href || !video.timestamp) return null;
+        // The link points at the start of the preroll, the moment of the event is more useful
+        return link.href.replace(/\/time\/\d+/, `/time/${video.timestamp}`).replace('{&width}', '&width=1280');
+    }
+
+    // Polls until the frame is uploaded, which happens while the clip is still PARTIAL
+    async fetchEventSnapshot(url) {
+        let start = Date.now();
+        let attempts = 0;
+        for (;;) {
+            attempts++;
+            let res = await fetch(url, {
+                headers: { Authorization: `${this.ss3Camera.authManager.tokenType} ${this.ss3Camera.authManager.accessToken}` }
+            });
+            if (res.ok) {
+                let jpeg = Buffer.from(await res.arrayBuffer());
+                this.cachedSnapshot = jpeg;
+                this.cachedSnapshotExpires = Date.now() + snapshotCacheTime;
+                if (this.ss3Camera.debug) this.log(`Cached event snapshot for '${this.ss3Camera.name}' (${Math.round(jpeg.length / 1000)}kB) after ${attempts} attempt(s), ${Date.now() - start}ms`);
+                return jpeg;
+            }
+            if (res.status != 404 || Date.now() - start + eventSnapshotPollInterval > eventSnapshotTimeout) {
+                throw new Error(`HTTP ${res.status} after ${attempts} attempt(s), ${Date.now() - start}ms`);
+            }
+            await new Promise(resolve => setTimeout(resolve, eventSnapshotPollInterval));
+        }
+    }
+
+    // Deduped + rate-limited. Returns the in flight warm, or null while backing off
+    refreshSnapshot() {
+        if (this.snapshotWarming) return this.snapshotWarming;
+        if (Date.now() < this.snapshotRetryAfter) return null;
+
+        this.snapshotWarming = this.warmSnapshot();
+        this.snapshotWarming.catch(() => {
+            this.snapshotRetryAfter = Date.now() + snapshotRetryDelay;
+        });
+        return this.snapshotWarming;
     }
 
     // Briefly joins the room to grab a keyframe, used when nothing is streaming
@@ -712,8 +791,11 @@ class StreamingDelegate {
             }
 
             let audioSrtp = this.createSrtpSession(sessionInfo.audio_srtp);
+            let repacketizer = new OpusRepacketizer();
             source.onAudioRtp = rtp => {
-                this.forwardRtp(rtp, audioSrtp, socket, audioPayloadType, sessionInfo.audio_ssrc, sessionInfo.audio_port, sessionInfo.address);
+                for (let packet of repacketizer.split(rtp)) {
+                    this.forwardRtp(packet, audioSrtp, socket, audioPayloadType, sessionInfo.audio_ssrc, sessionInfo.audio_port, sessionInfo.address);
+                }
             };
             if (this.ss3Camera.debug) this.log(`Audio: forwarding Opus to ${sessionInfo.address}:${sessionInfo.audio_port}`);
         };
