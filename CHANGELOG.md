@@ -1,6 +1,9 @@
 # Change Log
 All notable changes are documented here.
 
+## v1.11.4 (unreleased)
+- Fix: no audio on the Outdoor Camera and other LiveKit cameras that send multi-frame Opus packets (#526)
+
 ## v1.11.3 (2026-10-10)
 - Improve LiveKit camera wake and snapshot reliability in #525
 

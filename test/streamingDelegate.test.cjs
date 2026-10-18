@@ -302,3 +302,35 @@ test('livekit snapshot falls back to the cache when the event snapshot fails', a
     assert.equal(args[0], undefined);
     assert.equal(args[1], cached);
 });
+
+test('livekit audio splits multi-frame Opus packets and drops duplicates', async () => {
+    const delegate = new StreamingDelegate(createCameraStub({ getStreamProvider: () => 'livekit' }));
+    const sent = [];
+    delegate.createSrtpSession = () => ({});
+    delegate.forwardRtp = (rtp) => sent.push({ seq: rtp.header.sequenceNumber, ts: rtp.header.timestamp, padding: rtp.header.padding, payload: Buffer.from(rtp.payload) });
+
+    const source = { close: () => {} };
+    const sessionInfo = {
+        address: '192.168.1.5',
+        video_port: 5010,
+        audio_port: 5012,
+        liveKitSource: source,
+        liveKitReady: Promise.resolve(),
+    };
+    delegate.startLiveKitStream({ sessionID: 'x', audio: { codec: 'OPUS' } }, 'uuid:x', sessionInfo, () => {});
+    await sessionInfo.liveKitReady;
+    await new Promise(setImmediate);
+
+    // SILK 20ms, code 3, VBR, 3 frames, sent twice like a duplicated track
+    const packet = { header: { sequenceNumber: 500, timestamp: 4294966336, padding: true }, payload: Buffer.from([0x4b, 0x83, 1, 1, 0xa1, 0xb1, 0xc1]) };
+    source.onAudioRtp(packet);
+    source.onAudioRtp(packet);
+    delegate.stopLiveKitStream('uuid:x');
+
+    assert.deepEqual(sent, [
+        { seq: 0, ts: 4294966336, padding: false, payload: Buffer.from([0x48, 0xa1]) },
+        { seq: 1, ts: 0, padding: false, payload: Buffer.from([0x48, 0xb1]) },
+        { seq: 2, ts: 960, padding: false, payload: Buffer.from([0x48, 0xc1]) },
+    ]);
+    assert.equal(packet.header.sequenceNumber, 500, 'the incoming packet is left alone');
+});
