@@ -1,27 +1,29 @@
-const { Command, Flags, CliUx } = require('@oclif/core');
-const { SimpliSafe3AuthenticationManager } = require('../lib/authManager');
-const path = require('path');
-const os = require('os');
-const isDocker = require('is-docker');
+import { Command, Flags, CliUx } from '@oclif/core';
+import { SimpliSafe3AuthenticationManager } from '../lib/authManager';
+import path from 'path';
+import os from 'os';
+import { inspect } from 'util';
+import isDocker from 'is-docker';
 
-export const homebridgeDir = Flags.build({
+const homebridgeDir = Flags.build({
     char: 'd',
     description: 'The path to your Homebridge directory',
-    default: () => {
+    default: async () => {
         return isDocker() ? '/homebridge/' : path.join(os.homedir(), '.homebridge');
     }
 });
 
 class Login extends Command {
+    static description = 'Login with SimpliSafe';
     static flags = {
         homebridgeDir: homebridgeDir()
     };
-    authManager;
+    authManager?: SimpliSafe3AuthenticationManager;
 
-    async run() {
+    async run(): Promise<void> {
         const {flags} = await this.parse(Login);
-        
-        this.authManager = new SimpliSafe3AuthenticationManager(flags.homebridgeDir);
+
+        this.authManager = new SimpliSafe3AuthenticationManager(flags.homebridgeDir!);
 
         const loginURL = this.authManager.getSSAuthURL();
 
@@ -42,7 +44,7 @@ class Login extends Command {
 
         const redirectURLStr = (await CliUx.ux.prompt('Redirect URL'));
 
-        let code = this.authManager.parseCodeFromURL(redirectURLStr);
+        const code = this.authManager.parseCodeFromURL(redirectURLStr);
 
         try {
             await this.authManager.getToken(code);
@@ -53,7 +55,7 @@ class Login extends Command {
             this.log('Please restart Homebridge for changes to take effect.');
         } catch (e) {
             this.log('\nAn error occurred retrieving credentials:');
-            this.log(e);
+            this.log(inspect(e));
             this.exit(1);
         }
 
@@ -61,6 +63,4 @@ class Login extends Command {
     }
 }
 
-Login.description = 'Login with SimpliSafe';
-
-module.exports = Login;
+export default Login;

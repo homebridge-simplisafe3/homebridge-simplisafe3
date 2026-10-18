@@ -49,9 +49,13 @@ test('config schema alias matches the registered platform', () => {
 
 test('oclif login command is present in dist', () => {
     const commandsDir = path.join(distDir, distPackage.oclif.commands);
-    const Login = require(path.join(commandsDir, 'login.js'));
+    const loginModule = require(path.join(commandsDir, 'login.js'));
+    // mirrors oclif's command lookup
+    const Login = typeof loginModule.run === 'function' ? loginModule : loginModule.default;
 
     assert.equal(typeof Login, 'function');
     assert.equal(typeof Login.run, 'function');
+    assert.equal(Login.description, 'Login with SimpliSafe');
+    assert.equal(Login.flags.homebridgeDir.char, 'd');
     assert.ok(fs.existsSync(path.join(distDir, distPackage.bin[distPackage.name])));
 });
