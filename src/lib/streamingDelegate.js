@@ -12,6 +12,7 @@ import { SrtpSession, ProtectionProfileAes128CmHmacSha1_80 } from 'werift';
 
 import LiveKitSource from './liveKitSource';
 import KeyframeCollector from './h264';
+import { OpusRepacketizer } from './opus';
 
 const dnsLookup = promisify(dns.lookup);
 
@@ -790,8 +791,11 @@ class StreamingDelegate {
             }
 
             let audioSrtp = this.createSrtpSession(sessionInfo.audio_srtp);
+            let repacketizer = new OpusRepacketizer();
             source.onAudioRtp = rtp => {
-                this.forwardRtp(rtp, audioSrtp, socket, audioPayloadType, sessionInfo.audio_ssrc, sessionInfo.audio_port, sessionInfo.address);
+                for (let packet of repacketizer.split(rtp)) {
+                    this.forwardRtp(packet, audioSrtp, socket, audioPayloadType, sessionInfo.audio_ssrc, sessionInfo.audio_port, sessionInfo.address);
+                }
             };
             if (this.ss3Camera.debug) this.log(`Audio: forwarding Opus to ${sessionInfo.address}:${sessionInfo.audio_port}`);
         };
