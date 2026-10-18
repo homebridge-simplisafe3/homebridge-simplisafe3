@@ -36,6 +36,7 @@ class Login extends Command {
         this.log('\nAlso please note that this task cannot be performed on a mobile device.\n');
 
         const rl = createInterface({ input: process.stdin, output: process.stdout });
+        rl.on('SIGINT', () => process.exit(130)); // readline swallows Ctrl+C otherwise
         const redirectURLStr = (await rl.question('Redirect URL: ')).trim();
         rl.close();
 
