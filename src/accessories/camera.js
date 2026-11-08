@@ -100,12 +100,16 @@ class SS3Camera extends SimpliSafe3Accessory {
         const provider = this.getWebRTCProvider();
 
         if (!provider || provider === 'simplisafe') return 'legacy';
-        if (provider === 'mist') return 'livekit';
+        if (provider === 'mist' || provider === 'kvs') return 'livekit';
         return 'none';
     }
 
     isUnsupported() {
         return this.getStreamProvider() === 'none';
+    }
+
+    isKvs() {
+        return this.getWebRTCProvider() === 'kvs';
     }
 
     isDoorbell() {
