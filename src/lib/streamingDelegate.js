@@ -11,6 +11,7 @@ import dgram from 'dgram';
 import { SrtpSession, ProtectionProfileAes128CmHmacSha1_80 } from 'werift';
 
 import LiveKitSource from './liveKitSource';
+import KvsSource from './kvsSource';
 import KeyframeCollector from './h264';
 import { OpusRepacketizer } from './opus';
 
@@ -251,7 +252,7 @@ class StreamingDelegate {
 
         // Join now, the handshake takes several seconds which is too slow to run inside handleStreamRequest
         if (this.ss3Camera.getStreamProvider() === 'livekit') {
-            sessionInfo.liveKitSource = new LiveKitSource(this.ss3Camera);
+            sessionInfo.liveKitSource = this.ss3Camera.isKvs() ? new KvsSource(this.ss3Camera) : new LiveKitSource(this.ss3Camera);
             sessionInfo.liveKitReady = sessionInfo.liveKitSource.connect();
             sessionInfo.liveKitReady.catch(() => {}); // handled in handleStreamRequest
 
@@ -610,7 +611,10 @@ class StreamingDelegate {
         // Anything cached beats making HomeKit wait
         if (this.cachedSnapshot) {
             callback(undefined, this.cachedSnapshot);
-            if (Date.now() >= this.cachedSnapshotExpires) this.refreshSnapshot();
+            // Don't wake a battery camera just to refresh a thumbnail; the
+            // cached frame refreshes whenever the live view is opened.
+            const battery = this.ss3Camera.cameraDetails && this.ss3Camera.cameraDetails.supportedFeatures && this.ss3Camera.cameraDetails.supportedFeatures.wired === false;
+            if (Date.now() >= this.cachedSnapshotExpires && !battery) this.refreshSnapshot();
             return;
         }
 
@@ -694,7 +698,7 @@ class StreamingDelegate {
 
     // Briefly joins the room to grab a keyframe, used when nothing is streaming
     async warmSnapshot() {
-        let source = new LiveKitSource(this.ss3Camera);
+        let source = this.ss3Camera.isKvs() ? new KvsSource(this.ss3Camera) : new LiveKitSource(this.ss3Camera);
         let keyframe = new KeyframeCollector();
 
         let timeoutID;

@@ -396,11 +396,13 @@ class SimpliSafe3 extends EventEmitter {
             this.resetRateLimitHandler();
 
             const details = response.data && response.data.liveKitDetails;
-            if (!details || !details.liveKitURL || !details.userToken) {
-                throw new Error(`Unexpected live-view response: ${JSON.stringify(response.data)}`);
+            if (details && details.liveKitURL && details.userToken) {
+                return { ...details, cameraStatus: response.data.cameraStatus };
             }
-
-            return { ...details, cameraStatus: response.data.cameraStatus };
+            if (response.data && response.data.signedChannelEndpoint) {
+                return { ...response.data };
+            }
+            throw new Error(`Unexpected live-view response: ${JSON.stringify(response.data)}`);
         } catch (err) {
             if (err.response && err.response.status === 403) {
                 this.setRateLimitHandler();
